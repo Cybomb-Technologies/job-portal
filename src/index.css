@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-royal-blue: #4169E1;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply text-black;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Standardized transitions */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-[#4169E1] rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3A5FCD;
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #4169E1;
+  outline-offset: 2px;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
