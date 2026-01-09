@@ -12,15 +12,23 @@ import ResetPassword from './pages/ResetPassword';
 import CareerTips from './pages/CareerTips';
 import EmployerDashboard from './pages/employer/EmployerDashboard';
 import PostJob from './pages/employer/PostJob';
-import EditJob from './pages/employer/EditJob';
 import MyJobs from './pages/employer/MyJobs';
 import JobApplications from './pages/employer/JobApplications';
+import CandidatesPage from './pages/employer/CandidatesPage';
+import CandidateDetailsPage from './pages/employer/CandidateDetailsPage';
 
 // Profile Imports
 import ProfileLayout from './pages/profile/ProfileLayout';
 import ProfileDetails from './pages/profile/ProfileDetails';
 import AppliedJobs from './pages/profile/AppliedJobs';
 import ChangePassword from './pages/profile/ChangePassword';
+
+// Info Pages
+import AboutUs from './pages/AboutUs';
+import ContactUs from './pages/ContactUs';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import SalaryCalculator from './pages/SalaryCalculator';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -38,6 +46,13 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/career-tips" element={<CareerTips />} />
+          
+          {/* Info Pages */}
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/salary-calculator" element={<SalaryCalculator />} />
           
           {/* Enhanced Profile Routes */}
           <Route 
@@ -77,7 +92,7 @@ function App() {
             path="/employer/edit-job/:id" 
             element={
               <ProtectedRoute allowedRoles={['Employer']}>
-                <EditJob />
+                <PostJob />
               </ProtectedRoute>
             } 
           />
@@ -89,11 +104,27 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route 
+            <Route 
             path="/employer/applications/:jobId" 
             element={
               <ProtectedRoute allowedRoles={['Employer']}>
                 <JobApplications />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/candidates" 
+            element={
+              <ProtectedRoute allowedRoles={['Employer']}>
+                <CandidatesPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/candidates/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['Employer']}>
+                <CandidateDetailsPage />
               </ProtectedRoute>
             } 
           />

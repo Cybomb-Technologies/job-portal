@@ -59,6 +59,9 @@ const jobSchema = mongoose.Schema(
     benefits: {
         type: [String],
     },
+    preScreeningQuestions: {
+        type: [String],
+    },
     status: {
         type: String,
         enum: ['Active', 'Closed'],
@@ -69,11 +72,23 @@ const jobSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    jobId: {
+        type: String,
+        unique: true
+    }
   },
   {
     timestamps: true,
   }
 );
+
+// Generate Custom Job ID
+jobSchema.pre('save', async function(next) {
+    if (!this.jobId) {
+        this.jobId = `JOB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    next();
+});
 
 const Job = mongoose.model('Job', jobSchema);
 

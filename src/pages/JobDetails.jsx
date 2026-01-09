@@ -33,6 +33,13 @@ const JobDetails = () => {
   const [applySuccess, setApplySuccess] = useState(false);
   const [applyError, setApplyError] = useState(null);
 
+  // Profile Data for Resume Selection
+  const [userResumes, setUserResumes] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Pre-screening Answers
+  const [screeningAnswers, setScreeningAnswers] = useState({}); // { questionIndex: answer }
+
   useEffect(() => {
     const fetchJob = async () => {
       try {
@@ -47,6 +54,23 @@ const JobDetails = () => {
     fetchJob();
   }, [id]);
 
+  useEffect(() => {
+      if (user && showApplyModal) {
+          const fetchProfile = async () => {
+              setLoadingProfile(true);
+              try {
+                  const { data } = await api.get('/auth/profile');
+                  setUserResumes(data.resumes || []);
+              } catch (err) {
+                  console.error("Failed to fetch profile", err);
+              } finally {
+                  setLoadingProfile(false);
+              }
+          };
+          fetchProfile();
+      }
+  }, [user, showApplyModal]);
+
   const handleApply = async (e) => {
     e.preventDefault();
     setApplying(true);
@@ -58,23 +82,44 @@ const JobDetails = () => {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('jobId', job._id);
-      formData.append('resume', resume);
-      formData.append('coverLetter', coverLetter);
+      // Validation
+      if (!resume) {
+          setApplyError('Please select a resume.');
+          setApplying(false);
+          return;
+      }
 
-      await api.post('/applications', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
-      });
+      const answers = [];
+      if (job.preScreeningQuestions?.length > 0) {
+          for (let i = 0; i < job.preScreeningQuestions.length; i++) {
+              if (!screeningAnswers[i] || !screeningAnswers[i].trim()) {
+                  setApplyError('Please answer all pre-screening questions.');
+                  setApplying(false);
+                  return;
+              }
+              answers.push({
+                  question: job.preScreeningQuestions[i],
+                  answer: screeningAnswers[i]
+              });
+          }
+      }
+
+      const payload = {
+          jobId: job._id,
+          resume: resume, // This is now the URL string
+          coverLetter: coverLetter,
+          screeningAnswers: answers
+      };
+
+      await api.post('/applications', payload);
 
       setApplySuccess(true);
       setTimeout(() => {
         setShowApplyModal(false);
         setApplySuccess(false);
-        setResume('');
+        setResume(null);
         setCoverLetter('');
+        setScreeningAnswers({});
       }, 2000);
     } catch (err) {
       setApplyError(err.response?.data?.message || 'Failed to apply');
@@ -217,79 +262,214 @@ const JobDetails = () => {
         {/* Apply Modal */}
         {showApplyModal && (
             <div 
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                 onClick={() => setShowApplyModal(false)}
             >
                 <div 
-                    className="bg-white rounded-xl max-w-lg w-full p-6 relative animate-in fade-in zoom-in duration-200 shadow-2xl"
+                    className="bg-white rounded-2xl max-w-3xl w-full p-0 relative animate-in fade-in zoom-in duration-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <button 
-                        onClick={() => setShowApplyModal(false)}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
+                     {/* Modal Header */}
+                    <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">Apply for {job.title}</h2>
+                            <p className="text-sm text-gray-500 mt-1">Complete the steps below to submit your application.</p>
+                        </div>
+                        <button 
+                            onClick={() => setShowApplyModal(false)}
+                            className="text-gray-400 hover:text-black transition-colors bg-white p-2 rounded-full shadow-sm hover:shadow-md border border-gray-100"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
 
-                    <h2 className="text-2xl font-bold mb-6">Apply for {job.title}</h2>
-                    
                     {applySuccess ? (
-                        <div className="text-center py-8">
-                            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                            <h3 className="text-xl font-bold text-green-600 mb-2">Application Submitted!</h3>
-                            <p className="text-gray-600 text-lg mb-2">Hello {user?.name},</p>
-                            <p className="text-gray-600">Thanks for applying! The employer will review your application shortly.</p>
+                         <div className="p-12 text-center flex flex-col items-center justify-center flex-grow">
+                            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                                <CheckCircle className="w-10 h-10 text-green-600" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h3>
+                            <p className="text-gray-600 text-lg mb-6">Hello {user?.name}, your application has been sent to {job.company}.</p>
+                            <button onClick={() => setShowApplyModal(false)} className="text-[#4169E1] font-medium hover:underline">Close Window</button>
                         </div>
                     ) : (
-                        <form onSubmit={handleApply}>
-                            {applyError && (
-                                <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
-                                    {applyError}
+                        <div className="flex flex-col h-full">
+                            {/* Stepper */}
+                            <div className="px-8 py-6 bg-white shrink-0">
+                                <div className="flex items-center justify-between relative">
+                                    <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-0 rounded-full"></div>
+                                    <div className="absolute left-0 top-1/2 h-1 bg-[#4169E1] -z-0 rounded-full transition-all duration-300" 
+                                        style={{ width: `${((currentStep - 1) / (hasScreening ? 3 : 2)) * 100}%` }}></div>
+                                    
+                                    {steps.map((step) => (
+                                        <div key={step.num} className="flex flex-col items-center z-10 bg-white px-2">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+                                                currentStep >= step.num 
+                                                ? 'bg-[#4169E1] border-[#4169E1] text-white' 
+                                                : 'bg-white border-gray-200 text-gray-400'
+                                            }`}>
+                                                {currentStep > step.num ? <CheckCircle className="w-5 h-5" /> : step.num}
+                                            </div>
+                                            <span className={`text-xs font-medium mt-2 ${currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400'}`}>{step.label}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
-
-                            <div className="mb-4">
-                                <label className="block text-gray-700 font-medium mb-2">Resume (PDF/DOC)</label>
-                                <div className="relative">
-                                    <FileText className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                                    <input 
-                                        type="file" 
-                                        required
-                                        accept=".pdf,.doc,.docx"
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none"
-                                        onChange={(e) => setResume(e.target.files[0])}
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">Upload your resume. Max size 5MB.</p>
                             </div>
 
-                            <div className="mb-6">
-                                <label className="block text-gray-700 font-medium mb-2">Cover Letter (Optional)</label>
-                                <textarea 
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none h-32 resize-none"
-                                    placeholder="Explain why you are a good fit for this role..."
-                                    value={coverLetter}
-                                    onChange={(e) => setCoverLetter(e.target.value)}
-                                ></textarea>
+                            {/* Content */}
+                            <div className="px-8 py-4 overflow-y-auto flex-grow">
+                                {applyError && (
+                                    <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm flex items-start animate-fadeIn">
+                                        <div className="mr-2 mt-0.5">⚠️</div>
+                                        {applyError}
+                                    </div>
+                                )}
+
+                                {currentStep === 1 && (
+                                    <div className="space-y-4 animate-fadeIn">
+                                        <h3 className="text-lg font-bold text-gray-900">Select a Resume</h3>
+                                        <p className="text-gray-500 text-sm mb-4">Choose the resume you want to submit for this application.</p>
+                                        
+                                        {loadingProfile ? (
+                                            <div className="text-center py-8 text-gray-500">Loading your resumes...</div>
+                                        ) : userResumes.length > 0 ? (
+                                            <div className="grid gap-3">
+                                                {userResumes.map((res, index) => (
+                                                    <div 
+                                                        key={index} 
+                                                        className={`border-2 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between group ${resume === res.file ? 'border-[#4169E1] bg-blue-50/50' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`} 
+                                                        onClick={() => setResume(res.file)}
+                                                    >
+                                                        <div className="flex items-center overflow-hidden">
+                                                            <div className={`w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 ${resume === res.file ? 'border-[#4169E1]' : 'border-gray-300'}`}>
+                                                                {resume === res.file && <div className="w-2.5 h-2.5 rounded-full bg-[#4169E1]"></div>}
+                                                            </div>
+                                                            <div>
+                                                                <div className={`font-semibold text-sm truncate ${resume === res.file ? 'text-[#4169E1]' : 'text-gray-800'}`}>{res.name}</div>
+                                                                <div className="text-xs text-gray-500">Uploaded on {new Date().toLocaleDateString()}</div>
+                                                            </div>
+                                                        </div>
+                                                        <a href={res.file} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#4169E1] p-2 bg-white rounded-lg border border-gray-100 shadow-sm" onClick={(e) => e.stopPropagation()}><FileText className="w-4 h-4" /></a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                                <p className="text-gray-500 mb-2">No resumes found.</p>
+                                                <Link to="/profile" className="text-[#4169E1] font-semibold hover:underline">Upload a resume in your profile</Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {currentStep === 2 && (
+                                    <div className="space-y-4 animate-fadeIn">
+                                        <h3 className="text-lg font-bold text-gray-900">Cover Letter</h3>
+                                        <p className="text-gray-500 text-sm mb-4">Explain why you're a good fit for this role (Optional).</p>
+                                        <textarea 
+                                            className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none h-60 resize-none text-base bg-gray-50 focus:bg-white transition-colors"
+                                            placeholder="Write your cover letter here..."
+                                            value={coverLetter}
+                                            onChange={(e) => setCoverLetter(e.target.value)}
+                                        ></textarea>
+                                    </div>
+                                )}
+
+                                {currentStep === 3 && hasScreening && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <h3 className="text-lg font-bold text-gray-900">Screening Questions</h3>
+                                        <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl text-sm border border-yellow-100 mb-4">
+                                            The employer has asked the following questions to screen candidates. Please answer truthfully.
+                                        </div>
+                                        <div className="space-y-5">
+                                            {job.preScreeningQuestions.map((question, index) => (
+                                                <div key={index} className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                                    <label className="block text-sm font-bold text-gray-800 mb-2">{index + 1}. {question} <span className="text-red-500">*</span></label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#4169E1] outline-none text-sm bg-white"
+                                                        placeholder="Type your answer here..."
+                                                        value={screeningAnswers[index] || ''}
+                                                        onChange={(e) => setScreeningAnswers(prev => ({ ...prev, [index]: e.target.value }))}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {currentStep === 4 && (
+                                    <div className="space-y-6 animate-fadeIn">
+                                        <h3 className="text-lg font-bold text-gray-900">Review Application</h3>
+                                        
+                                        <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 space-y-4">
+                                            <div className="flex items-start">
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-[#4169E1] mr-3 mt-1"><FileText className="w-4 h-4" /></div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-gray-900">Selected Resume</div>
+                                                    <div className="text-sm text-gray-600">{userResumes.find(r => r.file === resume)?.name || 'Resume'}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start">
+                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-3 mt-1"><FileText className="w-4 h-4" /></div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-gray-900">Cover Letter</div>
+                                                    <div className="text-sm text-gray-600 line-clamp-2">{coverLetter ? 'Included' : 'Not Included'}</div>
+                                                </div>
+                                            </div>
+                                            {hasScreening && (
+                                                <div className="flex items-start">
+                                                    <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mr-3 mt-1"><CheckCircle className="w-4 h-4" /></div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-900">Screening Questions</div>
+                                                        <div className="text-sm text-gray-600">{Object.keys(screeningAnswers).length} / {job.preScreeningQuestions.length} Answered</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                                            <input type="checkbox" checked readOnly className="mr-2 text-[#4169E1] rounded focus:ring-[#4169E1]" /> 
+                                            I agree to share my profile and provided information with {job.company}.
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="flex justify-end space-x-3">
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowApplyModal(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    disabled={applying}
-                                    className="px-6 py-2 bg-[#4169E1] text-white rounded-lg font-medium hover:bg-[#3A5FCD] disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                                >
-                                    {applying ? 'Submitting...' : 'Submit Application'}
-                                </button>
+                            {/* Footer Buttons */}
+                            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-between shrink-0 rounded-b-2xl">
+                                {currentStep > 1 ? (
+                                    <button 
+                                        type="button" 
+                                        onClick={handleBack}
+                                        className="px-6 py-2.5 text-gray-600 font-semibold hover:bg-gray-200 rounded-xl transition-colors"
+                                    >
+                                        Back
+                                    </button>
+                                ) : (
+                                    <div></div>
+                                )}
+
+                                {currentStep < 4 ? (
+                                     <button 
+                                        type="button" 
+                                        onClick={handleNext}
+                                        className="px-8 py-2.5 bg-[#4169E1] text-white font-bold rounded-xl hover:bg-[#3A5FCD] shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center"
+                                    >
+                                        Next Step <Users className="w-4 h-4 ml-2" />
+                                    </button>
+                                ) : (
+                                    <button 
+                                        type="button" 
+                                        onClick={handleApply}
+                                        disabled={applying}
+                                        className="px-10 py-2.5 bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl transition-all active:scale-95 flex items-center disabled:opacity-70 disabled:cursor-wait"
+                                    >
+                                        {applying ? 'Submitting...' : 'Submit Application'}
+                                    </button>
+                                )}
                             </div>
-                        </form>
+                        </div>
                     )}
                 </div>
             </div>

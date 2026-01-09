@@ -36,6 +36,13 @@ const userSchema = mongoose.Schema(
     about: {
         type: String,
     },
+    currentLocation: {
+        type: String,
+    },
+    preferredLocations: {
+        type: [String],
+        default: []
+    },
     experience: [{
         title: String,
         company: String,
@@ -47,6 +54,7 @@ const userSchema = mongoose.Schema(
     }],
     education: [{
         institute: String,
+        university: String,
         degree: String,
         fieldOfStudy: String,
         startYear: String,
@@ -54,19 +62,39 @@ const userSchema = mongoose.Schema(
     }],
     certifications: [String],
     resume: {
-        type: String, // Path to file
+        type: String, // Path to file (Active Resume)
     },
+    resumes: [{
+        name: String,
+        file: String,
+        uploadedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     chatUsage: {
         date: { type: Date, default: null },
         count: { type: Number, default: 0 }
+    },
+    userId: {
+        type: String,
+        unique: true
     }
   },
   {
     timestamps: true,
   }
 );
+
+// Generate Custom User ID
+userSchema.pre('save', async function(next) {
+    if (!this.userId) {
+        this.userId = `USR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    next();
+});
 
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {

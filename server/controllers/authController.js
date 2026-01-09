@@ -197,7 +197,10 @@ const getUserProfile = async (req, res) => {
       experience: user.experience,
       education: user.education,
       certifications: user.certifications,
+      currentLocation: user.currentLocation,
+      preferredLocations: user.preferredLocations,
       resume: user.resume,
+      resumes: user.resumes,
       profilePicture: user.profilePicture,
     });
   } else {
@@ -216,27 +219,67 @@ const updateUserProfile = async (req, res) => {
     // Email cannot be edited
     user.title = req.body.title || user.title;
     user.about = req.body.about || user.about;
+    user.currentLocation = req.body.currentLocation || user.currentLocation;
+    
+    if (req.body.preferredLocations) {
+        if (typeof req.body.preferredLocations === 'string') {
+            try {
+                user.preferredLocations = JSON.parse(req.body.preferredLocations);
+            } catch (e) {
+                user.preferredLocations = [req.body.preferredLocations];
+            }
+        } else {
+            user.preferredLocations = req.body.preferredLocations;
+        }
+    }
     
     // Parse structured data (coming as JSON strings from FormData)
     if (req.body.skills) {
-         user.skills = req.body.skills.split(',').map(skill => skill.trim());
+         // Handle both comma-separated string and array
+         if (typeof req.body.skills === 'string') {
+            user.skills = req.body.skills.split(',').map(skill => skill.trim());
+         } else if (Array.isArray(req.body.skills)) {
+            user.skills = req.body.skills;
+         }
     }
     
     if (req.body.experience) {
-        try {
-            user.experience = JSON.parse(req.body.experience);
-        } catch (e) { console.error("Error parsing experience", e); }
+        if (typeof req.body.experience === 'string') {
+            // Try to parse as JSON first
+            try {
+                const parsed = JSON.parse(req.body.experience);
+                if (Array.isArray(parsed)) user.experience = parsed;
+                else user.experience = [{ description: req.body.experience }];
+            } catch (e) {
+                // If parse fails, treat as simple string description
+                user.experience = [{ description: req.body.experience }];
+            }
+        } else if (Array.isArray(req.body.experience)) {
+             user.experience = req.body.experience;
+        }
     }
 
     if (req.body.education) {
-        try {
-             user.education = JSON.parse(req.body.education);
-        } catch (e) { console.error("Error parsing education", e); }
+        if (typeof req.body.education === 'string') {
+            try {
+                const parsed = JSON.parse(req.body.education);
+                if (Array.isArray(parsed)) user.education = parsed;
+                else user.education = [{ degree: req.body.education }];
+            } catch (e) {
+                user.education = [{ degree: req.body.education }];
+            }
+        } else if (Array.isArray(req.body.education)) {
+            user.education = req.body.education;
+        }
     }
 
     if (req.body.certifications) {
          try {
-             user.certifications = JSON.parse(req.body.certifications);
+             if (typeof req.body.certifications === 'string') {
+                  user.certifications = JSON.parse(req.body.certifications);
+             } else {
+                  user.certifications = req.body.certifications;
+             }
         } catch (e) { console.error("Error parsing certifications", e); }
     }
     
@@ -246,13 +289,56 @@ const updateUserProfile = async (req, res) => {
             user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
         }
         if (req.files.resume) {
-            user.resume = `/uploads/${req.files.resume[0].filename}`;
+            // Check limit (Max 3)
+            if (user.resumes.length >= 3) {
+                 return res.status(400).json({ message: 'Maximum 3 resumes allowed. Please delete one to upload a new one.' });
+            }
+
+            const newResumePath = `/uploads/${req.files.resume[0].filename}`;
+            const newResumeName = req.files.resume[0].originalname;
+
+            // Add to resumes array
+            user.resumes.push({
+                name: newResumeName,
+                file: newResumePath,
+                uploadedAt: new Date()
+            });
+
+            // Set as active resume
+            user.resume = newResumePath;
         }
     }
     
+    // Handle Setting Active Resume
+    if (req.body.activeResumeId) {
+        const targetResume = user.resumes.id(req.body.activeResumeId);
+        if (targetResume) {
+            user.resume = targetResume.file;
+        }
+    }
+
     // Handle Resume Deletion
-    if (req.body.deleteResume === 'true') {
+    if (req.body.deleteResumeId) {
+        const resumeToDelete = user.resumes.id(req.body.deleteResumeId);
+        if (resumeToDelete) {
+            // Remove from array
+            user.resumes.pull(req.body.deleteResumeId);
+            
+            // If the deleted resume was the active one, pick the most recent one or null
+            if (user.resume === resumeToDelete.file) {
+                if (user.resumes.length > 0) {
+                    // Set the last one as active
+                    user.resume = user.resumes[user.resumes.length - 1].file;
+                } else {
+                    user.resume = undefined;
+                }
+            }
+        }
+    } else if (req.body.deleteResume === 'true') {
+        // Fallback for old single delete logic - clear active and all resumes? 
+        // Or just clear active? Let's assume clear all for safety or just handle legacy
         user.resume = undefined;
+        user.resumes = []; 
     }
 
     const updatedUser = await user.save();
@@ -268,7 +354,10 @@ const updateUserProfile = async (req, res) => {
       experience: updatedUser.experience,
       education: updatedUser.education,
       certifications: updatedUser.certifications,
+      currentLocation: updatedUser.currentLocation,
+      preferredLocations: updatedUser.preferredLocations,
       resume: updatedUser.resume,
+      resumes: updatedUser.resumes,
       profilePicture: updatedUser.profilePicture,
       token: generateToken(updatedUser._id),
     });

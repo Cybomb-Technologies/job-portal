@@ -162,6 +162,7 @@ const updateJob = async (req, res) => {
     job.functionalArea = req.body.functionalArea || job.functionalArea;
     job.education = req.body.education || job.education;
     job.benefits = req.body.benefits || job.benefits;
+    job.preScreeningQuestions = req.body.preScreeningQuestions || job.preScreeningQuestions;
     job.status = req.body.status || job.status;
 
     const updatedJob = await job.save();
