@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, Briefcase, GraduationCap, Filter, User, Grid, List, X, XCircle } from 'lucide-react';
+import { Search, MapPin, Briefcase, GraduationCap, Filter, User, Grid, List, XCircle, Lock, ShieldCheck, Mail, BookmarkPlus } from 'lucide-react';
 import api from '../../api';
 
 const CandidatesPage = () => {
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('grid');
+    const [restricted, setRestricted] = useState(false);
     const [filters, setFilters] = useState({
         keyword: '',
         location: '',
@@ -26,8 +27,12 @@ const CandidatesPage = () => {
 
             const { data } = await api.get(`/candidates?${params.toString()}`);
             setCandidates(data);
+            setRestricted(false);
         } catch (error) {
             console.error('Failed to fetch candidates', error);
+            if (error.response && error.response.status === 403) {
+                setRestricted(true);
+            }
         } finally {
             setLoading(false);
         }
@@ -56,11 +61,6 @@ const CandidatesPage = () => {
             skill: '',
             preferredLocation: ''
         });
-        // We need to trigger a fetch after clearing. 
-        // Since fetches depend on filters state, and setFilters is async, 
-        // we can't just call fetchCandidates() immediately.
-        // Effect hook for filters? No, that would trigger on every keystroke.
-        // Let's just manually call fetch with empty values.
         fetchCandidatesWithEmptyFilters();
     };
 
@@ -71,10 +71,51 @@ const CandidatesPage = () => {
             setCandidates(data);
         } catch (error) {
             console.error('Error', error);
+            if (error.response && error.response.status === 403) {
+                setRestricted(true);
+            }
         } finally {
             setLoading(false);
         }
     };
+
+    if (restricted) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden text-center">
+                    <div className="bg-red-50 p-6 border-b border-red-100">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Lock className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900">Access Restricted</h2>
+                    </div>
+                    <div className="p-8 space-y-6">
+                        <p className="text-gray-600">
+                            Candidate search is exclusive to verified employers. Please verify your company identity to unlock this feature.
+                        </p>
+                        
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-left">
+                            <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4" /> Why Verify?
+                            </h3>
+                            <ul className="text-sm text-blue-800 space-y-2 list-disc list-inside">
+                                <li>Access generic candidate search</li>
+                                <li>Post active job listings</li>
+                                <li>Build trust with candidates</li>
+                            </ul>
+                        </div>
+
+                        <Link 
+                            to="/employer/verification"
+                            className="block w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/30"
+                        >
+                            Go to Verification Center
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -246,17 +287,23 @@ const CandidatesPage = () => {
                                             <div className={`${viewMode === 'grid' ? 'text-center' : 'text-left'}`}>
                                                 <h3 className="text-xl font-bold text-gray-900">{candidate.name}</h3>
                                                 <p className="text-[#4169E1] font-medium">{candidate.title || 'Open to Work'}</p>
+                                                {candidate.currentLocation && (
+                                                    <p className="text-sm text-gray-500 flex items-center justify-center gap-1 mt-1">
+                                                        <MapPin className="w-3 h-3" /> {candidate.currentLocation}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         
-                                        <Link
-                                            to={`/employer/candidates/${candidate._id}`}
-                                            className={`px-6 py-2 border border-[#4169E1] text-[#4169E1] font-medium rounded-lg hover:bg-blue-50 transition-colors ${
-                                                viewMode === 'grid' ? 'w-full mt-4' : 'w-full md:w-auto'
-                                            }`}
-                                        >
-                                            View Profile
-                                        </Link>
+                                        <div className={`flex flex-col gap-2 ${viewMode === 'grid' ? 'w-full mt-4' : 'w-full md:w-auto min-w-[140px]'}`}>
+                                            <Link
+                                                to={`/employer/candidates/${candidate._id}`}
+                                                className="w-full px-4 py-2 border border-[#4169E1] text-[#4169E1] font-medium rounded-lg hover:bg-blue-50 transition-colors text-center"
+                                            >
+                                                View Profile
+                                            </Link>
+                                            
+                                        </div>
                                     </div>
                                 ))}
                             </div>

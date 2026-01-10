@@ -7,7 +7,8 @@ const {
   updateJob,
   deleteJob,
   getEmployerStats,
-  getRecommendedJobs
+  getRecommendedJobs,
+  getRelatedJobs
 } = require('../controllers/jobController');
 
 const { protect } = require('../middleware/authMiddleware');
@@ -18,6 +19,7 @@ router.route('/').post(protect, createJob).get(getJobs);
 router.route('/myjobs').get(protect, getMyJobs);
 router.route('/stats').get(protect, getEmployerStats);
 router.route('/recommendations').get(protect, getRecommendedJobs); // Add this BEFORE /:id
+router.route('/:id/related').get(getRelatedJobs);
 router.route('/:id').get(getJobById).put(protect, updateJob).delete(protect, deleteJob);
 
 module.exports = router;

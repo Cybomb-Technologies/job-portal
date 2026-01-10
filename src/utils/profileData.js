@@ -199,3 +199,13 @@ export const commonFunctionalAreas = [
     "Purchase / Logistics / Supply Chain", "Real Estate / Property", "Sales / Business Development",
     "Strategy / Management Consulting Cases", "Telecom / ISP", "Travel / Airlines / Hospitality"
 ].sort();
+
+// Common Recruitment Durations
+export const commonRecruitmentDurations = [
+    "Immediate",
+    "Within 1 Week",
+    "Within 2 Weeks",
+    "2 to 3 Weeks",
+    "1 Month",
+    "More than 1 Month"
+];

@@ -1,0 +1,325 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { ShieldCheck, Upload, AlertCircle, CheckCircle, Store, Building2 } from 'lucide-react';
+
+const VerificationCenter = () => {
+    const [status, setStatus] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [file, setFile] = useState(null);
+    const [docType, setDocType] = useState('GST');
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [loadingOTP, setLoadingOTP] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' });
+
+    useEffect(() => {
+        fetchStatus();
+    }, []);
+
+    const fetchStatus = async () => {
+        try {
+            const storedUser = localStorage.getItem('user');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+            
+            if (!token) {
+                // Handle no token case (e.g. redirect or show error)
+                setLoading(false);
+                return; 
+            }
+
+            const res = await axios.get('http://localhost:8000/api/verification/status', {
+                headers: { Authorization: `Bearer ${token}` } // Use retrieved token
+            });
+            setStatus(res.data);
+            setLoading(false);
+        } catch (error) {
+            console.error(error);
+            setLoading(false);
+        }
+    };
+
+    const handleSendOTP = async () => {
+        try {
+            setLoadingOTP(true);
+            const storedUser = localStorage.getItem('user');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+
+            const res = await axios.post('http://localhost:8000/api/verification/send-otp', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setOtpSent(true);
+            setMessage({ type: 'success', text: res.data.message });
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to send OTP' });
+        } finally {
+            setLoadingOTP(false);
+        }
+    };
+
+    const handleVerifyOTP = async () => {
+        try {
+            setLoadingOTP(true);
+            const storedUser = localStorage.getItem('user');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+
+            const res = await axios.post('http://localhost:8000/api/verification/verify-otp', { otp }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setStatus({ ...status, level: res.data.level, emailVerified: true, domainVerified: true, status: 'Verified' });
+            setMessage({ type: 'success', text: res.data.message });
+            setOtpSent(false);
+            setOtp('');
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Verification failed' });
+        } finally {
+            setLoadingOTP(false);
+        }
+    };
+
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0]);
+    };
+
+    const handleUpload = async (e) => {
+        e.preventDefault();
+        if (!file) {
+            setMessage({ type: 'error', text: 'Please select a file' });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('document', file);
+        formData.append('docType', docType);
+
+        try {
+            setUploading(true);
+            const storedUser = localStorage.getItem('user');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+
+            await axios.post('http://localhost:8000/api/verification/upload-docs', formData, {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            fetchStatus(); // Refresh status
+            setMessage({ type: 'success', text: 'Document uploaded successfully!' });
+            setFile(null);
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Upload failed' });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    if (loading) return <div className="p-10 text-center">Loading verification status...</div>;
+
+    return (
+        <div className="max-w-4xl mx-auto p-6 space-y-8">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Verification Center</h1>
+                    <p className="text-gray-500 mt-2">Verify your company identity to unlock premium features and build trust.</p>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center min-w-[150px]">
+                    <p className="text-sm text-gray-500 uppercase font-semibold">Current Level</p>
+                    <div className="text-4xl font-bold text-blue-600">Level {status?.level || 0}</div>
+                    <div className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-wide">
+                        {status?.level === 0 ? 'Unverified' : status?.level === 1 ? 'Identity Verified' : 'Fully Verified'}
+                    </div>
+                </div>
+            </div>
+
+            {message.text && (
+                <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {message.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                    <p>{message.text}</p>
+                </div>
+            )}
+
+            {/* Level 1: Identity Verification */}
+            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 1 ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
+                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+                    <div className="flex gap-4">
+                        <div className={`p-3 rounded-lg ${status?.level >= 1 ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                            <Store size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">Level 1: Company Identity</h2>
+                            <p className="text-gray-500 text-sm mt-1">Verify your official work email and domain.</p>
+                        </div>
+                    </div>
+                    {status?.level >= 1 ? (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                            <CheckCircle size={14} /> Verified
+                        </span>
+                    ) : (
+                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Pending</span>
+                    )}
+                </div>
+
+                <div className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                {status?.emailVerified ? <CheckCircle className="text-green-500" size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
+                                <span className={status?.emailVerified ? 'text-gray-900 font-medium' : 'text-gray-500'}>Official Work Email</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {status?.domainVerified ? <CheckCircle className="text-green-500" size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
+                                <span className={status?.domainVerified ? 'text-gray-900 font-medium' : 'text-gray-500'}>Domain Ownership (DNS)</span>
+                            </div>
+                        </div>
+
+                        {status?.level < 1 && (
+                            <div className="flex flex-col gap-3 w-full max-w-sm">
+                                {!otpSent ? (
+                                    <button 
+                                        onClick={handleSendOTP}
+                                        disabled={loadingOTP}
+                                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                                    >
+                                        {loadingOTP ? 'Sending...' : 'Send Verification OTP'}
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Enter 6-digit OTP"
+                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value)}
+                                            maxLength={6}
+                                        />
+                                        <button 
+                                            onClick={handleVerifyOTP}
+                                            disabled={loadingOTP}
+                                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-70"
+                                        >
+                                            {loadingOTP ? 'Verifying...' : 'Verify'}
+                                        </button>
+                                    </div>
+                                )}
+                                {otpSent && <p className="text-xs text-gray-500">Check your email for the code. It expires in 10 minutes.</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Level 2: Legal Verification */}
+            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 2 ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
+                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+                    <div className="flex gap-4">
+                        <div className={`p-3 rounded-lg ${status?.level >= 2 ? 'bg-green-100 text-green-600' : 'bg-purple-50 text-purple-600'}`}>
+                            <Building2 size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">Level 2: Legal Business Verification</h2>
+                            <p className="text-gray-500 text-sm mt-1">Upload official government documents (GST, CIN, Udyam).</p>
+                        </div>
+                    </div>
+                    {status?.level >= 2 ? (
+                         <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                            <CheckCircle size={14} /> Verified
+                        </span>
+                    ) : (status?.documents?.some(d => d.status === 'Pending') && status.level < 2) ? (
+                        <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">Under Review</span>
+                    ) : (
+                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Locked</span>
+                    )}
+                </div>
+
+                <div className="p-6">
+                    {status?.level < 1 ? (
+                        <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                            <ShieldCheck className="mx-auto text-gray-300 mb-2" size={32} />
+                            Complete Level 1 verification to unlock this step.
+                        </div>
+                    ) : status?.level >= 2 ? (
+                        <div className="text-green-700 bg-green-50 p-4 rounded-lg border border-green-100">
+                            <p className="font-medium">Business Identity Verified</p>
+                            <p className="text-sm mt-1 opacity-90">Your business has been legally verified. You now have the "Registered Business" badge on all job posts.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <form onSubmit={handleUpload} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                                    <select 
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                        value={docType}
+                                        onChange={(e) => setDocType(e.target.value)}
+                                    >
+                                        <option value="GST">GST Certificate</option>
+                                        <option value="CIN">Certificate of Incorporation (CIN)</option>
+                                        <option value="MSME">Udyam Registration (MSME)</option>
+                                        <option value="Other">Other Official Document</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Upload Document (PDF/Image)</label>
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer relative">
+                                        <input 
+                                            type="file" 
+                                            onChange={handleFileChange} 
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            accept=".pdf,.jpg,.jpeg,.png"
+                                        />
+                                        <Upload className="mx-auto text-gray-400 mb-2" size={24} />
+                                        <p className="text-sm text-gray-600">
+                                            {file ? <span className="text-blue-600 font-medium">{file.name}</span> : 'Click or drag to upload'}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">Max 5MB</p>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    disabled={uploading || !file}
+                                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {uploading ? 'Uploading...' : 'Submit for Verification'}
+                                </button>
+                            </form>
+
+                            {/* Document History */}
+                            {status?.documents?.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Submission History</h3>
+                                    <div className="space-y-3">
+                                        {status.documents.map((doc, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-white rounded border border-gray-200">
+                                                        <span className="text-xs font-bold text-gray-500">{doc.type}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-gray-900">Document Uploaded</p>
+                                                        <p className="text-xs text-gray-500">{new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                                    doc.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                                                    doc.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                    {doc.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default VerificationCenter;

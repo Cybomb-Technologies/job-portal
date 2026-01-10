@@ -8,6 +8,7 @@ const {
   getJobApplications,
   getMyApplications,
   updateApplicationStatus,
+  getApplicationById,
 } = require('../controllers/applicationController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -46,5 +47,6 @@ router.post('/', protect, upload.single('resume'), applyToJob);
 router.get('/my-applications', protect, getMyApplications);
 router.get('/job/:jobId', protect, getJobApplications);
 router.put('/:id/status', protect, updateApplicationStatus);
+router.get('/:id', protect, getApplicationById);
 
 module.exports = router;

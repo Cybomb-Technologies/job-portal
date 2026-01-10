@@ -6,8 +6,22 @@ import {
     Plus, Trash2, HelpCircle, Info, Sparkles 
 } from 'lucide-react';
 import api from '../../api';
-import { commonJobTitles, commonSkills, commonBenefits, commonPreScreeningQuestions, commonFunctionalAreas, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
+import { commonJobTitles, commonSkills, commonBenefits, commonPreScreeningQuestions, commonFunctionalAreas, commonDegrees, commonFieldsOfStudy, commonRecruitmentDurations } from '../../utils/profileData';
 import Swal from 'sweetalert2';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+const quillModules = {
+    toolbar: [
+        ['bold', 'italic', 'underline'],
+        [{'list': 'ordered'}, {'list': 'bullet'}]
+    ],
+};
+
+const quillFormats = [
+    'bold', 'italic', 'underline',
+    'list', 'bullet'
+];
 
 const PostJob = () => {
     const { id } = useParams();
@@ -24,6 +38,7 @@ const PostJob = () => {
         functionalArea: '',
         type: 'Full-time',
         location: '',
+        recruitmentDuration: '',
         
         // Step 2: Company
         company: '',
@@ -43,6 +58,8 @@ const PostJob = () => {
         skills: [], // Array of strings
         education: '',
         fieldOfStudy: '', // New Field
+        applyMethod: 'direct',
+        applyUrl: '',
 
         // Step 5: Screening
         preScreeningQuestions: [] // Array of strings
@@ -61,7 +78,8 @@ const PostJob = () => {
         location: [],
         skills: [],
         education: [],
-        fieldOfStudy: []
+        fieldOfStudy: [],
+        recruitmentDuration: []
     });
     const [showSuggestions, setShowSuggestions] = useState({
         title: false,
@@ -70,7 +88,8 @@ const PostJob = () => {
         location: false,
         skills: false,
         education: false,
-        fieldOfStudy: false
+        fieldOfStudy: false,
+        recruitmentDuration: false
     });
     const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
@@ -89,6 +108,7 @@ const PostJob = () => {
                         location: data.location || '',
                         company: data.company || '',
                         companyDescription: data.companyDescription || '',
+                        recruitmentDuration: data.recruitmentDuration || '',
                         salaryType: data.salaryType || (data.salaryMax === data.salaryMin ? 'Fixed' : 'Range'), // Infer type if missing, assume range usually
                         salaryFrequency: data.salaryFrequency || 'Year',
                          // Ensure we don't display '0' if it was empty, but backend sends numbers. 
@@ -102,6 +122,8 @@ const PostJob = () => {
                         skills: data.skills || [],
                         education: data.education || '',
                         fieldOfStudy: data.fieldOfStudy || '',
+                        applyMethod: data.applyMethod || 'direct',
+                        applyUrl: data.applyUrl || '',
                         preScreeningQuestions: data.preScreeningQuestions || []
                     });
                 } catch (err) {
@@ -140,32 +162,61 @@ const PostJob = () => {
         setFormData({ ...formData, [name]: value });
         
         // Simple local filtering for static lists
+        // Ensure other suggestions are hidden when typing in one
+        setShowSuggestions({
+            title: false,
+            jobRole: false,
+            functionalArea: false,
+            location: false,
+            skills: false,
+            education: false,
+            fieldOfStudy: false,
+            recruitmentDuration: false,
+            [name]: true // Open only current
+        });
         if (name === 'title') {
              const filtered = commonJobTitles.filter(t => t.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
              setSuggestions(prev => ({ ...prev, title: filtered }));
-             setShowSuggestions(prev => ({ ...prev, title: true }));
         }
         if (name === 'jobRole') {
              const filtered = commonJobTitles.filter(t => t.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
              setSuggestions(prev => ({ ...prev, jobRole: filtered }));
-             setShowSuggestions(prev => ({ ...prev, jobRole: true }));
         }
         if (name === 'functionalArea') {
              const filtered = commonFunctionalAreas.filter(t => t.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
              setSuggestions(prev => ({ ...prev, functionalArea: filtered }));
-             setShowSuggestions(prev => ({ ...prev, functionalArea: true }));
         }
         if (name === 'education') {
              const filtered = commonDegrees.filter(t => t.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
              setSuggestions(prev => ({ ...prev, education: filtered }));
-             setShowSuggestions(prev => ({ ...prev, education: true }));
         }
         if (name === 'fieldOfStudy') {
              const filtered = commonFieldsOfStudy.filter(t => t.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
              setSuggestions(prev => ({ ...prev, fieldOfStudy: filtered }));
-             setShowSuggestions(prev => ({ ...prev, fieldOfStudy: true }));
+        }
+        if (name === 'recruitmentDuration') {
+             const filtered = commonRecruitmentDurations.filter(t => t.toLowerCase().includes(value.toLowerCase()));
+             setSuggestions(prev => ({ ...prev, recruitmentDuration: filtered }));
         }
         if (name === 'location') setShowSuggestions(prev => ({ ...prev, location: true }));
+    };
+
+    const handleFocus = (field) => {
+        setShowSuggestions({
+            title: false,
+            jobRole: false,
+            functionalArea: false,
+            location: false,
+            skills: false,
+            education: false,
+            fieldOfStudy: false,
+            recruitmentDuration: false,
+            [field]: true
+        });
+
+        if (field === 'recruitmentDuration') {
+             setSuggestions(prev => ({ ...prev, recruitmentDuration: commonRecruitmentDurations }));
+        }
     };
 
     const selectSuggestion = (field, value) => {
@@ -247,7 +298,7 @@ const PostJob = () => {
     const validateStep = (step) => {
         switch(step) {
             case 1:
-                if (!formData.title || !formData.type || !formData.location) return false;
+                if (!formData.title || !formData.type || !formData.location || !formData.recruitmentDuration) return false;
                 break;
             case 2:
                 if (!formData.company) return false;
@@ -258,7 +309,10 @@ const PostJob = () => {
                 if ((formData.salaryType === 'Fixed' || formData.salaryType === 'Starting From') && !formData.salaryMin) return false;
                 break;
             case 4:
-                if (!formData.description || formData.skills.length === 0) return false;
+                // Check if description is empty or just has empty html tags
+                const isDescriptionEmpty = !formData.description || formData.description.replace(/<(.|\n)*?>/g, '').trim().length === 0;
+                if (isDescriptionEmpty || formData.skills.length === 0) return false;
+                if (formData.applyMethod === 'website' && !formData.applyUrl) return false;
                 break;
             default: return true;
         }
@@ -347,19 +401,47 @@ const PostJob = () => {
             { num: 4, label: 'Details' },
             { num: 5, label: 'Screening' },
         ];
+
+        const handleStepClick = (targetStep) => {
+            // Allow going back always
+            if (targetStep < currentStep) {
+                setCurrentStep(targetStep);
+                return;
+            }
+
+            // Validate all steps up to the target
+            for (let i = 1; i < targetStep; i++) {
+                if (!validateStep(i)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Incomplete Step',
+                        text: `Please complete Step ${i} (${steps[i-1].label}) before proceeding.`,
+                        confirmButtonColor: '#4169E1'
+                    });
+                    setCurrentStep(i); // Go to the first invalid step
+                    return;
+                }
+            }
+            setCurrentStep(targetStep);
+        };
+
         return (
             <div className="flex items-center justify-between mb-8 px-4">
                 {steps.map((step, index) => (
-                    <div key={step.num} className="flex flex-col items-center relative z-10 w-full">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 ${
+                    <div 
+                        key={step.num} 
+                        className="flex flex-col items-center relative z-10 w-full group"
+                        onClick={() => handleStepClick(step.num)}
+                    >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 cursor-pointer ${
                             currentStep >= step.num 
                                 ? 'bg-[#4169E1] border-[#4169E1] text-white shadow-lg shadow-blue-500/30' 
-                                : 'bg-white border-gray-200 text-gray-400'
+                                : 'bg-white border-gray-200 text-gray-400 group-hover:border-[#4169E1] group-hover:text-[#4169E1]'
                         }`}>
                             {currentStep > step.num ? <Check className="w-5 h-5" /> : step.num}
                         </div>
-                        <span className={`text-xs font-medium mt-2 uppercase tracking-wide ${
-                            currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400'
+                        <span className={`text-xs font-medium mt-2 uppercase tracking-wide cursor-pointer transition-colors ${
+                            currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400 group-hover:text-[#4169E1]'
                         }`}>
                             {step.label}
                         </span>
@@ -429,19 +511,44 @@ const PostJob = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="relative md:col-span-2">
                                             <label className="label">Job Title <span className="text-red-500">*</span></label>
-                                            <input type="text" name="title" value={formData.title} onChange={handleInputChange} className="input-field" placeholder="e.g. Senior Frontend Developer" autoFocus />
+                                            <input 
+                                                type="text" 
+                                                name="title" 
+                                                value={formData.title} 
+                                                onChange={handleInputChange} 
+                                                onFocus={() => handleFocus('title')}
+                                                className="input-field" 
+                                                placeholder="e.g. Senior Frontend Developer" 
+                                                autoFocus 
+                                            />
                                             <SuggestionList items={suggestions.title} field="title" onSelect={selectSuggestion} />
                                         </div>
                                         
                                         <div className="relative">
                                             <label className="label">Job Role</label>
-                                            <input type="text" name="jobRole" value={formData.jobRole} onChange={handleInputChange} className="input-field" placeholder="e.g. Software Engineer" />
+                                            <input 
+                                                type="text" 
+                                                name="jobRole" 
+                                                value={formData.jobRole} 
+                                                onChange={handleInputChange} 
+                                                onFocus={() => handleFocus('jobRole')}
+                                                className="input-field" 
+                                                placeholder="e.g. Software Engineer" 
+                                            />
                                             <SuggestionList items={suggestions.jobRole} field="jobRole" onSelect={selectSuggestion} />
                                         </div>
 
                                         <div className="relative">
                                              <label className="label">Functional Area</label>
-                                             <input type="text" name="functionalArea" value={formData.functionalArea} onChange={handleInputChange} className="input-field" placeholder="e.g. IT Software" />
+                                             <input 
+                                                type="text" 
+                                                name="functionalArea" 
+                                                value={formData.functionalArea} 
+                                                onChange={handleInputChange} 
+                                                onFocus={() => handleFocus('functionalArea')}
+                                                className="input-field" 
+                                                placeholder="e.g. IT Software" 
+                                            />
                                              <SuggestionList items={suggestions.functionalArea} field="functionalArea" onSelect={selectSuggestion} />
                                         </div>
 
@@ -458,10 +565,32 @@ const PostJob = () => {
                                         </div>
 
                                         <div className="relative">
+                                            <label className="label">Recruitment Timeline <span className="text-red-500">*</span></label>
+                                            <input 
+                                                type="text" 
+                                                name="recruitmentDuration" 
+                                                value={formData.recruitmentDuration} 
+                                                onChange={handleInputChange} 
+                                                className="input-field" 
+                                                placeholder="e.g. Immediate, 1 Month" 
+                                                onFocus={() => handleFocus('recruitmentDuration')}
+                                            />
+                                            <SuggestionList items={suggestions.recruitmentDuration} field="recruitmentDuration" onSelect={selectSuggestion} />
+                                        </div>
+
+                                        <div className="relative">
                                              <label className="label">Location <span className="text-red-500">*</span></label>
                                              <div className="relative">
                                                  {/* <MapPin className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" /> */}
-                                                 <input type="text" name="location" value={formData.location} onChange={handleInputChange} className="input-field pl-15" placeholder="Search city..." />
+                                                 <input 
+                                                    type="text" 
+                                                    name="location" 
+                                                    value={formData.location} 
+                                                    onChange={handleInputChange} 
+                                                    onFocus={() => handleFocus('location')}
+                                                    className="input-field pl-15" 
+                                                    placeholder="Search city..." 
+                                                />
                                              </div>
                                              {isLoadingLocations && <div className="absolute right-3 top-10 text-xs text-gray-400">Loading...</div>}
                                              <SuggestionList items={suggestions.location} field="location" onSelect={selectSuggestion} />
@@ -552,9 +681,16 @@ const PostJob = () => {
                                         Job Details & Benefits
                                     </h2>
 
-                                    <div>
+                                    <div className="h-64 mb-12">
                                         <label className="label">Job Description <span className="text-red-500">*</span></label>
-                                        <textarea name="description" rows="8" value={formData.description} onChange={handleInputChange} className="input-field" placeholder="Detailed roles, responsibilities, and specific requirements..."></textarea>
+                                        <ReactQuill 
+                                            theme="snow"
+                                            value={formData.description}
+                                            onChange={(content) => setFormData(prev => ({ ...prev, description: content }))}
+                                            modules={quillModules}
+                                            formats={quillFormats}
+                                            className="h-48 bg-white rounded-lg"
+                                        />
                                     </div>
 
                                     <div>
@@ -581,12 +717,28 @@ const PostJob = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="relative">
                                             <label className="label">Education</label>
-                                            <input type="text" name="education" value={formData.education} onChange={handleInputChange} className="input-field" placeholder="e.g. Bachelor's" />
+                                            <input 
+                                                type="text" 
+                                                name="education" 
+                                                value={formData.education} 
+                                                onChange={handleInputChange} 
+                                                onFocus={() => handleFocus('education')}
+                                                className="input-field" 
+                                                placeholder="e.g. Bachelor's" 
+                                            />
                                             <SuggestionList items={suggestions.education} field="education" onSelect={selectSuggestion} />
                                         </div>
                                          <div className="relative">
                                             <label className="label">Field of Study</label>
-                                            <input type="text" name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleInputChange} className="input-field" placeholder="e.g. Computer Science" />
+                                            <input 
+                                                type="text" 
+                                                name="fieldOfStudy" 
+                                                value={formData.fieldOfStudy} 
+                                                onChange={handleInputChange} 
+                                                onFocus={() => handleFocus('fieldOfStudy')}
+                                                className="input-field" 
+                                                placeholder="e.g. Computer Science" 
+                                            />
                                             <SuggestionList items={suggestions.fieldOfStudy} field="fieldOfStudy" onSelect={selectSuggestion} />
                                         </div>
                                     </div>
@@ -630,6 +782,52 @@ const PostJob = () => {
                                                  ))}
                                              </div>
                                         )}
+                                    </div>
+
+                                    {/* Application Method */}
+                                    <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50">
+                                        <h3 className="font-semibold text-gray-800 mb-4 flex items-center">Application Method</h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-6">
+                                                <label className="flex items-center cursor-pointer">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="applyMethod" 
+                                                        value="direct" 
+                                                        checked={formData.applyMethod === 'direct'} 
+                                                        onChange={handleInputChange} 
+                                                        className="w-4 h-4 text-[#4169E1] border-gray-300 focus:ring-[#4169E1]" 
+                                                    />
+                                                    <span className="ml-2 text-gray-700">Direct Apply on Job Portal</span>
+                                                </label>
+                                                <label className="flex items-center cursor-pointer">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="applyMethod" 
+                                                        value="website" 
+                                                        checked={formData.applyMethod === 'website'} 
+                                                        onChange={handleInputChange} 
+                                                        className="w-4 h-4 text-[#4169E1] border-gray-300 focus:ring-[#4169E1]" 
+                                                    />
+                                                    <span className="ml-2 text-gray-700">Apply at Company Website</span>
+                                                </label>
+                                            </div>
+
+                                            {formData.applyMethod === 'website' && (
+                                                <div className="animate-fadeIn">
+                                                    <label className="label">Company Website URL <span className="text-red-500">*</span></label>
+                                                    <input 
+                                                        type="url" 
+                                                        name="applyUrl" 
+                                                        value={formData.applyUrl} 
+                                                        onChange={handleInputChange} 
+                                                        className="input-field" 
+                                                        placeholder="https://company.com/careers/job-id" 
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Candidates will be redirected to this URL when they click "Apply Now".</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}

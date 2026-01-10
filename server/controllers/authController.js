@@ -189,6 +189,13 @@ const getUserProfile = async (req, res) => {
     res.json({
       _id: user._id,
       name: user.name,
+      companyName: user.companyName,
+      website: user.website,
+      companyEmail: user.companyEmail,
+      companyCategory: user.companyCategory,
+      companyType: user.companyType,
+      foundedYear: user.foundedYear,
+      employeeCount: user.employeeCount,
       email: user.email,
       role: user.role,
       title: user.title,
@@ -216,6 +223,14 @@ const updateUserProfile = async (req, res) => {
 
   if (user) {
     user.name = req.body.name || user.name;
+    user.companyName = req.body.companyName || user.companyName;
+    user.website = req.body.website || user.website;
+    user.companyEmail = req.body.companyEmail || user.companyEmail;
+    user.companyCategory = req.body.companyCategory || user.companyCategory;
+    user.companyType = req.body.companyType || user.companyType;
+    user.foundedYear = req.body.foundedYear || user.foundedYear;
+    user.employeeCount = req.body.employeeCount || user.employeeCount;
+
     // Email cannot be edited
     user.title = req.body.title || user.title;
     user.about = req.body.about || user.about;
@@ -346,6 +361,7 @@ const updateUserProfile = async (req, res) => {
     res.json({
       _id: updatedUser._id,
       name: updatedUser.name,
+      companyName: updatedUser.companyName,
       email: updatedUser.email,
       role: updatedUser.role,
       title: updatedUser.title,
@@ -386,9 +402,40 @@ const changePassword = async (req, res) => {
   }
 };
 
-// @desc    Delete User Account
-// @route   DELETE /api/auth/profile
-// @access  Private
+// @desc    Get public user profile (Company details)
+// @route   GET /api/auth/user/:id
+// @access  Public
+const getPublicUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (user) {
+      // Only return public info needed for company profile
+      res.json({
+        _id: user._id,
+        name: user.name, // Employer Name (or Company Representative)
+        companyName: user.companyName,
+        website: user.website,
+        companyEmail: user.companyEmail,
+        companyCategory: user.companyCategory,
+        companyType: user.companyType,
+        foundedYear: user.foundedYear,
+        employeeCount: user.employeeCount,
+        email: user.email, // Can limit if privacy needed, but often useful for contact
+        about: user.about,
+        location: user.currentLocation,  
+        profilePicture: user.profilePicture,
+        role: user.role,
+        employerVerification: user.employerVerification
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 const deleteAccount = async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -409,5 +456,6 @@ module.exports = {
   getUserProfile, 
   updateUserProfile,
   changePassword,
-  deleteAccount
+  deleteAccount,
+  getPublicUserProfile
 };

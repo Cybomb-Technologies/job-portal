@@ -10,7 +10,8 @@ const {
     getUserProfile, 
     updateUserProfile,
     changePassword,
-    deleteAccount
+    deleteAccount,
+    getPublicUserProfile
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -64,5 +65,6 @@ router.route('/profile')
     .delete(protect, deleteAccount);
 
 router.put('/update-password', protect, changePassword);
+router.get('/user/:id', getPublicUserProfile);
 
 module.exports = router;

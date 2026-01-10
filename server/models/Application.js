@@ -30,12 +30,17 @@ const applicationSchema = mongoose.Schema(
     }],
     status: {
       type: String,
-      enum: ['Applied', 'Shortlisted', 'Interviewed', 'Rejected', 'Hired'],
+      enum: ['Applied', 'Resume Viewed', 'Shortlisted', 'Interviewed', 'Rejected', 'Hired'],
       default: 'Applied',
     },
     applicationId: {
         type: String,
         unique: true
+    },
+    agreedToTerms: {
+        type: Boolean,
+        required: true,
+        default: false
     }
   },
   {

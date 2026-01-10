@@ -7,6 +7,16 @@ const getCandidates = async (req, res) => {
     try {
         const { keyword, location, title, skill, preferredLocation } = req.query;
 
+        // Restriction for Level 0 Employers
+        if (req.user.role === 'Employer') {
+            const user = await User.findById(req.user._id);
+            // Default to 0 if undefined
+            const level = user.employerVerification?.level || 0; 
+            if (level < 1) {
+                 return res.status(403).json({ message: 'Access Denied. Please verify your company identity (Level 1) to search for candidates.' });
+            }
+        }
+
         let query = { role: 'Job Seeker' };
 
         if (keyword) {

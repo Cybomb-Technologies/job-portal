@@ -31,6 +31,16 @@ const jobSchema = mongoose.Schema(
       type: Number,
       required: true,
     },
+    salaryType: {
+      type: String,
+      enum: ['Fixed', 'Range', 'Starting From'],
+      default: 'Range'
+    },
+    salaryFrequency: {
+      type: String,
+      enum: ['Year', 'Month', 'Week', 'Hour'],
+      default: 'Year'
+    },
     experienceMin: {
       type: Number,
       required: true,
@@ -62,6 +72,10 @@ const jobSchema = mongoose.Schema(
     preScreeningQuestions: {
         type: [String],
     },
+    recruitmentDuration: {
+        type: String,
+        default: 'Immediate'
+    },
     status: {
         type: String,
         enum: ['Active', 'Closed'],
@@ -75,6 +89,14 @@ const jobSchema = mongoose.Schema(
     jobId: {
         type: String,
         unique: true
+    },
+    applyMethod: {
+        type: String,
+        enum: ['direct', 'website'],
+        default: 'direct'
+    },
+    applyUrl: {
+        type: String
     }
   },
   {

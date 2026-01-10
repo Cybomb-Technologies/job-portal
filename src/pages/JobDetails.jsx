@@ -24,6 +24,7 @@ const JobDetails = () => {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [relatedJobs, setRelatedJobs] = useState([]);
   
   // Application State
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -39,6 +40,66 @@ const JobDetails = () => {
 
   // Pre-screening Answers
   const [screeningAnswers, setScreeningAnswers] = useState({}); // { questionIndex: answer }
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Helper to determining if we skip screening
+  const hasScreening = job?.preScreeningQuestions?.length > 0;
+  
+  // Reset step when modal closes
+  useEffect(() => {
+    if (!showApplyModal) setCurrentStep(1);
+  }, [showApplyModal]);
+
+  const handleNext = () => {
+    if (currentStep === 1 && !resume) {
+        setApplyError('Please select a resume to proceed.');
+        return;
+    }
+    setApplyError(null);
+    
+    // Validate Screening Questions
+    if (currentStep === 3 && hasScreening) {
+        const totalQuestions = job.preScreeningQuestions.length;
+        const answeredCount = Object.keys(screeningAnswers).length;
+        // Check if all questions are answered and not empty
+        let allAnswered = true;
+        for(let i=0; i<totalQuestions; i++) {
+            if(!screeningAnswers[i] || !screeningAnswers[i].trim()) {
+                allAnswered = false;
+                break;
+            }
+        }
+        
+        if (!allAnswered) {
+             setApplyError('Please answer all pre-screening questions before proceeding.');
+             return;
+        }
+    }
+
+    // Skip screening step if no questions
+    if (currentStep === 2 && !hasScreening) {
+        setCurrentStep(4);
+    } else {
+        setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+      if (currentStep === 4 && !hasScreening) {
+          setCurrentStep(2);
+      } else {
+          setCurrentStep(prev => prev - 1);
+      }
+  };
+
+  const steps = [
+      { num: 1, label: 'Resume' },
+      { num: 2, label: 'Cover Letter' },
+      ...(hasScreening ? [{ num: 3, label: 'Screening' }] : []),
+      { num: 4, label: 'Review' }
+  ];
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -46,6 +107,15 @@ const JobDetails = () => {
         const { data } = await api.get(`/jobs/${id}`);
         setJob(data);
         setLoading(false);
+
+        // Fetch Related Jobs
+        try {
+            const relatedRes = await api.get(`/jobs/${id}/related`);
+            setRelatedJobs(relatedRes.data);
+        } catch (err) {
+            console.error("Failed to fetch related jobs", err);
+        }
+
       } catch (err) {
         setError('Job not found');
         setLoading(false);
@@ -108,7 +178,8 @@ const JobDetails = () => {
           jobId: job._id,
           resume: resume, // This is now the URL string
           coverLetter: coverLetter,
-          screeningAnswers: answers
+          screeningAnswers: answers,
+          agreedToTerms: agreedToTerms
       };
 
       await api.post('/applications', payload);
@@ -174,11 +245,22 @@ const JobDetails = () => {
                 </div>
                 <div className="flex items-center text-gray-600">
                   <IndianRupee className="w-5 h-5 mr-3" />
-                  <span>{job.salaryMin} - {job.salaryMax}</span>
+                  <span>
+                    {job.salaryType === 'Fixed' 
+                        ? `Fixed: ${Number(job.salaryMin).toLocaleString()}` 
+                        : job.salaryType === 'Starting From' 
+                            ? `Starts from ${Number(job.salaryMin).toLocaleString()}` 
+                            : `${Number(job.salaryMin).toLocaleString()} - ${Number(job.salaryMax).toLocaleString()}`
+                    }
+                  </span>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Clock className="w-5 h-5 mr-3" />
                   <span>{job.experienceMin} - {job.experienceMax} years</span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <Calendar className="w-5 h-5 mr-3" />
+                  <span>{job.recruitmentDuration || 'Immediate'}</span>
                 </div>
               </div>
 
@@ -188,10 +270,16 @@ const JobDetails = () => {
                  </div>
               ) : (
                 <button 
-                  onClick={() => setShowApplyModal(true)}
+                  onClick={() => {
+                    if (job.applyMethod === 'website' && job.applyUrl) {
+                        window.open(job.applyUrl, '_blank');
+                    } else {
+                        setShowApplyModal(true);
+                    }
+                  }}
                   className="w-full py-3 bg-[#4169E1] text-white text-lg font-semibold rounded-lg hover:bg-[#3A5FCD]"
                 >
-                  Apply Now
+                  {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
                 </button>
               )}
             </div>
@@ -199,7 +287,10 @@ const JobDetails = () => {
             {/* Job Description */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
               <h2 className="text-2xl font-bold text-black mb-6">Job Description</h2>
-              <p className="text-gray-700 mb-6 whitespace-pre-line">{job.description}</p>
+              <div 
+                className="text-gray-700 mb-6 prose max-w-none font-sans break-words overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: job.description }}
+              />
               
               <h3 className="text-xl font-semibold text-black mb-4">Skills</h3>
               <div className="flex flex-wrap gap-2 mb-8">
@@ -229,31 +320,54 @@ const JobDetails = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-black mb-4">Job Overview</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Posted Date</div>
-                  <div className="flex items-center text-black">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {new Date(job.createdAt).toLocaleDateString()}
-                  </div>
+          <div className="lg:col-span-1">
+            <div className="space-y-6 sticky top-24">
+                {/* Quick Stats */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-black mb-4">Job Overview</h3>
+                <div className="space-y-4">
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Posted Date</div>
+                    <div className="flex items-center text-black">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {new Date(job.createdAt).toLocaleDateString()}
+                    </div>
+                    </div>
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Job Type</div>
+                    <div className="text-black">{job.type}</div>
+                    </div>
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Experience</div>
+                    <div className="text-black">{job.experienceMin} - {job.experienceMax} years</div>
+                    </div>
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Role</div>
+                    <div className="text-black">{job.jobRole || 'Not specified'}</div>
+                    </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Job Type</div>
-                  <div className="text-black">{job.type}</div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Experience</div>
-                  <div className="text-black">{job.experienceMin} - {job.experienceMax} years</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 mb-1">Role</div>
-                  <div className="text-black">{job.jobRole || 'Not specified'}</div>
-                </div>
-              </div>
+
+                {/* Related Jobs */}
+                {relatedJobs.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-semibold text-black mb-4">Related Jobs</h3>
+                        <div className="space-y-4">
+                            {relatedJobs.map(job => (
+                                <Link to={`/job/${job._id}`} key={job._id} className="block group">
+                                    <div className="p-3 border border-gray-100 rounded-lg hover:bg-blue-50/50 hover:border-blue-100 transition-all">
+                                        <h4 className="font-bold text-gray-900 group-hover:text-[#4169E1] line-clamp-1">{job.title}</h4>
+                                        <div className="text-sm text-gray-500 mb-2">{job.company}</div>
+                                        <div className="flex items-center text-xs text-gray-400 gap-3">
+                                            <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {job.location}</span>
+                                            <span className="flex items-center"><Briefcase className="w-3 h-3 mr-1"/> {job.type}</span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
           </div>
         </div>
@@ -293,7 +407,7 @@ const JobDetails = () => {
                             <button onClick={() => setShowApplyModal(false)} className="text-[#4169E1] font-medium hover:underline">Close Window</button>
                         </div>
                     ) : (
-                        <div className="flex flex-col h-full">
+                        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                             {/* Stepper */}
                             <div className="px-8 py-6 bg-white shrink-0">
                                 <div className="flex items-center justify-between relative">
@@ -317,7 +431,7 @@ const JobDetails = () => {
                             </div>
 
                             {/* Content */}
-                            <div className="px-8 py-4 overflow-y-auto flex-grow">
+                            <div className="px-8 py-4 overflow-y-auto flex-grow min-h-0">
                                 {applyError && (
                                     <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm flex items-start animate-fadeIn">
                                         <div className="mr-2 mt-0.5">⚠️</div>
@@ -428,9 +542,16 @@ const JobDetails = () => {
                                             )}
                                         </div>
 
-                                        <div className="flex items-center text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                                            <input type="checkbox" checked readOnly className="mr-2 text-[#4169E1] rounded focus:ring-[#4169E1]" /> 
-                                            I agree to share my profile and provided information with {job.company}.
+                                        <div 
+                                            className="flex items-center text-sm text-gray-600 bg-gray-50 p-4 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => setAgreedToTerms(!agreedToTerms)}
+                                        >
+                                            <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${agreedToTerms ? 'bg-[#4169E1] border-[#4169E1]' : 'bg-white border-gray-300'}`}>
+                                                {agreedToTerms && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                                            </div>
+                                            <label className="cursor-pointer select-none font-medium">
+                                                I agree to share my profile and provided information with {job.company}.
+                                            </label>
                                         </div>
                                     </div>
                                 )}
@@ -462,8 +583,8 @@ const JobDetails = () => {
                                     <button 
                                         type="button" 
                                         onClick={handleApply}
-                                        disabled={applying}
-                                        className="px-10 py-2.5 bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl transition-all active:scale-95 flex items-center disabled:opacity-70 disabled:cursor-wait"
+                                        disabled={applying || !agreedToTerms}
+                                        className="px-10 py-2.5 bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl transition-all active:scale-95 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {applying ? 'Submitting...' : 'Submit Application'}
                                     </button>

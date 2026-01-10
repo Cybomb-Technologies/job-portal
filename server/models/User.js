@@ -7,6 +7,15 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    companyName: {
+        type: String,
+    },
+    website: { type: String },
+    companyEmail: { type: String }, // Public contact email
+    companyCategory: { type: String }, // e.g. IT Services, Healthcare
+    companyType: { type: String }, // e.g. Private, Public, Startup
+    foundedYear: { type: String }, 
+    employeeCount: { type: String }, // e.g. 10-50, 100+
     email: {
       type: String,
       required: true,
@@ -81,6 +90,48 @@ const userSchema = mongoose.Schema(
     userId: {
         type: String,
         unique: true
+    },
+    employerVerification: {
+        level: {
+            type: Number,
+            default: 0, // 0: Unverified, 1: Identity Verified, 2: Legal Verified
+        },
+        status: {
+            type: String,
+            enum: ['Unverified', 'Pending', 'Verified', 'Rejected'],
+            default: 'Unverified'
+        },
+        emailVerified: {
+            type: Boolean,
+            default: false
+        },
+        domainVerified: {
+            type: Boolean,
+            default: false
+        },
+        documents: [{
+            type: {
+                type: String,
+                enum: ['GST', 'CIN', 'MSME', 'Other']
+            },
+            fileUrl: String,
+            status: {
+                type: String,
+                enum: ['Pending', 'Approved', 'Rejected'],
+                default: 'Pending'
+            },
+            uploadedAt: {
+                type: Date,
+                default: Date.now
+            },
+            rejectionReason: String
+        }],
+        verificationScore: {
+            type: Number,
+            default: 0
+        },
+        verificationOTP: String,
+        verificationOTPExpire: Date
     }
   },
   {

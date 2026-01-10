@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, Globe, ExternalLink, Search, Grid, List, TrendingUp } from 'lucide-react';
 import api from '../api';
 
@@ -36,7 +37,8 @@ const Companies = () => {
       description: job.companyDescription || "Leading technology company focused on innovation and building the future.", 
       industry: "Technology", 
       employees: "100-500", 
-      openPositions: companyJobs.length
+      openPositions: companyJobs.length,
+      employerId: job.postedBy?._id
     };
   });
 
@@ -208,11 +210,13 @@ const Companies = () => {
                     </div>
                 </div>
                 
-                <button className={`border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
+                <Link 
+                    to={company.employerId ? `/company/${company.employerId}` : '#'}
+                    className={`block text-center border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
                     viewMode === 'grid' ? 'w-full py-2.5' : 'w-full md:w-auto px-6 py-2.5 mt-4 md:mt-0'
                 }`}>
                     View Profile
-                </button>
+                </Link>
                 </div>
             ))}
             </div>

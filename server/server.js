@@ -35,6 +35,8 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/candidates', candidateRoutes);
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/verification', require('./routes/verificationRoutes'));
 
 // Make uploads folder static
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));

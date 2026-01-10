@@ -19,6 +19,8 @@ const Header = () => {
     { name: 'Dashboard', path: '/employer/dashboard' },
     { name: 'Post Job', path: '/employer/post-job' },
     { name: 'My Jobs', path: '/employer/my-jobs' },
+    { name: 'Find Candidates', path: '/employer/candidates' },
+    { name: 'Verification', path: '/employer/verification' },
   ];
 
   const currentNavItems = user?.role === 'Employer' ? employerNavItems : navItems;
@@ -58,7 +60,7 @@ const Header = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                 <Link to="/profile" className="text-black hover:text-[#4169E1]">
+                 <Link to={user.role === 'Employer' ? "/employer/profile" : "/profile"} className="text-black hover:text-[#4169E1]">
                   <User className="w-6 h-6" />
                 </Link>
                 <button

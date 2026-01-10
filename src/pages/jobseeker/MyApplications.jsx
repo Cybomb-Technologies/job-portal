@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, MapPin, Briefcase, Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { FileText, MapPin, Briefcase, Calendar, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 import api from '../../api';
 
 const MyApplications = () => {
@@ -20,12 +20,16 @@ const MyApplications = () => {
     };
 
     fetchApplications();
+    // Poll for updates every 3 seconds
+    const interval = setInterval(fetchApplications, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Applied': return <span className="flex items-center text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full text-xs font-semibold"><Clock className="w-3 h-3 mr-1"/> Applied</span>;
-      case 'Shortlisted': return <span className="flex items-center text-blue-600 bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold"><Briefcase className="w-3 h-3 mr-1"/> Shortlisted</span>;
+      case 'Resume Viewed': return <span className="flex items-center text-blue-600 bg-blue-100 px-3 py-1 rounded-full text-xs font-semibold"><Eye className="w-3 h-3 mr-1"/> Resume Viewed</span>;
+      case 'Shortlisted': return <span className="flex items-center text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full text-xs font-semibold"><Briefcase className="w-3 h-3 mr-1"/> Shortlisted</span>;
       case 'Interviewed': return <span className="flex items-center text-purple-600 bg-purple-100 px-3 py-1 rounded-full text-xs font-semibold"><Calendar className="w-3 h-3 mr-1"/> Interviewed</span>;
       case 'Hired': return <span className="flex items-center text-green-600 bg-green-100 px-3 py-1 rounded-full text-xs font-semibold"><CheckCircle className="w-3 h-3 mr-1"/> Hired</span>;
       case 'Rejected': return <span className="flex items-center text-red-600 bg-red-100 px-3 py-1 rounded-full text-xs font-semibold"><XCircle className="w-3 h-3 mr-1"/> Rejected</span>;

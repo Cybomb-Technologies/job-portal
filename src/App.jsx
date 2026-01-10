@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import Home from './pages/Home';
 import Jobs from './pages/Jobs';
 import Companies from './pages/Companies';
+import CompanyProfile from './pages/CompanyProfile';
 import JobDetails from './pages/JobDetails';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -14,8 +15,14 @@ import EmployerDashboard from './pages/employer/EmployerDashboard';
 import PostJob from './pages/employer/PostJob';
 import MyJobs from './pages/employer/MyJobs';
 import JobApplications from './pages/employer/JobApplications';
+import ApplicationDetails from './pages/employer/ApplicationDetails';
 import CandidatesPage from './pages/employer/CandidatesPage';
 import CandidateDetailsPage from './pages/employer/CandidateDetailsPage';
+import VerificationCenter from './pages/employer/VerificationCenter';
+import EmployerProfileLayout from './pages/employer/EmployerProfileLayout';
+import EmployerRecruiterInfo from './pages/employer/EmployerRecruiterInfo';
+import EmployerCompanyInfo from './pages/employer/EmployerCompanyInfo';
+import EmployerReviews from './pages/employer/EmployerReviews';
 
 // Profile Imports
 import ProfileLayout from './pages/profile/ProfileLayout';
@@ -32,14 +39,18 @@ import SalaryCalculator from './pages/SalaryCalculator';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
+import ScrollToTop from './components/ScrollToTop';
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/companies" element={<Companies />} />
+          <Route path="/company/:id" element={<CompanyProfile />} />
           <Route path="/job/:id" element={<JobDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -104,11 +115,19 @@ function App() {
               </ProtectedRoute>
             } 
           />
-            <Route 
+          <Route 
             path="/employer/applications/:jobId" 
             element={
               <ProtectedRoute allowedRoles={['Employer']}>
                 <JobApplications />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/application/:id" 
+            element={
+              <ProtectedRoute allowedRoles={['Employer']}>
+                <ApplicationDetails />
               </ProtectedRoute>
             } 
           />
@@ -128,6 +147,27 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/employer/verification" 
+            element={
+              <ProtectedRoute allowedRoles={['Employer']}>
+                <VerificationCenter />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/profile" 
+            element={
+              <ProtectedRoute allowedRoles={['Employer']}>
+                <EmployerProfileLayout />
+              </ProtectedRoute>
+            } 
+          >
+            <Route index element={<EmployerRecruiterInfo />} />
+            <Route path="company" element={<EmployerCompanyInfo />} />
+            <Route path="reviews" element={<EmployerReviews />} />
+            <Route path="password" element={<ChangePassword />} />
+          </Route>
         </Routes>
       </Layout>
     </Router>
