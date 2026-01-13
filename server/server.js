@@ -37,6 +37,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/candidates', candidateRoutes);
 app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
+// app.use('/api/scrape', require('./routes/scrapingRoutes')); // Removed in favor of custom reviews
 
 // Make uploads folder static
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));

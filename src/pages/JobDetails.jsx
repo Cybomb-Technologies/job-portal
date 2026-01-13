@@ -16,6 +16,24 @@ import {
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 
+const timeAgo = (date) => {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = Math.floor(seconds / 86400);
+    if (interval >= 1) return `${interval} day${interval > 1 ? 's' : ''} ago`;
+    interval = Math.floor(seconds / 3600);
+    if (interval >= 1) return `${interval} hour${interval > 1 ? 's' : ''} ago`;
+    interval = Math.floor(seconds / 60);
+    if (interval >= 1) return `${interval} minute${interval > 1 ? 's' : ''} ago`;
+    return 'Just now';
+};
+
+const formatApplicants = (count) => {
+    if (!count || count === 0) return '0';
+    if (count < 5) return count.toString();
+    const rounded = Math.floor(count / 5) * 5;
+    return `${rounded}+`;
+};
+
 const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -224,13 +242,23 @@ const JobDetails = () => {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-black mb-2">{job.title}</h1>
-                  <div className="flex items-center text-lg text-black font-medium mb-4">
-                    <Building className="w-5 h-5 mr-2" />
-                    {job.company}
+                  <div className="flex items-center text-lg text-black font-medium mb-4 group">
+                    <Building className="w-5 h-5 mr-2 text-gray-400 group-hover:text-[#4169E1] transition-colors" />
+                    <Link to={`/company/${job.postedBy?._id}`} className="hover:text-[#4169E1] hover:underline decoration-2 transition-all">
+                      {job.company}
+                    </Link>
                   </div>
                 </div>
-                <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Briefcase className="w-8 h-8 text-[#4169E1]" />
+                <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center border border-gray-100 shadow-sm overflow-hidden shrink-0">
+                  {job.postedBy?.profilePicture ? (
+                    <img 
+                      src={job.postedBy.profilePicture.startsWith('http') ? job.postedBy.profilePicture : `http://localhost:8000${job.postedBy.profilePicture}`} 
+                      alt={job.company} 
+                      className="w-full h-full object-contain p-1"
+                    />
+                  ) : (
+                    <Briefcase className="w-8 h-8 text-[#4169E1]" />
+                  )}
                 </div>
               </div>
 
@@ -263,6 +291,36 @@ const JobDetails = () => {
                   <span>{job.recruitmentDuration || 'Immediate'}</span>
                 </div>
               </div>
+              
+              {/* Interview Details Section - Combined with Apply */}
+              {(job.interviewTime?.trim() || job.interviewVenue?.trim() || job.interviewContact?.trim()) && (
+                <div className="mb-6 p-5 bg-[#4169E1]/5 rounded-xl border border-[#4169E1]/10 animate-fadeIn">
+                    <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center">
+                        <Clock className="w-4 h-4 mr-2 text-[#4169E1]" />
+                        Interview Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {job.interviewTime && (
+                            <div>
+                                <div className="text-[11px] font-bold text-[#4169E1] uppercase tracking-wider mb-0.5">Time & Venue</div>
+                                <div className="text-gray-600 text-sm font-medium">{job.interviewTime}</div>
+                            </div>
+                        )}
+                        {job.interviewVenue && (
+                            <div>
+                                <div className="text-[11px] font-bold text-[#4169E1] uppercase tracking-wider mb-0.5">Venue</div>
+                                <div className="text-gray-600 text-sm font-medium italic">{job.interviewVenue}</div>
+                            </div>
+                        )}
+                        {job.interviewContact && (
+                            <div className="md:col-span-2 pt-3 border-t border-gray-100">
+                                <span className="text-[11px] font-bold text-[#4169E1] uppercase tracking-wider mr-2">Contact:</span>
+                                <span className="text-gray-600 text-sm font-semibold">{job.interviewContact}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+              )}
 
               {user?.role === 'employer' ? (
                  <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-center font-medium">
@@ -317,7 +375,8 @@ const JobDetails = () => {
               <h2 className="text-2xl font-bold text-black mb-6">About the Company</h2>
               <p className="text-gray-700 mb-6">{job.companyDescription || 'No description available.'}</p>
             </div>
-          </div>
+
+            </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
@@ -344,6 +403,19 @@ const JobDetails = () => {
                     <div>
                     <div className="text-sm text-gray-500 mb-1">Role</div>
                     <div className="text-black">{job.jobRole || 'Not specified'}</div>
+                    </div>
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Openings</div>
+                    <div className="text-black font-semibold">{job.openings || 'Not specified'}</div>
+                    </div>
+                    <div>
+                    <div className="text-sm text-gray-500 mb-1">Applicants</div>
+                    <div className="text-[#4169E1] font-bold text-lg">{formatApplicants(job.applicantCount)}</div>
+                    </div>
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                        <div className="text-[11px] text-gray-400 font-medium">
+                            Posted: {timeAgo(job.createdAt)}
+                        </div>
                     </div>
                 </div>
                 </div>

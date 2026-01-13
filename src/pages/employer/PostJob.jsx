@@ -6,6 +6,7 @@ import {
     Plus, Trash2, HelpCircle, Info, Sparkles 
 } from 'lucide-react';
 import api from '../../api';
+import { useAuth } from '../../context/AuthContext';
 import { commonJobTitles, commonSkills, commonBenefits, commonPreScreeningQuestions, commonFunctionalAreas, commonDegrees, commonFieldsOfStudy, commonRecruitmentDurations } from '../../utils/profileData';
 import Swal from 'sweetalert2';
 import ReactQuill from 'react-quill-new';
@@ -26,6 +27,7 @@ const quillFormats = [
 const PostJob = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -62,7 +64,13 @@ const PostJob = () => {
         applyUrl: '',
 
         // Step 5: Screening
-        preScreeningQuestions: [] // Array of strings
+        preScreeningQuestions: [], // Array of strings
+
+        // Extra Info
+        openings: '',
+        interviewTime: '',
+        interviewVenue: '',
+        interviewContact: ''
     });
 
     // Helper State
@@ -124,7 +132,11 @@ const PostJob = () => {
                         fieldOfStudy: data.fieldOfStudy || '',
                         applyMethod: data.applyMethod || 'direct',
                         applyUrl: data.applyUrl || '',
-                        preScreeningQuestions: data.preScreeningQuestions || []
+                        preScreeningQuestions: data.preScreeningQuestions || [],
+                        openings: data.openings || '',
+                        interviewTime: data.interviewTime || '',
+                        interviewVenue: data.interviewVenue || '',
+                        interviewContact: data.interviewContact || ''
                     });
                 } catch (err) {
                     console.error('Failed to fetch job details', err);
@@ -135,6 +147,25 @@ const PostJob = () => {
                 }
             };
             fetchJob();
+        }
+    }, [id]);
+    
+    // Auto-populate Company Info from Profile (for new jobs)
+    useEffect(() => {
+        if (!id) {
+            const fetchProfile = async () => {
+                try {
+                    const { data } = await api.get('/auth/profile');
+                    setFormData(prev => ({
+                        ...prev,
+                        company: data.companyName || '',
+                        companyDescription: data.about || ''
+                    }));
+                } catch (err) {
+                    console.error('Failed to fetch company profile for auto-population', err);
+                }
+            };
+            fetchProfile();
         }
     }, [id]);
 
@@ -304,9 +335,9 @@ const PostJob = () => {
                 if (!formData.company) return false;
                 break;
             case 3: 
-                if (!formData.experienceMin || !formData.experienceMax) return false;
-                if (formData.salaryType === 'Range' && (!formData.salaryMin || !formData.salaryMax)) return false;
-                if ((formData.salaryType === 'Fixed' || formData.salaryType === 'Starting From') && !formData.salaryMin) return false;
+                if (formData.experienceMin === '' || formData.experienceMax === '') return false;
+                if (formData.salaryType === 'Range' && (formData.salaryMin === '' || formData.salaryMax === '')) return false;
+                if ((formData.salaryType === 'Fixed' || formData.salaryType === 'Starting From') && formData.salaryMin === '') return false;
                 break;
             case 4:
                 // Check if description is empty or just has empty html tags
@@ -579,6 +610,18 @@ const PostJob = () => {
                                         </div>
 
                                         <div className="relative">
+                                            <label className="label">Number of Openings</label>
+                                            <input 
+                                                type="number" 
+                                                name="openings" 
+                                                value={formData.openings} 
+                                                onChange={handleInputChange} 
+                                                className="input-field" 
+                                                placeholder="e.g. 20" 
+                                            />
+                                        </div>
+
+                                        <div className="relative">
                                              <label className="label">Location <span className="text-red-500">*</span></label>
                                              <div className="relative">
                                                  {/* <MapPin className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" /> */}
@@ -608,11 +651,28 @@ const PostJob = () => {
                                     </h2>
                                     <div className="relative">
                                         <label className="label">Company Name <span className="text-red-500">*</span></label>
-                                        <input type="text" name="company" value={formData.company} onChange={handleInputChange} className="input-field" placeholder="Your Company Name" autoFocus />
+                                        <input 
+                                            type="text" 
+                                            name="company" 
+                                            value={formData.company} 
+                                            readOnly 
+                                            className="input-field bg-gray-50 cursor-not-allowed border-gray-200" 
+                                            placeholder="Your Company Name" 
+                                        />
+                                        <p className="text-[11px] text-[#4169E1] mt-2 flex items-center gap-1.5 font-medium">
+                                            <Info className="w-3.5 h-3.5" /> Fetched from company profile (non-editable)
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="label">Company Description</label>
-                                        <textarea name="companyDescription" rows="5" value={formData.companyDescription} onChange={handleInputChange} className="input-field" placeholder="Tell us about your company culture, mission, and values..."></textarea>
+                                        <textarea 
+                                            name="companyDescription" 
+                                            rows="5" 
+                                            value={formData.companyDescription} 
+                                            readOnly 
+                                            className="input-field bg-gray-50 cursor-not-allowed border-gray-200" 
+                                            placeholder="Tell us about your company culture, mission, and values..."
+                                        ></textarea>
                                     </div>
                                 </div>
                             )}
@@ -782,6 +842,60 @@ const PostJob = () => {
                                                  ))}
                                              </div>
                                         )}
+                                    </div>
+
+                                    {/* Interview Details */}
+                                    <div className="bg-purple-50/50 p-6 rounded-2xl border border-purple-100/50">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-semibold text-gray-800 flex items-center">
+                                                <Clock className="w-5 h-5 mr-2 text-purple-600" />
+                                                Interview Details (Optional)
+                                            </h3>
+                                            {(formData.interviewTime || formData.interviewVenue || formData.interviewContact) && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setFormData({ ...formData, interviewTime: '', interviewVenue: '', interviewContact: '' })}
+                                                    className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center"
+                                                >
+                                                    <Trash2 className="w-3 h-3 mr-1" /> Clear Details
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="md:col-span-2">
+                                                <label className="label">Interview Time</label>
+                                                <input 
+                                                    type="text" 
+                                                    name="interviewTime" 
+                                                    value={formData.interviewTime} 
+                                                    onChange={handleInputChange} 
+                                                    className="input-field" 
+                                                    placeholder="e.g. 12th Jan - 13th Jan, 9.30 AM - 12.00 PM" 
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="label">Interview Venue</label>
+                                                <input 
+                                                    type="text" 
+                                                    name="interviewVenue" 
+                                                    value={formData.interviewVenue} 
+                                                    onChange={handleInputChange} 
+                                                    className="input-field" 
+                                                    placeholder="e.g. Wipro- Bangalore- Sarjapur Campus" 
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="label">Contact Info</label>
+                                                <input 
+                                                    type="text" 
+                                                    name="interviewContact" 
+                                                    value={formData.interviewContact} 
+                                                    onChange={handleInputChange} 
+                                                    className="input-field" 
+                                                    placeholder="e.g. Pallavi/ Murali" 
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     {/* Application Method */}

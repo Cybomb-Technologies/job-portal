@@ -11,7 +11,8 @@ const {
     updateUserProfile,
     changePassword,
     deleteAccount,
-    getPublicUserProfile
+    getPublicUserProfile,
+    getCompanies
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -66,5 +67,6 @@ router.route('/profile')
 
 router.put('/update-password', protect, changePassword);
 router.get('/user/:id', getPublicUserProfile);
+router.get('/companies', getCompanies);
 
 module.exports = router;

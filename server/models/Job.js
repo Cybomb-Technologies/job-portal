@@ -66,6 +66,9 @@ const jobSchema = mongoose.Schema(
     education: {
         type: String,
     },
+    fieldOfStudy: {
+        type: String,
+    },
     benefits: {
         type: [String],
     },
@@ -97,6 +100,19 @@ const jobSchema = mongoose.Schema(
     },
     applyUrl: {
         type: String
+    },
+    interviewTime: {
+        type: String
+    },
+    interviewVenue: {
+        type: String
+    },
+    interviewContact: {
+        type: String
+    },
+    openings: {
+        type: Number,
+        default: 1
     }
   },
   {

@@ -209,3 +209,22 @@ export const commonRecruitmentDurations = [
     "1 Month",
     "More than 1 Month"
 ];
+
+// Comprehensive list of Company Categories (Industries)
+export const commonCompanyCategories = [
+    "IT Services", "Software Development", "Ecommerce", "Fintech", "Healthtech", 
+    "Edtech", "Human Resources", "Digital Marketing", "Advertising", "Real Estate",
+    "Hospitality", "Healthcare", "Manufacturing", "Automotive", "Logistics",
+    "Retail", "Finance", "Education", "Consulting", "Entertainment",
+    "Media", "Telecommunications", "Agriculture", "Construction", "Legal Services",
+    "Non-profit", "Design", "Research & Development", "Internet of Things", "Cybersecurity",
+    "Artificial Intelligence", "Cloud Computing", "Blockchain", "Gaming", "Pharma",
+    "Biotech", "Energy", "Food & Beverage", "Apparel & Fashion", "Electronics"
+].sort();
+
+// Common Company Types (Legal Structures)
+export const commonCompanyTypes = [
+    "Private Limited", "Public Limited", "Partnership", "Proprietorship", 
+    "Startup", "NGO", "Educational Institute", "Government Agency", 
+    "MNC", "SME", "Self-employed", "Other"
+].sort();

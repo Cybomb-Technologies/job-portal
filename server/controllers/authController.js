@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Job = require('../models/Job');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
@@ -22,6 +23,15 @@ const authUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      companyName: user.companyName,
+      website: user.website,
+      companyEmail: user.companyEmail,
+      companyLocation: user.companyLocation,
+      companyCategory: user.companyCategory,
+      companyType: user.companyType,
+      foundedYear: user.foundedYear,
+      employeeCount: user.employeeCount,
+      about: user.about,
       profilePicture: user.profilePicture,
       token: generateToken(user._id),
     });
@@ -47,6 +57,16 @@ const registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      companyName: user.companyName,
+      website: user.website,
+      companyEmail: user.companyEmail,
+      companyLocation: user.companyLocation,
+      companyCategory: user.companyCategory,
+      companyType: user.companyType,
+      foundedYear: user.foundedYear,
+      employeeCount: user.employeeCount,
+      about: user.about,
+      profilePicture: user.profilePicture,
       token: generateToken(user._id),
     });
   } else {
@@ -75,6 +95,15 @@ const googleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        companyName: user.companyName,
+        website: user.website,
+        companyEmail: user.companyEmail,
+        companyLocation: user.companyLocation,
+        companyCategory: user.companyCategory,
+        companyType: user.companyType,
+        foundedYear: user.foundedYear,
+        employeeCount: user.employeeCount,
+        about: user.about,
         profilePicture: user.profilePicture,
         token: generateToken(user._id),
       });
@@ -94,6 +123,14 @@ const googleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        companyName: user.companyName,
+        website: user.website,
+        companyEmail: user.companyEmail,
+        companyCategory: user.companyCategory,
+        companyType: user.companyType,
+        foundedYear: user.foundedYear,
+        employeeCount: user.employeeCount,
+        about: user.about,
         profilePicture: user.profilePicture,
         token: generateToken(user._id),
       });
@@ -192,6 +229,7 @@ const getUserProfile = async (req, res) => {
       companyName: user.companyName,
       website: user.website,
       companyEmail: user.companyEmail,
+      companyLocation: user.companyLocation,
       companyCategory: user.companyCategory,
       companyType: user.companyType,
       foundedYear: user.foundedYear,
@@ -226,6 +264,7 @@ const updateUserProfile = async (req, res) => {
     user.companyName = req.body.companyName || user.companyName;
     user.website = req.body.website || user.website;
     user.companyEmail = req.body.companyEmail || user.companyEmail;
+    user.companyLocation = req.body.companyLocation || user.companyLocation;
     user.companyCategory = req.body.companyCategory || user.companyCategory;
     user.companyType = req.body.companyType || user.companyType;
     user.foundedYear = req.body.foundedYear || user.foundedYear;
@@ -361,9 +400,16 @@ const updateUserProfile = async (req, res) => {
     res.json({
       _id: updatedUser._id,
       name: updatedUser.name,
-      companyName: updatedUser.companyName,
       email: updatedUser.email,
       role: updatedUser.role,
+      companyName: updatedUser.companyName,
+      website: updatedUser.website,
+      companyEmail: updatedUser.companyEmail,
+      companyLocation: updatedUser.companyLocation,
+      companyCategory: updatedUser.companyCategory,
+      companyType: updatedUser.companyType,
+      foundedYear: updatedUser.foundedYear,
+      employeeCount: updatedUser.employeeCount,
       title: updatedUser.title,
       about: updatedUser.about,
       skills: updatedUser.skills,
@@ -417,13 +463,14 @@ const getPublicUserProfile = async (req, res) => {
         companyName: user.companyName,
         website: user.website,
         companyEmail: user.companyEmail,
+        companyLocation: user.companyLocation,
         companyCategory: user.companyCategory,
         companyType: user.companyType,
         foundedYear: user.foundedYear,
         employeeCount: user.employeeCount,
         email: user.email, // Can limit if privacy needed, but often useful for contact
         about: user.about,
-        location: user.currentLocation,  
+        location: user.companyLocation || user.currentLocation,  
         profilePicture: user.profilePicture,
         role: user.role,
         employerVerification: user.employerVerification
@@ -447,6 +494,31 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// @desc    Get all companies (Employers)
+// @route   GET /api/auth/companies
+// @access  Public
+const getCompanies = async (req, res) => {
+  try {
+    const employers = await User.find({ role: 'Employer', companyName: { $exists: true, $ne: '' } })
+      .select('_id companyName companyLocation companyCategory companyType employeeCount about profilePicture website');
+
+    const companiesWithJobCount = await Promise.all(
+      employers.map(async (employer) => {
+        const jobCount = await Job.countDocuments({ postedBy: employer._id, status: 'Active' });
+        return {
+          ...employer._doc,
+          jobCount,
+        };
+      })
+    );
+
+    res.json(companiesWithJobCount);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 module.exports = { 
   authUser, 
   registerUser, 
@@ -457,5 +529,6 @@ module.exports = {
   updateUserProfile,
   changePassword,
   deleteAccount,
-  getPublicUserProfile
+  getPublicUserProfile,
+  getCompanies
 };

@@ -12,6 +12,7 @@ const userSchema = mongoose.Schema(
     },
     website: { type: String },
     companyEmail: { type: String }, // Public contact email
+    companyLocation: { type: String },
     companyCategory: { type: String }, // e.g. IT Services, Healthcare
     companyType: { type: String }, // e.g. Private, Public, Startup
     foundedYear: { type: String }, 

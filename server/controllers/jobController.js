@@ -135,7 +135,7 @@ const getJobs = async (req, res) => {
         }
     }
 
-    const jobs = await Job.find(query).sort(sort).populate('postedBy', 'name email employerVerification');
+    const jobs = await Job.find(query).sort(sort).populate('postedBy', 'name email profilePicture employerVerification');
     res.json(jobs);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -146,10 +146,11 @@ const getJobs = async (req, res) => {
 // @route   GET /api/jobs/:id
 // @access  Public
 const getJobById = async (req, res) => {
-  const job = await Job.findById(req.params.id).populate('postedBy', 'name email');
+  const job = await Job.findById(req.params.id).populate('postedBy', 'name email profilePicture');
 
   if (job) {
-    res.json(job);
+    const applicantCount = await Application.countDocuments({ job: job._id });
+    res.json({ ...job._doc, applicantCount });
   } else {
     res.status(404).json({ message: 'Job not found' });
   }
@@ -200,29 +201,20 @@ const updateJob = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to update this job' });
     }
 
-    job.title = req.body.title || job.title;
-    job.company = req.body.company || job.company;
-    job.location = req.body.location || job.location;
-    job.type = req.body.type || job.type;
-    job.salaryMin = req.body.salaryMin || job.salaryMin;
-    job.salaryMax = req.body.salaryMax || job.salaryMax;
-    job.salaryType = req.body.salaryType || job.salaryType;
-    job.salaryFrequency = req.body.salaryFrequency || job.salaryFrequency;
-    job.experienceMin = req.body.experienceMin || job.experienceMin;
-    job.experienceMax = req.body.experienceMax || job.experienceMax;
-    job.description = req.body.description || job.description;
-    job.status = req.body.status || job.status;
-    job.skills = req.body.skills || job.skills;
-    job.companyDescription = req.body.companyDescription || job.companyDescription;
-    job.jobRole = req.body.jobRole || job.jobRole;
-    job.functionalArea = req.body.functionalArea || job.functionalArea;
-    job.education = req.body.education || job.education;
-    job.benefits = req.body.benefits || job.benefits;
-    job.preScreeningQuestions = req.body.preScreeningQuestions || job.preScreeningQuestions;
-    job.recruitmentDuration = req.body.recruitmentDuration || job.recruitmentDuration;
-    job.applyMethod = req.body.applyMethod || job.applyMethod;
-    job.applyUrl = req.body.applyUrl || job.applyUrl;
-    job.status = req.body.status || job.status;
+    const fieldsToUpdate = [
+      'title', 'company', 'location', 'type', 'salaryMin', 'salaryMax', 
+      'salaryType', 'salaryFrequency', 'experienceMin', 'experienceMax', 
+      'description', 'status', 'skills', 'companyDescription', 'jobRole', 
+      'functionalArea', 'education', 'fieldOfStudy', 'benefits', 
+      'preScreeningQuestions', 'recruitmentDuration', 'applyMethod', 
+      'applyUrl', 'interviewTime', 'interviewVenue', 'interviewContact', 'openings'
+    ];
+
+    fieldsToUpdate.forEach(field => {
+      if (req.body[field] !== undefined) {
+        job[field] = req.body[field];
+      }
+    });
 
     const updatedJob = await job.save();
     res.json(updatedJob);

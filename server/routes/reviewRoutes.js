@@ -1,17 +1,29 @@
 const express = require('express');
-const { 
-  addReview, 
-  getReviews, 
-  getMyReviews,
-  toggleReviewVisibility 
+const {
+    createReview,
+    verifyReview,
+    getMyReviews,
+    getCompanyReviews,
+    toggleReviewVisibility
 } = require('../controllers/reviewController');
+
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.post('/', protect, addReview);
-router.get('/my/all', protect, getMyReviews);
-router.get('/:employerId', getReviews);
-router.put('/:id/visibility', protect, toggleReviewVisibility);
+router.route('/')
+    .post(protect, createReview);
+
+router.route('/company/:id')
+    .get(getCompanyReviews);
+
+router.route('/my/all')
+    .get(protect, getMyReviews);
+
+router.route('/verify/:token')
+    .get(verifyReview);
+
+router.route('/:id/visibility')
+    .patch(protect, toggleReviewVisibility);
 
 module.exports = router;
