@@ -7,6 +7,16 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    companyName: {
+        type: String,
+    },
+    website: { type: String },
+    companyEmail: { type: String }, // Public contact email
+    companyLocation: { type: String },
+    companyCategory: { type: String }, // e.g. IT Services, Healthcare
+    companyType: { type: String }, // e.g. Private, Public, Startup
+    foundedYear: { type: String }, 
+    employeeCount: { type: String }, // e.g. 10-50, 100+
     email: {
       type: String,
       required: true,
@@ -36,6 +46,13 @@ const userSchema = mongoose.Schema(
     about: {
         type: String,
     },
+    currentLocation: {
+        type: String,
+    },
+    preferredLocations: {
+        type: [String],
+        default: []
+    },
     experience: [{
         title: String,
         company: String,
@@ -47,6 +64,7 @@ const userSchema = mongoose.Schema(
     }],
     education: [{
         institute: String,
+        university: String,
         degree: String,
         fieldOfStudy: String,
         startYear: String,
@@ -54,19 +72,81 @@ const userSchema = mongoose.Schema(
     }],
     certifications: [String],
     resume: {
-        type: String, // Path to file
+        type: String, // Path to file (Active Resume)
     },
+    resumes: [{
+        name: String,
+        file: String,
+        uploadedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     chatUsage: {
         date: { type: Date, default: null },
         count: { type: Number, default: 0 }
+    },
+    userId: {
+        type: String,
+        unique: true
+    },
+    employerVerification: {
+        level: {
+            type: Number,
+            default: 0, // 0: Unverified, 1: Identity Verified, 2: Legal Verified
+        },
+        status: {
+            type: String,
+            enum: ['Unverified', 'Pending', 'Verified', 'Rejected'],
+            default: 'Unverified'
+        },
+        emailVerified: {
+            type: Boolean,
+            default: false
+        },
+        domainVerified: {
+            type: Boolean,
+            default: false
+        },
+        documents: [{
+            type: {
+                type: String,
+                enum: ['GST', 'CIN', 'MSME', 'Other']
+            },
+            fileUrl: String,
+            status: {
+                type: String,
+                enum: ['Pending', 'Approved', 'Rejected'],
+                default: 'Pending'
+            },
+            uploadedAt: {
+                type: Date,
+                default: Date.now
+            },
+            rejectionReason: String
+        }],
+        verificationScore: {
+            type: Number,
+            default: 0
+        },
+        verificationOTP: String,
+        verificationOTPExpire: Date
     }
   },
   {
     timestamps: true,
   }
 );
+
+// Generate Custom User ID
+userSchema.pre('save', async function(next) {
+    if (!this.userId) {
+        this.userId = `USR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    next();
+});
 
 // Match user entered password to hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {

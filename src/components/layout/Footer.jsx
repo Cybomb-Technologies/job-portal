@@ -7,7 +7,7 @@ const Footer = () => {
     'For Job Seekers': [
       { name: 'Search Jobs', path: '/jobs' },
       { name: 'Create Resume', path: '/resume-builder' },
-      { name: 'Career Advice', path: '/career-advice' },
+      { name: 'Career Tips', path: '/career-advice' },
       { name: 'Salary Calculator', path: '/salary-calculator' },
     ],
     'For Employers': [

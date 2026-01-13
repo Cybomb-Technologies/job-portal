@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, CheckCircle, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink } from 'lucide-react';
+import { User, Mail, CheckCircle, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Sparkles } from 'lucide-react';
+import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
+import Swal from 'sweetalert2';
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -21,6 +23,8 @@ const ProfileDetails = () => {
     const [title, setTitle] = useState('');
     const [about, setAbout] = useState('');
     const [skills, setSkills] = useState('');
+    const [currentLocation, setCurrentLocation] = useState('');
+    const [preferredLocations, setPreferredLocations] = useState([]);
     
     // Structured Data
     const [experience, setExperience] = useState([]);
@@ -31,52 +35,149 @@ const ProfileDetails = () => {
     const [profilePicture, setProfilePicture] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [resume, setResume] = useState(null);
+    const [resumes, setResumes] = useState([]);
     const [existingResume, setExistingResume] = useState(null);
     
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState(null);
-    const [error, setError] = useState(null);
+    // Removed message/error states as we use Swal now
+
+    // UI State
+    const [activeTab, setActiveTab] = useState('basic'); // basic, experience, education, skills
+    const [completionPercentage, setCompletionPercentage] = useState(0);
+    const [missingFields, setMissingFields] = useState([]);
+    const [formErrors, setFormErrors] = useState({});
+    const [touched, setTouched] = useState({});
+
+    // --- Validation Logic ---
+    const handleBlur = (field) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+    };
+
+    // Calculate Profile Strength & Validation
+    useEffect(() => {
+        let score = 0;
+        let total = 0;
+        const missing = [];
+        const currentErrors = {};
+
+        // 1. Basic Info (40%)
+        total += 40;
+        let basicScore = 0;
+        if (name) basicScore += 5; else missing.push("Full Name");
+        if (title) basicScore += 10; else missing.push("Professional Title");
+        if (about) basicScore += 10; else missing.push("About Me");
+        if (currentLocation) basicScore += 5; else missing.push("Current Location");
+        if (profilePicture) basicScore += 5; else missing.push("Profile Picture");
+        if (email) basicScore += 5;
+
+        score += basicScore;
+
+        // 2. Experience (20%)
+        total += 20;
+        if (experience.length > 0) {
+            score += 20;
+             const isValidExp = experience.every(exp => exp.title && exp.company);
+             if(!isValidExp) currentErrors.experience = "Complete all fields in experience entries";
+        } else {
+            missing.push("Work Experience");
+        }
+
+        // 3. Education (15%)
+        total += 15;
+        if (education.length > 0) {
+            score += 15;
+        } else {
+            missing.push("Education");
+        }
+
+        // 4. Skills (15%)
+        total += 15;
+        if (skills) {
+            score += 15;
+        } else {
+            missing.push("Skills");
+        }
+
+        // 5. Resume (10%)
+        total += 10;
+        if (existingResume || resume) {
+            score += 10;
+        } else {
+            missing.push("Resume");
+        }
+
+        setCompletionPercentage(Math.min(100, Math.round((score / total) * 100)));
+        setMissingFields(missing);
+
+        if (!name) currentErrors.name = "Full Name is required";
+        if (!title) currentErrors.title = "Professional Title is required";
+        if (!about) currentErrors.about = "About Me is required";
+        if (!currentLocation) currentErrors.currentLocation = "Current Location is required";
+        
+        setFormErrors(currentErrors);
+
+    }, [name, email, title, about, currentLocation, profilePicture, experience, education, skills, existingResume, resume]);
+
+    const tabs = [
+        { id: 'basic', label: 'Basic Info', icon: User, isComplete: !!(name && title && about && currentLocation) },
+        { id: 'experience', label: 'Experience', icon: Briefcase, isComplete: experience.length > 0 },
+        { id: 'education', label: 'Education', icon: GraduationCap, isComplete: education.length > 0 },
+        { id: 'skills', label: 'Skills & Resume', icon: FileText, isComplete: !!skills && (!!existingResume || !!resume) },
+    ];
+
+    const fetchProfileData = async () => {
+         try {
+            const { data } = await api.get('/auth/profile');
+            const updatedUser = { ...data, token: data.token || user?.token };
+            login(updatedUser);
+
+            setName(data.name || '');
+            setEmail(data.email || '');
+            setTitle(data.title || '');
+            setAbout(data.about || '');
+            setSkills(data.skills ? data.skills.join(', ') : '');
+            setCurrentLocation(data.currentLocation || '');
+            setPreferredLocations(data.preferredLocations || []);
+            
+            if (Array.isArray(data.experience)) setExperience(data.experience);
+            else setExperience([]);
+
+            if (Array.isArray(data.education)) setEducation(data.education);
+            else setEducation([]);
+
+            setCertifications(Array.isArray(data.certifications) ? data.certifications : []);
+            
+            const getFullUrl = (path) => {
+                if (!path) return null;
+                if (path.startsWith('http')) return path;
+                return `${import.meta.env.VITE_API_URL.replace('/api', '')}${path}`;
+            };
+
+            if (data.profilePicture) {
+                setPreviewUrl(getFullUrl(data.profilePicture));
+                setProfilePicture('existing'); 
+            }
+
+            setExistingResume(getFullUrl(data.resume));
+            
+            // Process Resumes
+            if (data.resumes && Array.isArray(data.resumes)) {
+                setResumes(data.resumes.map(r => ({
+                    ...r,
+                    file: getFullUrl(r.file)
+                })));
+            } else {
+                setResumes([]);
+            }
+
+         } catch (error) {
+            console.error("Failed to fetch fresh profile", error);
+         }
+    };
 
     useEffect(() => {
-        if (user) {
-            setName(user.name);
-            setEmail(user.email);
-            setTitle(user.title || '');
-            setAbout(user.about || '');
-            setSkills(user.skills ? user.skills.join(', ') : '');
-            
-            // Experience
-            if (Array.isArray(user.experience)) {
-                setExperience(user.experience);
-            } else if (typeof user.experience === 'string' && user.experience) {
-                 // Convert legacy string experience to object if needed, or just allow reset
-                 setExperience([{ title: 'Legacy Experience', description: user.experience, company: '', startYear: '', endYear: '' }]);
-            } else {
-                setExperience([]);
-            }
-
-            // Education
-            if (Array.isArray(user.education)) {
-                setEducation(user.education);
-            } else if (typeof user.education === 'string' && user.education) {
-                 setEducation([{ institute: user.education, degree: '', fieldOfStudy: '', startYear: '', endYear: '' }]);
-            } else {
-                 setEducation([]);
-            }
-
-            // Certifications
-            setCertifications(Array.isArray(user.certifications) ? user.certifications : []);
-            
-            // Profile Picture
-            if (user.profilePicture) {
-                const isFullUrl = user.profilePicture.startsWith('http');
-                setPreviewUrl(isFullUrl ? user.profilePicture : `${import.meta.env.VITE_API_URL.replace('/api', '')}${user.profilePicture}`);
-            }
-
-            // Resume
-            setExistingResume(user.resume);
-        }
-    }, [user]);
+        fetchProfileData();
+    }, []);
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -86,10 +187,45 @@ const ProfileDetails = () => {
         }
     };
     
-    const handleResumeChange = (e) => {
+    const handleResumeChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-            setResume(file);
+            // Immediate upload logic
+            try {
+                // Show loading toast
+                Swal.fire({
+                    title: 'Uploading Resume...',
+                    text: 'Please wait while we upload your file.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                const formData = new FormData();
+                formData.append('resume', file);
+                
+                const { data } = await api.put('/auth/profile', formData, { 
+                    headers: { 'Content-Type': 'multipart/form-data' } 
+                });
+
+                // Update local state immediately with response data
+                login({ ...data, token: data.token || user?.token });
+                
+                // Sync complete profile state from server
+                await fetchProfileData();
+                
+                setResume(null); // Clear file input state
+                setMessage('Resume uploaded successfully');
+
+                // Clear message after 3 seconds
+                setTimeout(() => setMessage(null), 3000);
+
+            } catch (err) {
+                console.error("Resume upload failed", err);
+                setError(err.response?.data?.message || 'Failed to upload resume');
+                setResume(null);
+            }
         }
     };
 
@@ -111,7 +247,7 @@ const ProfileDetails = () => {
 
     // --- Education Handlers ---
     const addEducation = () => {
-        setEducation([...education, { institute: '', degree: '', fieldOfStudy: '', startYear: '', endYear: '' }]);
+        setEducation([...education, { institute: '', university: '', degree: '', fieldOfStudy: '', startYear: '', endYear: '' }]);
     };
 
     const updateEducation = (index, field, value) => {
@@ -125,445 +261,918 @@ const ProfileDetails = () => {
         setEducation(updated);
     };
 
-    // --- Certification Handlers ---
-    const addCertification = () => {
-        setCertifications([...certifications, '']);
-    };
+    // --- Autocomplete Logic ---
+    const [universitySuggestions, setUniversitySuggestions] = useState([]);
+    const [companySuggestions, setCompanySuggestions] = useState([]);
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
+    const [titleSuggestions, setTitleSuggestions] = useState([]);
+    const [skillSuggestions, setSkillSuggestions] = useState([]);
+    const [degreeSuggestions, setDegreeSuggestions] = useState([]);
+    const [fieldSuggestions, setFieldSuggestions] = useState([]);
 
-    const updateCertification = (index, value) => {
-        const updated = [...certifications];
-        updated[index] = value;
-        setCertifications(updated);
-    };
-
-    const removeCertification = (index) => {
-        const updated = certifications.filter((_, i) => i !== index);
-        setCertifications(updated);
-    };
+    const [activeEducationIndex, setActiveEducationIndex] = useState(null);
+    const [activeExperienceIndex, setActiveExperienceIndex] = useState(null);
+    const [activeLocationField, setActiveLocationField] = useState(null);
+    const [activeTitleField, setActiveTitleField] = useState(null); // 'basic' or experience index
+    const [activeDegreeIndex, setActiveDegreeIndex] = useState(null);
+    const [activeFieldIndex, setActiveFieldIndex] = useState(null);
+    const [activeSkillInput, setActiveSkillInput] = useState(false);
     
-    const handleDeleteResume = async () => {
-         if (!confirm("Are you sure you want to delete your resume?")) return;
-         try {
-             // We use the update endpoint but pass a flag
+    const [isLoadingUniversities, setIsLoadingUniversities] = useState(false);
+    const [isLoadingCompanies, setIsLoadingCompanies] = useState(false);
+    const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+    const [preferredLocationInput, setPreferredLocationInput] = useState('');
+
+    // University Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (activeEducationIndex !== null && education[activeEducationIndex]?.university?.length > 2) {
+                setIsLoadingUniversities(true);
+                try {
+                    const response = await fetch(`http://universities.hipolabs.com/search?name=${encodeURIComponent(education[activeEducationIndex].university)}&country=India`);
+                    const data = await response.json();
+                    setUniversitySuggestions(data.slice(0, 10));
+                } catch (err) { console.error(err); } 
+                finally { setIsLoadingUniversities(false); }
+            } else { setUniversitySuggestions([]); }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [activeEducationIndex, education]);
+
+    // Company Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+             if (activeExperienceIndex !== null && experience[activeExperienceIndex]?.company?.length > 1) {
+                  setIsLoadingCompanies(true);
+                  try {
+                      const response = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(experience[activeExperienceIndex].company)}`);
+                      setCompanySuggestions(await response.json());
+                  } catch (err) { console.error(err); } 
+                  finally { setIsLoadingCompanies(false); }
+             } else { setCompanySuggestions([]); }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [activeExperienceIndex, experience]);
+
+    // Location Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+             if (activeLocationField) {
+                 const query = activeLocationField === 'current' ? currentLocation : preferredLocationInput;
+                 if (query && query.length > 2) {
+                      setIsLoadingLocations(true);
+                      try {
+                          const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                          const data = await response.json();
+                          setLocationSuggestions(data.results || []);
+                      } catch (err) { console.error(err); } 
+                      finally { setIsLoadingLocations(false); }
+                 } else { setLocationSuggestions([]); }
+             }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [activeLocationField, currentLocation, preferredLocationInput]);
+
+    // Job Title Suggestion Logic
+    useEffect(() => {
+        const filterTitles = (query) => {
+            if (!query) return [];
+            return commonJobTitles.filter(t => t.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
+        };
+
+        if (activeTitleField === 'basic' && title.length > 0) {
+            setTitleSuggestions(filterTitles(title));
+        } else if (typeof activeTitleField === 'number' && experience[activeTitleField]?.title.length > 0) {
+            setTitleSuggestions(filterTitles(experience[activeTitleField].title));
+        } else {
+            setTitleSuggestions([]);
+        }
+    }, [activeTitleField, title, experience]);
+
+    // Degree Suggestion Logic
+    useEffect(() => {
+        if (activeDegreeIndex !== null && education[activeDegreeIndex]?.degree?.length > 0) {
+            const query = education[activeDegreeIndex].degree.toLowerCase();
+            setDegreeSuggestions(commonDegrees.filter(d => d.toLowerCase().includes(query)).slice(0, 5));
+        } else {
+            setDegreeSuggestions([]);
+        }
+    }, [activeDegreeIndex, education]);
+
+    // Field of Study Suggestion Logic
+    useEffect(() => {
+        if (activeFieldIndex !== null && education[activeFieldIndex]?.fieldOfStudy?.length > 0) {
+            const query = education[activeFieldIndex].fieldOfStudy.toLowerCase();
+            setFieldSuggestions(commonFieldsOfStudy.filter(f => f.toLowerCase().includes(query)).slice(0, 5));
+        } else {
+            setFieldSuggestions([]);
+        }
+    }, [activeFieldIndex, education]);
+
+    // Skills Suggestion Logic
+    useEffect(() => {
+        if (activeSkillInput && skills) {
+             const lastSkill = skills.split(',').pop().trim().toLowerCase();
+             if (lastSkill.length > 0) {
+                 setSkillSuggestions(commonSkills.filter(s => s.toLowerCase().includes(lastSkill)).slice(0, 5));
+             } else {
+                 setSkillSuggestions([]);
+             }
+        } else {
+            setSkillSuggestions([]);
+        }
+    }, [activeSkillInput, skills]);
+
+
+    // Selection Handlers
+    const handleUniversityChange = (index, value) => { updateEducation(index, 'university', value); setActiveEducationIndex(index); };
+    const selectUniversity = (index, name) => { updateEducation(index, 'university', name); setUniversitySuggestions([]); setActiveEducationIndex(null); };
+    
+    const handleCompanyChange = (index, value) => { updateExperience(index, 'company', value); setActiveExperienceIndex(index); };
+    const selectCompany = (index, name) => { updateExperience(index, 'company', name); setCompanySuggestions([]); setActiveExperienceIndex(null); };
+
+    const selectLocation = (name) => {
+        if (activeLocationField === 'current') setCurrentLocation(name);
+        else if (activeLocationField === 'preferred') {
+            if (preferredLocations.length < 3 && !preferredLocations.includes(name)) setPreferredLocations([...preferredLocations, name]);
+            setPreferredLocationInput('');
+        }
+        setLocationSuggestions([]);
+        setActiveLocationField(null);
+    };
+
+    const selectTitle = (name) => {
+        if (activeTitleField === 'basic') setTitle(name);
+        else if (typeof activeTitleField === 'number') updateExperience(activeTitleField, 'title', name);
+        setTitleSuggestions([]);
+        setActiveTitleField(null);
+    };
+
+    const selectDegree = (index, name) => {
+        updateEducation(index, 'degree', name);
+        setDegreeSuggestions([]);
+        setActiveDegreeIndex(null);
+    };
+
+    const selectField = (index, name) => {
+        updateEducation(index, 'fieldOfStudy', name);
+        setFieldSuggestions([]);
+        setActiveFieldIndex(null);
+    };
+
+    const selectSkill = (skill) => {
+        const allSkills = skills.split(',').map(s => s.trim());
+        allSkills.pop(); // Remove partial input
+        allSkills.push(skill);
+        setSkills(allSkills.join(', ') + ', ');
+        setSkillSuggestions([]);
+        // Keep focus? Using refs would be better but simplified for now
+    };
+
+    const removePreferredLocation = (loc) => setPreferredLocations(preferredLocations.filter(l => l !== loc));
+
+    const handleDeleteResume = async (resumeId) => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        });
+
+        if (result.isConfirmed) {
+             try {
+                 const formData = new FormData();
+                 formData.append('deleteResumeId', resumeId); // Send ID to backend
+                 const { data } = await api.put('/auth/profile', formData);
+                 login(data);
+                 
+                 await fetchProfileData(); // Sync with server
+                 Swal.fire(
+                    'Deleted!',
+                    'Your resume has been deleted.',
+                    'success'
+                 );
+             } catch (err) { 
+                 Swal.fire({
+                     icon: 'error',
+                     title: 'Error',
+                     text: 'Failed to delete resume',
+                 });
+                 // Refresh to restore correct state in case of error mismatch
+                 fetchProfileData();
+             }
+        }
+    };
+
+    const handleSetActiveResume = async (resumeId) => {
+        try {
+             // Optimistic update for immediate feedback
+             const target = resumes.find(r => r._id === resumeId);
+             if (target) setExistingResume(target.file);
+
              const formData = new FormData();
-             formData.append('deleteResume', 'true');
-             const { data } = await api.put('/auth/profile', formData);
-             login(data);
-             setExistingResume(null);
-             setMessage('Resume deleted successfully');
-         } catch (err) {
-             setError('Failed to delete resume');
-         }
+             formData.append('activeResumeId', resumeId);
+             await api.put('/auth/profile', formData);
+             
+             await fetchProfileData(); // Sync with server
+             
+             if(target) {
+                 Swal.fire({
+                     icon: 'success',
+                     title: 'Active Resume Updated',
+                     text: `'${target.name}' is now your active resume.`,
+                     timer: 2000,
+                     showConfirmButton: false
+                 });
+             }
+        } catch (err) { 
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to set active resume',
+            });
+            fetchProfileData();
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setTouched({ name: true, title: true, about: true, currentLocation: true }); // Touch all fields
+
+        if (Object.keys(formErrors).length > 0 && completionPercentage < 50) { 
+            Swal.fire({
+                icon: 'warning',
+                title: 'Incomplete Profile',
+                text: 'Please fill in at least Basic Info to save.',
+            });
+            return;
+        }
+
         setLoading(true);
-        setMessage(null);
-        setError(null);
 
         const formData = new FormData();
         formData.append('name', name);
         formData.append('title', title);
         formData.append('about', about);
         formData.append('skills', skills);
-        
-        // Append JSON strings for arrays
         formData.append('experience', JSON.stringify(experience));
         formData.append('education', JSON.stringify(education));
-        formData.append('certifications', JSON.stringify(certifications));
+        formData.append('currentLocation', currentLocation);
+        formData.append('preferredLocations', JSON.stringify(preferredLocations));
 
-        if (profilePicture) {
+        if (profilePicture && typeof profilePicture === 'object') {
             formData.append('profilePicture', profilePicture);
         }
-        
-        if (resume) {
-            formData.append('resume', resume);
-        }
+
 
         try {
-            const { data } = await api.put('/auth/profile', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+            const { data } = await api.put('/auth/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            login({ ...data, token: data.token || user?.token });
+            setResume(null);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Profile Updated!',
+                text: 'Your profile details have been saved successfully.',
+                timer: 2000,
+                showConfirmButton: false
             });
             
-            // Update local user context
-            login(data);
-            
-            setMessage('Profile updated successfully');
-            setResume(null); // Clear pending upload
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to update profile');
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: err.response?.data?.message || 'Failed to update profile',
+            });
         } finally {
             setLoading(false);
         }
     };
 
+    // Helper for suggestion list rendering
+    const SuggestionList = ({ items, onSelect }) => {
+        if (!items || items.length === 0) return null;
+        return (
+            <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
+                {items.map((item, i) => (
+                    <li 
+                        key={i} 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => { e.stopPropagation(); onSelect(item); }} 
+                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-900 transition-colors block"
+                    >
+                        {item}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-            <h2 className="text-xl font-bold text-black mb-6">Profile Details</h2>
-
-            {message && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center mb-6">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    {message}
-                </div>
-            )}
-
-            {error && (
-                <div className="bg-red-50 text-red-700 p-4 rounded-lg flex items-center mb-6">
-                    <AlertCircle className="w-5 h-5 mr-2" />
-                    {error}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-                
-                {/* Profile Picture Upload */}
-                <div className="flex items-center space-x-6">
-                    <div className="relative">
-                        <div className="w-24 h-24 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
-                            {previewUrl ? (
-                                <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
-                                <User className="w-10 h-10 text-gray-400" />
-                            )}
+        <div className="max-w-6xl mx-auto animate-fadeIn min-h-[85vh] space-y-8">
+            
+            {/* 1. Header & Profile Strength Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 p-6 relative overflow-hidden">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                             
+                             Profile Strength
+                        </h2>
+                        <p className="text-gray-500 mt-1">Complete your profile to reach 'Excellent' status and visible to more recruiters.</p>
+                        
+                        {/* Validation Summary */}
+                        {missingFields.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {missingFields.slice(0, 4).map((field, i) => (
+                                    <span key={i} className="inline-flex items-center text-xs font-medium text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">
+                                        <AlertTriangle className="w-3 h-3 mr-1" /> {field}
+                                    </span>
+                                ))}
+                                {missingFields.length > 4 && <span className="text-xs text-gray-400 self-center">+{missingFields.length - 4} more</span>}
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="w-full md:w-1/3 flex flex-col items-center md:items-end">
+                        <div className="flex items-center gap-4 mb-2">
+                             <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide border ${
+                                completionPercentage === 100 
+                                ? 'text-green-700 bg-green-50 border-green-200' 
+                                : 'text-blue-700 bg-blue-50 border-blue-200'
+                            }`}>
+                                {completionPercentage === 100 ? 'Excellent' : 'In Progress'}
+                            </span>
+                            <span className="text-3xl font-extrabold text-[#4169E1]">{completionPercentage}%</span>
                         </div>
-                        <label 
-                            htmlFor="profile-upload" 
-                            className="absolute bottom-0 right-0 bg-[#4169E1] text-white p-2 rounded-full cursor-pointer hover:bg-[#3A5FCD] shadow-sm"
-                        >
-                            <Camera className="w-4 h-4" />
-                            <input 
-                                id="profile-upload"
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={handleFileChange}
-                            />
-                        </label>
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-semibold text-gray-900">Profile Picture</h3>
-                        <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
+                        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                            <div 
+                                style={{ width: `${completionPercentage}%` }} 
+                                className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                                    completionPercentage === 100 ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gradient-to-r from-blue-400 to-[#4169E1]'
+                                }`}
+                            ></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-
-                {/* Basic Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Full Name</label>
-                        <input 
-                            type="text" 
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Email Address</label>
-                        <input 
-                            type="email" 
-                            value={email}
-                            disabled
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
-                        />
-                         <p className="text-xs text-gray-500 mt-1">Email cannot be changed.</p>
-                    </div>
-                    
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Professional Title</label>
-                        <input 
-                            type="text" 
-                            placeholder="e.g. Senior Frontend Developer"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-gray-700 font-medium mb-2">Skills (Comma separated)</label>
-                        <input 
-                            type="text" 
-                            placeholder="React, Node.js, TypeScript..."
-                            value={skills}
-                            onChange={(e) => setSkills(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none"
-                        />
-                    </div>
-                    
-                    <div className="md:col-span-2">
-                        <label className="block text-gray-700 font-medium mb-2">About</label>
-                        <textarea 
-                            placeholder="Tell us about yourself..."
-                            value={about}
-                            onChange={(e) => setAbout(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent outline-none h-32 resize-none"
-                        ></textarea>
-                    </div>
-                </div>
-
-                <div className="border-t border-gray-100 my-6"></div>
-
-                {/* Experience Section */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                         <h3 className="text-lg font-semibold text-gray-800">Work Experience</h3>
-                         <button type="button" onClick={addExperience} className="text-[#4169E1] text-sm font-medium hover:underline flex items-center">
-                            <Plus className="w-4 h-4 mr-1" /> Add Position
-                         </button>
-                    </div>
-                    
-                    <div className="space-y-6">
-                        {experience.map((exp, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <div className="flex justify-between items-center mb-4">
-                                     <h4 className="text-sm font-medium text-gray-500">Position {index + 1}</h4>
-                                     <button type="button" onClick={() => removeExperience(index)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                     <input 
-                                        type="text" 
-                                        placeholder="Job Title" 
-                                        value={exp.title} 
-                                        onChange={(e) => updateExperience(index, 'title', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                    />
-                                     <input 
-                                        type="text" 
-                                        placeholder="Company Name" 
-                                        value={exp.company} 
-                                        onChange={(e) => updateExperience(index, 'company', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                     <div className="flex gap-2">
-                                        <select
-                                            value={exp.startMonth || ''}
-                                            onChange={(e) => updateExperience(index, 'startMonth', e.target.value)}
-                                            className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">Start Month</option>
-                                            {months.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
-                                        <select
-                                            value={exp.startYear || ''}
-                                            onChange={(e) => updateExperience(index, 'startYear', e.target.value)}
-                                            className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">Year</option>
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                     </div>
-                                     <div className="flex gap-2">
-                                        <select
-                                            value={exp.endMonth || ''}
-                                            onChange={(e) => updateExperience(index, 'endMonth', e.target.value)}
-                                            className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">End Month</option>
-                                            {months.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
-                                        <select
-                                            value={exp.endYear || ''}
-                                            onChange={(e) => updateExperience(index, 'endYear', e.target.value)}
-                                            className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">Year</option>
-                                            <option value="Present">Present</option>
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                     </div>
-                                </div>
-                                <textarea 
-                                    placeholder="Description of responsibilities..."
-                                    value={exp.description}
-                                    onChange={(e) => updateExperience(index, 'description', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1] h-20 resize-none"
-                                ></textarea>
-                            </div>
-                        ))}
-                        {experience.length === 0 && <p className="text-gray-500 italic text-sm">No experience added yet.</p>}
-                    </div>
-                </div>
-
-                <div className="border-t border-gray-100 my-6"></div>
-
-                {/* Education Section */}
-                 <div>
-                    <div className="flex justify-between items-center mb-4">
-                         <h3 className="text-lg font-semibold text-gray-800">Education</h3>
-                         <button type="button" onClick={addEducation} className="text-[#4169E1] text-sm font-medium hover:underline flex items-center">
-                            <Plus className="w-4 h-4 mr-1" /> Add Education
-                         </button>
-                    </div>
-                    
-                    <div className="space-y-6">
-                        {education.map((edu, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <div className="flex justify-between items-center mb-4">
-                                     <h4 className="text-sm font-medium text-gray-500">Education {index + 1}</h4>
-                                     <button type="button" onClick={() => removeEducation(index)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                     <input 
-                                        type="text" 
-                                        placeholder="Institute Name" 
-                                        value={edu.institute} 
-                                        onChange={(e) => updateEducation(index, 'institute', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                    />
-                                     <input 
-                                        type="text" 
-                                        placeholder="Degree (e.g. BS)" 
-                                        value={edu.degree} 
-                                        onChange={(e) => updateEducation(index, 'degree', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                    />
-                                </div>
-                                 <div className="mb-4">
-                                     <input 
-                                        type="text" 
-                                        placeholder="Field of Study (e.g. Computer Science)" 
-                                        value={edu.fieldOfStudy} 
-                                        onChange={(e) => updateEducation(index, 'fieldOfStudy', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                     <div>
-                                        <select
-                                            value={edu.startYear || ''}
-                                            onChange={(e) => updateEducation(index, 'startYear', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">Start Year</option>
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                     </div>
-                                     <div>
-                                        <select
-                                            value={edu.endYear || ''}
-                                            onChange={(e) => updateEducation(index, 'endYear', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                        >
-                                            <option value="">End Year</option>
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                         {education.length === 0 && <p className="text-gray-500 italic text-sm">No education added yet.</p>}
-                    </div>
-                </div>
-
-                <div className="border-t border-gray-100 my-6"></div>
-
-                {/* Certifications Section */}
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                         <h3 className="text-lg font-semibold text-gray-800">Certifications</h3>
-                         <button type="button" onClick={addCertification} className="text-[#4169E1] text-sm font-medium hover:underline flex items-center">
-                            <Plus className="w-4 h-4 mr-1" /> Add Certification
-                         </button>
-                    </div>
-                    <div className="space-y-3">
-                         {certifications.map((cert, index) => (
-                             <div key={index} className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    placeholder="Certification Name & Authority" 
-                                    value={cert} 
-                                    onChange={(e) => updateCertification(index, e.target.value)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#4169E1]"
-                                />
-                                <button type="button" onClick={() => removeCertification(index)} className="text-gray-400 hover:text-red-500 px-2">
-                                    <Trash2 className="w-4 h-4" />
+            {/* 2. Main Content Wrapper */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden min-h-[600px]">
+                
+                {/* Horizontal Tab Navigation */}
+                <div className="border-b border-gray-100 overflow-x-auto scrollbar-hide">
+                    <div className="flex px-4 md:px-8 space-x-8 min-w-max">
+                        {tabs.map((tab) => {
+                             const Icon = tab.icon;
+                             return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
+                                        activeTab === tab.id 
+                                        ? 'border-[#4169E1] text-[#4169E1]' 
+                                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
+                                    }`}
+                                >
+                                    <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
+                                    <span>{tab.label}</span>
+                                    {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
                                 </button>
-                             </div>
-                         ))}
-                         {certifications.length === 0 && <p className="text-gray-500 italic text-sm">No certifications added yet.</p>}
+                             );
+                        })}
                     </div>
                 </div>
 
-                <div className="border-t border-gray-100 my-6"></div>
+                {/* Form Content */}
+                <div className="p-6 md:p-10">
+                    
+                    {/* Feedback Messages */}
 
-                {/* Resume Section */}
-                <div>
-                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Resume</h3>
-                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                        {existingResume ? (
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <FileText className="w-8 h-8 text-[#4169E1] mr-3" />
-                                    <div>
-                                        <p className="font-medium text-gray-900">Current Resume</p>
-                                        <a 
-                                            href={existingResume.startsWith('http') ? existingResume : `${import.meta.env.VITE_API_URL.replace('/api', '')}${existingResume}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="text-sm text-[#4169E1] hover:underline flex items-center mt-1"
-                                        >
-                                            View Resume <ExternalLink className="w-3 h-3 ml-1" />
-                                        </a>
+
+                    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-10 animate-fadeIn">
+                        
+                        {/* Basic Info Tab */}
+                        {activeTab === 'basic' && (
+                            <div className="space-y-8 animate-fadeIn">
+                                <div className="flex flex-col md:flex-row gap-8 items-start">
+                                    {/* Profile Picture Upload - Updated Design */}
+                                    <div className="flex-shrink-0 mx-auto md:mx-0">
+                                        <div className="relative group">
+                                            <div className="w-36 h-36 rounded-2xl bg-gray-50 border-2 border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
+                                                {previewUrl ? (
+                                                    <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <User className="w-12 h-12 text-gray-300" />
+                                                )}
+                                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                     <p className="text-white text-xs font-medium">Change Photo</p>
+                                                </div>
+                                            </div>
+                                            <label 
+                                                htmlFor="profile-upload" 
+                                                className="absolute -bottom-3 -right-3 bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-[#4169E1] border border-gray-100 transition-colors"
+                                            >
+                                                <Camera className="w-4 h-4" />
+                                                <input 
+                                                    id="profile-upload"
+                                                    type="file" 
+                                                    className="hidden" 
+                                                    accept="image/*"
+                                                    onChange={handleFileChange}
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex-grow space-y-6 w-full">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Full Name <span className="text-red-500">*</span></label>
+                                                <input 
+                                                    type="text" 
+                                                    value={name}
+                                                    onChange={(e) => setName(e.target.value)}
+                                                    onBlur={() => handleBlur('name')}
+                                                    className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all ${touched.name && formErrors.name ? 'border-red-300 focus:border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-[#4169E1]'}`}
+                                                    placeholder="e.g. John Doe"
+                                                />
+                                                {touched.name && formErrors.name && <p className="text-xs text-red-500 mt-1 font-medium">{formErrors.name}</p>}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Email Address</label>
+                                                <div className="relative">
+                                                    <Mail className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                                                    <input 
+                                                        type="email" 
+                                                        value={email}
+                                                        disabled
+                                                        className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50/50 text-gray-500 cursor-not-allowed font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 relative">
+                                            <label className="block text-sm font-bold text-gray-700">Professional Title <span className="text-red-500">*</span></label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. Senior Full Stack Developer" 
+                                                value={title} 
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                onFocus={() => setActiveTitleField('basic')}
+                                                onBlur={() => { handleBlur('title'); setTimeout(() => setActiveTitleField(null), 200); }}
+                                                className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all ${touched.title && formErrors.title ? 'border-red-300 focus:border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-[#4169E1]'}`}
+                                            />
+                                            {activeTitleField === 'basic' && (
+                                                <SuggestionList items={titleSuggestions} onSelect={selectTitle} />
+                                            )}
+                                             {touched.title && formErrors.title && <p className="text-xs text-red-500 mt-1 font-medium">{formErrors.title}</p>}
+                                        </div>
                                     </div>
                                 </div>
-                                <button 
-                                    type="button" 
-                                    onClick={handleDeleteResume}
-                                    className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center"
-                                >
-                                    <Trash2 className="w-4 h-4 mr-1" /> Remove
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                 <div className="max-w-xs mx-auto">
-                                    <label className="flex flex-col items-center px-4 py-6 bg-white text-[#4169E1] rounded-lg shadow-sm border border-dashed border-[#4169E1] cursor-pointer hover:bg-blue-50 transition-colors">
-                                        <UploadIcon />
-                                        <span className="mt-2 text-sm font-medium">{resume ? resume.name : 'Upload Resume (PDF, DOCX)'}</span>
-                                        <input type='file' className="hidden" accept=".pdf,.doc,.docx" onChange={handleResumeChange} />
-                                    </label>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-bold text-gray-700">About Me <span className="text-red-500">*</span></label>
+                                    <textarea 
+                                        placeholder="Write a brief bio about your professional background..."
+                                        value={about}
+                                        onChange={(e) => setAbout(e.target.value)}
+                                        onBlur={() => handleBlur('about')}
+                                        className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none h-32 resize-none transition-all ${touched.about && formErrors.about ? 'border-red-300 focus:border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-[#4169E1]'}`}
+                                    ></textarea>
+                                    {touched.about && formErrors.about && <p className="text-xs text-red-500 mt-1 font-medium">{formErrors.about}</p>}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <div className="space-y-2">
+                                         <label className="block text-sm font-bold text-gray-700">Current Location <span className="text-red-500">*</span></label>
+                                         <div className="relative">
+                                            <MapPin className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. Bangalore, India"
+                                                value={currentLocation}
+                                                onChange={(e) => setCurrentLocation(e.target.value)}
+                                                onFocus={() => setActiveLocationField('current')}
+                                                onBlur={() => handleBlur('currentLocation')}
+                                                className={`w-full pl-11 pr-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all ${touched.currentLocation && formErrors.currentLocation ? 'border-red-300 focus:border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-[#4169E1]'}`}
+                                            />
+                                            {activeLocationField === 'current' && locationSuggestions.length > 0 && (
+                                                <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
+                                                    {isLoadingLocations ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : locationSuggestions.map((loc, i) => (
+                                                        <li key={i} onClick={(e) => { e.stopPropagation(); selectLocation(`${loc.name}, ${loc.admin1 || ''}, ${loc.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '')); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors block">
+                                                            <div className="font-medium text-gray-900 text-sm">{loc.name}</div>
+                                                            <div className="text-xs text-gray-500">{[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                         <label className="block text-sm font-bold text-gray-700">Preferred Locations</label>
+                                         <div className="relative">
+                                            <div className="flex flex-wrap gap-2 mb-2 min-h-[30px]">
+                                                {preferredLocations.map((loc, i) => (
+                                                    <span key={i} className="bg-blue-50 text-[#4169E1] pl-3 pr-2 py-1 rounded-full text-xs font-bold flex items-center border border-blue-100 shadow-sm">
+                                                        {loc}
+                                                        <button type="button" onClick={() => removePreferredLocation(loc)} className="ml-1 p-0.5 hover:bg-blue-100 rounded-full transition-colors text-blue-400 hover:text-blue-600">
+                                                            <Trash2 className="w-3 h-3" />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {preferredLocations.length < 3 && (
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Search location..."
+                                                    value={preferredLocationInput}
+                                                    onChange={(e) => setPreferredLocationInput(e.target.value)}
+                                                    onFocus={() => setActiveLocationField('preferred')}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none"
+                                                />
+                                            )}
+                                             {activeLocationField === 'preferred' && locationSuggestions.length > 0 && (
+                                                <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
+                                                    {isLoadingLocations ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : locationSuggestions.map((loc, i) => (
+                                                        <li key={i} onClick={(e) => { e.stopPropagation(); selectLocation(`${loc.name}, ${loc.admin1 || ''}, ${loc.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '')); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors block">
+                                                            <div className="font-medium text-gray-900 text-sm">{loc.name}</div>
+                                                            <div className="text-xs text-gray-500">{[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                         </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
-                        
-                        {resume && !existingResume && (
-                             <div className="mt-4 flex items-center justify-center text-sm text-green-600">
-                                <CheckCircle className="w-4 h-4 mr-2" /> Ready to upload: {resume.name}
+
+                        {/* Experience Tab */}
+                        {activeTab === 'experience' && (
+                            <div className="space-y-6 animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 p-6 rounded-2xl border border-gray-200/60 mb-8">
+                                     <div>
+                                        <h3 className="font-bold text-gray-900 text-lg">Work Experience</h3>
+                                        <p className="text-gray-500 text-sm mt-1">Add your previous job positions.</p>
+                                     </div>
+                                     <button type="button" onClick={addExperience} className="mt-4 sm:mt-0 bg-white border border-gray-200 hover:border-[#4169E1] text-[#4169E1] hover:bg-blue-50 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow flex items-center">
+                                        <Plus className="w-4 h-4 mr-2" /> Add Position
+                                     </button>
+                                </div>
+                                
+                                {experience.map((exp, index) => (
+                                    <div key={index} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 hover:border-[#4169E1]/30 transition-all relative shadow-sm group">
+                                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <button type="button" onClick={() => removeExperience(index)} className="text-gray-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Job Title</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="e.g. Solution Architect" 
+                                                    value={exp.title} 
+                                                    onChange={(e) => updateExperience(index, 'title', e.target.value)}
+                                                    onFocus={() => setActiveTitleField(index)}
+                                                    onBlur={() => setTimeout(() => setActiveTitleField(null), 200)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeTitleField === index && (
+                                                    <SuggestionList items={titleSuggestions} onSelect={selectTitle} />
+                                                )}
+                                             </div>
+                                            
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Company</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="Search Company..." 
+                                                    value={exp.company} 
+                                                    onChange={(e) => handleCompanyChange(index, e.target.value)}
+                                                    onFocus={() => setActiveExperienceIndex(index)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeExperienceIndex === index && companySuggestions.length > 0 && (
+                                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                                        {isLoadingCompanies ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : companySuggestions.map((company, i) => (
+                                                            <li key={i} onClick={(e) => { e.stopPropagation(); selectCompany(index, company.name); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between transition-colors">
+                                                                <div className="flex items-center">
+                                                                    {company.logo && <img src={company.logo} alt="" className="w-6 h-6 mr-3 rounded-md object-contain border border-gray-100"/>}
+                                                                    <span className="font-medium text-gray-900 text-sm">{company.name}</span>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                             </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             <div className="space-y-2">
+                                                <label className="text-sm font-bold text-gray-700">Start Date</label>
+                                                <div className="flex gap-3">
+                                                    <select value={exp.startMonth || ''} onChange={(e) => updateExperience(index, 'startMonth', e.target.value)} className="w-1/2 px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                        <option value="">Month</option>
+                                                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                    <select value={exp.startYear || ''} onChange={(e) => updateExperience(index, 'startYear', e.target.value)} className="w-1/2 px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                        <option value="">Year</option>
+                                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                    </select>
+                                                 </div>
+                                             </div>
+                                             <div className="space-y-2">
+                                                <label className="text-sm font-bold text-gray-700">End Date</label>
+                                                <div className="flex gap-3">
+                                                    <select value={exp.endMonth || ''} onChange={(e) => updateExperience(index, 'endMonth', e.target.value)} className="w-1/2 px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                        <option value="">Month</option>
+                                                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                    <select value={exp.endYear || ''} onChange={(e) => updateExperience(index, 'endYear', e.target.value)} className="w-1/2 px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                        <option value="">Year</option>
+                                                        <option value="Present">Present</option>
+                                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                    </select>
+                                                </div>
+                                             </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-gray-700">Description</label>
+                                            <textarea 
+                                                placeholder="Describe your role, responsibilities, and key achievements..."
+                                                value={exp.description}
+                                                onChange={(e) => updateExperience(index, 'description', e.target.value)}
+                                                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none h-32 resize-none transition-all"
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                ))}
+                                {experience.length === 0 && (
+                                    <div className="text-center py-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+                                        <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500 font-medium">No experience added yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Education Tab */}
+                        {activeTab === 'education' && (
+                             <div className="space-y-6 animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 p-6 rounded-2xl border border-gray-200/60 mb-8">
+                                     <div>
+                                        <h3 className="font-bold text-gray-900 text-lg">Education</h3>
+                                        <p className="text-sm text-gray-500 mt-1">Add your academic background.</p>
+                                     </div>
+                                     <button type="button" onClick={addEducation} className="mt-4 sm:mt-0 bg-white border border-gray-200 hover:border-[#4169E1] text-[#4169E1] hover:bg-blue-50 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow flex items-center">
+                                        <Plus className="w-4 h-4 mr-2" /> Add Education
+                                     </button>
+                                </div>
+                                
+                                {education.map((edu, index) => (
+                                    <div key={index} className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 hover:border-[#4169E1]/30 transition-all relative shadow-sm group">
+                                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                             <button type="button" onClick={() => removeEducation(index)} className="text-gray-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             <div className="space-y-2">
+                                                <label className="text-sm font-bold text-gray-700">Institute Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="College Name" 
+                                                    value={edu.institute} 
+                                                    onChange={(e) => updateEducation(index, 'institute', e.target.value)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                             </div>
+                                            
+                                            <div className="space-y-2 relative">
+                                                 <label className="text-sm font-bold text-gray-700">University</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="University Name" 
+                                                    value={edu.university || ''} 
+                                                    onChange={(e) => handleUniversityChange(index, e.target.value)}
+                                                    onFocus={() => setActiveEducationIndex(index)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeEducationIndex === index && universitySuggestions.length > 0 && (
+                                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                                        {isLoadingUniversities ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : universitySuggestions.map((uni, i) => (
+                                                            <li key={i} onClick={(e) => { e.stopPropagation(); selectUniversity(index, uni.name); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-900 transition-colors">
+                                                                {uni.name}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                             <div className="space-y-2 relative">
+                                                 <label className="text-sm font-bold text-gray-700">Degree</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="e.g. Bachelor's" 
+                                                    value={edu.degree} 
+                                                    onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                                                    onFocus={() => setActiveDegreeIndex(index)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeDegreeIndex === index && (
+                                                    <SuggestionList items={degreeSuggestions} onSelect={(val) => selectDegree(index, val)} />
+                                                )}
+                                             </div>
+                                             <div className="space-y-2">
+                                                 <label className="text-sm font-bold text-gray-700">Field of Study</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="e.g. Computer Science" 
+                                                    value={edu.fieldOfStudy} 
+                                                    onChange={(e) => updateEducation(index, 'fieldOfStudy', e.target.value)}
+                                                    onFocus={() => setActiveFieldIndex(index)}
+                                                    onBlur={() => setTimeout(() => setActiveFieldIndex(null), 200)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeFieldIndex === index && (
+                                                    <SuggestionList items={fieldSuggestions} onSelect={(val) => selectField(index, val)} />
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                             <div className="space-y-2">
+                                                <label className="text-sm font-bold text-gray-700">Start Year</label>
+                                                <select value={edu.startYear || ''} onChange={(e) => updateEducation(index, 'startYear', e.target.value)} className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                    <option value="">Year</option>
+                                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                </select>
+                                             </div>
+                                             <div className="space-y-2">
+                                                <label className="text-sm font-bold text-gray-700">End Year</label>
+                                                <select value={edu.endYear || ''} onChange={(e) => updateEducation(index, 'endYear', e.target.value)} className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white">
+                                                    <option value="">Year</option>
+                                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                </select>
+                                             </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {education.length === 0 && (
+                                    <div className="text-center py-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+                                        <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                        <p className="text-gray-500 font-medium">No education added yet.</p>
+                                    </div>
+                                )}
                              </div>
                         )}
-                     </div>
-                </div>
 
-                <div className="flex justify-end pt-4">
-                    <button 
-                        type="submit" 
-                        disabled={loading}
-                        className="bg-[#4169E1] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#3A5FCD] disabled:opacity-50"
-                    >
-                        {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
+                        {/* Skills & Resume Tab */}
+                        {activeTab === 'skills' && (
+                            <div className="space-y-10 animate-fadeIn">
+                                {/* Skills */}
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                                        Skills <span className="ml-2 text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Separate with commas</span>
+                                    </h3>
+                                    <div className="bg-white p-2 relative">
+                                         <input 
+                                            type="text" 
+                                            placeholder="e.g. React, Node.js, TypeScript, Docker..."
+                                            value={skills}
+                                            onChange={(e) => setSkills(e.target.value)}
+                                            onFocus={() => setActiveSkillInput(true)}
+                                            onBlur={() => setTimeout(() => setActiveSkillInput(false), 200)}
+                                            className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none"
+                                        />
+                                        {activeSkillInput && (
+                                            <SuggestionList items={skillSuggestions} onSelect={selectSkill} />
+                                        )}
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {skills.split(',').filter(s => s.trim()).map((skill, i) => (
+                                                <span key={i} className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-blue-50 text-[#4169E1] border border-blue-100">
+                                                    {skill.trim()}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Resume */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-xl font-bold text-gray-900">Resumes</h3>
+                                        <span className="text-sm font-medium text-gray-500">{resumes.length}/3 Uploaded</span>
+                                    </div>
+                                    
+                                    <div className="space-y-4 mb-6">
+                                        {resumes.map((res) => {
+                                            const isActive = existingResume === res.file;
+                                            return (
+                                                <div key={res._id} className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${isActive ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                                    <div className="flex items-start gap-4">
+                                                        <div className={`p-3 rounded-lg ${isActive ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500 shadow-sm'}`}>
+                                                            <FileText className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-gray-900 line-clamp-1 break-all text-sm md:text-base">{res.name}</h4>
+                                                                {isActive && <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Active</span>}
+                                                            </div>
+                                                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 font-medium">
+                                                                <span>{new Date(res.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                                                                <span>•</span>
+                                                                <a href={res.file} target="_blank" rel="noopener noreferrer" className="hover:text-[#4169E1] hover:underline flex items-center">
+                                                                    View File <ExternalLink className="w-3 h-3 ml-1" />
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2 self-end md:self-auto">
+                                                        {!isActive && (
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => handleSetActiveResume(res._id)} 
+                                                                className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-[#4169E1] hover:text-[#4169E1] transition-all"
+                                                            >
+                                                                Make Active
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => handleDeleteResume(res._id)} 
+                                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Resume"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {resumes.length < 3 ? (
+                                        <div className={`flex justify-center px-8 pt-10 pb-10 border-2 border-dashed rounded-2xl transition-all duration-200 bg-gray-50/50 ${resume ? 'border-[#4169E1] bg-blue-50/20' : 'border-gray-200 hover:border-[#4169E1]'}`}>
+                                            <div className="space-y-3 text-center">
+                                                <div className={`mx-auto h-14 w-14 flex items-center justify-center rounded-full ${resume ? 'bg-blue-100 text-[#4169E1]' : 'bg-white shadow-sm text-gray-400'}`}>
+                                                    <Download className="h-7 w-7" />
+                                                </div>
+                                                <div className="text-sm text-gray-600">
+                                                    <label htmlFor="resume-upload" className="relative cursor-pointer font-bold text-[#4169E1] hover:text-blue-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#4169E1] rounded-md px-1">
+                                                        <span>{resume ? 'Change file' : 'Upload a new resume'}</span>
+                                                        <input id="resume-upload" name="resume" type="file" className="sr-only" onChange={handleResumeChange} accept=".pdf,.doc,.docx" />
+                                                    </label>
+                                                    <span className="pl-1">or drag and drop</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500">
+                                                    PDF, DOC, DOCX up to 10MB
+                                                </p>
+                                                {resume && <p className="text-sm font-bold text-[#4169E1] mt-2 bg-blue-100 py-1 px-3 rounded-full inline-block animate-pulse">{resume.name}</p>}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-100 text-gray-500 text-sm">
+                                            Maximum of 3 resumes reached. Delete one to upload a new version.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-4 pt-8 border-t border-gray-100">
+                             <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-blue-500/30 ${
+                                    loading 
+                                    ? 'bg-blue-400 cursor-not-allowed' 
+                                    : 'bg-[#4169E1] hover:bg-[#3A5FCD]'
+                                }`}
+                            >
+                                {loading && <span className="inline-block animate-spin mr-2">⟳</span>}
+                                {loading ? 'Saving Changes...' : 'Save Profile'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     );
 };
-
-const UploadIcon = () => (
-    <svg className="w-8 h-8 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-    </svg>
-);
 
 export default ProfileDetails;

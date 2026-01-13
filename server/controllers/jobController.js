@@ -6,6 +6,28 @@ const Application = require('../models/Application');
 // @access  Private (Employer only)
 const createJob = async (req, res) => {
   try {
+    // Check verification level
+    const user = await require('../models/User').findById(req.user._id); // Assuming we need fresh data or req.user is enough
+    
+    // If we trust req.user populated by authMiddleware (which usually doesn't have deep nested new fields unless updated), 
+    // it's safer to fetch or ensure middleware populates it. 
+    // Mongoose models usually don't auto-update req.user in memory if DB changes elsewhere, but here it's per request.
+    // Let's assume req.user might not have employerVerification if it's a new field and token isn't refreshed.
+    // Safe bet: fetch user.
+    
+    if (user.employerVerification.level < 1) {
+        // Option 1: Block entirely
+        // return res.status(403).json({ message: 'You must verify your company identity (Level 1) to post jobs.' });
+        
+        // Option 2: Allow but set to Draft/Hidden (As per user request "Cannot publish jobs publicly")
+        // We'll set status to 'Closed' or a new 'Draft' status if we had one. 
+        // User request says "Create profile, Post drafts". 
+        // So let's force status to 'Closed' if they try to set 'Active'
+        if (req.body.status !== 'Closed') {
+             return res.status(403).json({ message: 'Unverified employers can only post Drafts (Closed jobs). Please verify your identity to publish active jobs.' });
+        }
+    }
+
     const job = await Job.create({
       ...req.body,
       postedBy: req.user._id,
@@ -40,6 +62,11 @@ const getJobs = async (req, res) => {
         { company: searchRegex },
         { skills: { $in: [new RegExp(search, 'i')] } }
       ];
+    }
+    
+    // Filter by Employer (postedBy)
+    if (req.query.postedBy) {
+        query.postedBy = req.query.postedBy;
     }
 
     // Filter by Job Type
@@ -108,7 +135,7 @@ const getJobs = async (req, res) => {
         }
     }
 
-    const jobs = await Job.find(query).sort(sort);
+    const jobs = await Job.find(query).sort(sort).populate('postedBy', 'name email profilePicture employerVerification');
     res.json(jobs);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -119,10 +146,11 @@ const getJobs = async (req, res) => {
 // @route   GET /api/jobs/:id
 // @access  Public
 const getJobById = async (req, res) => {
-  const job = await Job.findById(req.params.id).populate('postedBy', 'name email');
+  const job = await Job.findById(req.params.id).populate('postedBy', 'name email profilePicture');
 
   if (job) {
-    res.json(job);
+    const applicantCount = await Application.countDocuments({ job: job._id });
+    res.json({ ...job._doc, applicantCount });
   } else {
     res.status(404).json({ message: 'Job not found' });
   }
@@ -132,8 +160,34 @@ const getJobById = async (req, res) => {
 // @route   GET /api/jobs/myjobs
 // @access  Private (Employer only)
 const getMyJobs = async (req, res) => {
-  const jobs = await Job.find({ postedBy: req.user._id }).sort({ createdAt: -1 });
-  res.json(jobs);
+  try {
+      const jobs = await Job.aggregate([
+          { $match: { postedBy: req.user._id } },
+          {
+              $lookup: {
+                  from: 'applications',
+                  localField: '_id',
+                  foreignField: 'job',
+                  as: 'applications'
+              }
+          },
+          {
+              $addFields: {
+                  applicationCount: { $size: '$applications' }
+              }
+          },
+          {
+              $project: {
+                  applications: 0 // Remove the applications array to keep payload light
+              }
+          },
+          { $sort: { createdAt: -1 } }
+      ]);
+      res.json(jobs);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server Error' });
+  }
 };
 
 // @desc    Update a job
@@ -147,22 +201,20 @@ const updateJob = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to update this job' });
     }
 
-    job.title = req.body.title || job.title;
-    job.company = req.body.company || job.company;
-    job.location = req.body.location || job.location;
-    job.type = req.body.type || job.type;
-    job.salaryMin = req.body.salaryMin || job.salaryMin;
-    job.salaryMax = req.body.salaryMax || job.salaryMax;
-    job.experienceMin = req.body.experienceMin || job.experienceMin;
-    job.experienceMax = req.body.experienceMax || job.experienceMax;
-    job.description = req.body.description || job.description;
-    job.skills = req.body.skills || job.skills;
-    job.companyDescription = req.body.companyDescription || job.companyDescription;
-    job.jobRole = req.body.jobRole || job.jobRole;
-    job.functionalArea = req.body.functionalArea || job.functionalArea;
-    job.education = req.body.education || job.education;
-    job.benefits = req.body.benefits || job.benefits;
-    job.status = req.body.status || job.status;
+    const fieldsToUpdate = [
+      'title', 'company', 'location', 'type', 'salaryMin', 'salaryMax', 
+      'salaryType', 'salaryFrequency', 'experienceMin', 'experienceMax', 
+      'description', 'status', 'skills', 'companyDescription', 'jobRole', 
+      'functionalArea', 'education', 'fieldOfStudy', 'benefits', 
+      'preScreeningQuestions', 'recruitmentDuration', 'applyMethod', 
+      'applyUrl', 'interviewTime', 'interviewVenue', 'interviewContact', 'openings'
+    ];
+
+    fieldsToUpdate.forEach(field => {
+      if (req.body[field] !== undefined) {
+        job[field] = req.body[field];
+      }
+    });
 
     const updatedJob = await job.save();
     res.json(updatedJob);
@@ -246,6 +298,33 @@ const getRecommendedJobs = async (req, res) => {
     }
 };
 
+// @desc    Get related jobs
+// @route   GET /api/jobs/:id/related
+// @access  Public
+const getRelatedJobs = async (req, res) => {
+    try {
+        const currentJob = await Job.findById(req.params.id);
+        if (!currentJob) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        const relatedJobs = await Job.find({
+            _id: { $ne: currentJob._id },
+            status: 'Active',
+            $or: [
+                { jobRole: currentJob.jobRole },
+                { title: { $regex: currentJob.title.split(' ')[0], $options: 'i' } }, // Simple match first word
+                { skills: { $in: currentJob.skills } }
+            ]
+        }).limit(5);
+
+        res.json(relatedJobs);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -254,5 +333,6 @@ module.exports = {
   updateJob,
   deleteJob,
   getEmployerStats,
-  getRecommendedJobs
+  getRecommendedJobs,
+  getRelatedJobs
 };

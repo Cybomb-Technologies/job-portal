@@ -31,6 +31,16 @@ const jobSchema = mongoose.Schema(
       type: Number,
       required: true,
     },
+    salaryType: {
+      type: String,
+      enum: ['Fixed', 'Range', 'Starting From'],
+      default: 'Range'
+    },
+    salaryFrequency: {
+      type: String,
+      enum: ['Year', 'Month', 'Week', 'Hour'],
+      default: 'Year'
+    },
     experienceMin: {
       type: Number,
       required: true,
@@ -56,8 +66,18 @@ const jobSchema = mongoose.Schema(
     education: {
         type: String,
     },
+    fieldOfStudy: {
+        type: String,
+    },
     benefits: {
         type: [String],
+    },
+    preScreeningQuestions: {
+        type: [String],
+    },
+    recruitmentDuration: {
+        type: String,
+        default: 'Immediate'
     },
     status: {
         type: String,
@@ -69,11 +89,44 @@ const jobSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    jobId: {
+        type: String,
+        unique: true
+    },
+    applyMethod: {
+        type: String,
+        enum: ['direct', 'website'],
+        default: 'direct'
+    },
+    applyUrl: {
+        type: String
+    },
+    interviewTime: {
+        type: String
+    },
+    interviewVenue: {
+        type: String
+    },
+    interviewContact: {
+        type: String
+    },
+    openings: {
+        type: Number,
+        default: 1
+    }
   },
   {
     timestamps: true,
   }
 );
+
+// Generate Custom Job ID
+jobSchema.pre('save', async function(next) {
+    if (!this.jobId) {
+        this.jobId = `JOB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    next();
+});
 
 const Job = mongoose.model('Job', jobSchema);
 

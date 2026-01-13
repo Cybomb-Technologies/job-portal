@@ -93,7 +93,7 @@ const EmployerDashboard = () => {
                   <div className="bg-purple-50 p-6 rounded-xl border border-purple-100">
                       <h3 className="text-lg font-bold text-purple-900 mb-2">Candidate Search</h3>
                       <p className="text-purple-700 mb-4 text-sm">Search our database of over 1 million resumes.</p>
-                      <button className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700">Search Candidates</button>
+                      <Link to="/employer/candidates" className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">Search Candidates</Link>
                   </div>
               </div>
           )}

@@ -24,11 +24,24 @@ const applicationSchema = mongoose.Schema(
     coverLetter: {
       type: String,
     },
+    screeningAnswers: [{
+        question: String,
+        answer: String
+    }],
     status: {
       type: String,
-      enum: ['Applied', 'Shortlisted', 'Interviewed', 'Rejected', 'Hired'],
+      enum: ['Applied', 'Resume Viewed', 'Shortlisted', 'Interviewed', 'Rejected', 'Hired'],
       default: 'Applied',
     },
+    applicationId: {
+        type: String,
+        unique: true
+    },
+    agreedToTerms: {
+        type: Boolean,
+        required: true,
+        default: false
+    }
   },
   {
     timestamps: true,
@@ -37,6 +50,14 @@ const applicationSchema = mongoose.Schema(
 
 // Prevent duplicate applications from same user to same job
 applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
+
+// Generate Custom Application ID
+applicationSchema.pre('save', async function(next) {
+    if (!this.applicationId) {
+        this.applicationId = `APP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    next();
+});
 
 const Application = mongoose.model('Application', applicationSchema);
 

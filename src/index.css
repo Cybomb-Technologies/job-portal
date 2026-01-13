@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-royal-blue: #4169E1;
+  --color-royal-blue: #4169e1;
 }
 
 html {
@@ -38,7 +38,7 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3A5FCD;
+  background: #3a5fcd;
 }
 
 /* Focus states for accessibility */
@@ -47,7 +47,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #4169E1;
+  outline: 2px solid #4169e1;
   outline-offset: 2px;
 }
 
@@ -64,4 +64,49 @@ textarea:focus-visible {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Rich Text Editor Styles */
+.prose ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1rem;
+}
+
+.prose ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1rem;
+}
+
+.prose p {
+  margin-bottom: 0.75rem;
+}
+
+.prose strong {
+  font-weight: 700;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose u {
+  text-decoration: underline;
 }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, Globe, ExternalLink, Search, Grid, List, TrendingUp } from 'lucide-react';
 import api from '../api';
 
 const Companies = () => {
-  const [jobs, setJobs] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,34 +12,31 @@ const Companies = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
 
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchCompanies = async () => {
       try {
-        const { data } = await api.get('/jobs');
-        setJobs(data);
+        const { data } = await api.get('/auth/companies');
+        // Map backend fields to frontend fields
+        const formattedCompanies = data.map(company => ({
+          name: company.companyName,
+          location: company.companyLocation || 'Location not specified',
+          description: company.about || "Leading technology company focused on innovation and building the future.", 
+          industry: company.companyCategory || "Technology", 
+          employees: company.employeeCount || "100-500", 
+          openPositions: company.jobCount || 0,
+          employerId: company._id,
+          profilePicture: company.profilePicture
+        }));
+        setCompanies(formattedCompanies);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching jobs:', err);
+        console.error('Error fetching companies:', err);
         setError('Failed to load companies.');
         setLoading(false);
       }
     };
 
-    fetchJobs();
+    fetchCompanies();
   }, []);
-
-  // Extract unique companies from jobs
-  const companies = Array.from(new Set(jobs.map(job => job.company))).map(companyName => {
-    const companyJobs = jobs.filter(j => j.company === companyName);
-    const job = companyJobs[0];
-    return {
-      name: companyName,
-      location: job.location,
-      description: job.companyDescription || "Leading technology company focused on innovation and building the future.", 
-      industry: "Technology", 
-      employees: "100-500", 
-      openPositions: companyJobs.length
-    };
-  });
 
   // Filter and Sort Companies
   const filteredCompanies = companies
@@ -148,8 +146,16 @@ const Companies = () => {
                 <div className={`${viewMode === 'list' && 'flex-1 w-full flex flex-col md:flex-row items-center gap-6'}`}>
                      <div className={`flex items-start justify-between ${viewMode === 'grid' ? 'mb-4' : 'w-full md:w-auto flex-col md:flex-row items-center md:items-start'}`}>
                         <div className="flex flex-col md:flex-row items-center gap-4">
-                             <div className="bg-blue-50 p-4 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                                <Building2 className="w-8 h-8 text-[#4169E1]" />
+                             <div className="bg-blue-50 p-0 rounded-xl group-hover:scale-110 transition-transform duration-300 overflow-hidden w-16 h-16 flex items-center justify-center">
+                                {company.profilePicture ? (
+                                    <img 
+                                        src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
+                                        alt={company.name}
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : (
+                                    <Building2 className="w-8 h-8 text-[#4169E1]" />
+                                )}
                             </div>
                             {viewMode === 'list' && (
                                 <div className="text-center md:text-left">
@@ -208,11 +214,13 @@ const Companies = () => {
                     </div>
                 </div>
                 
-                <button className={`border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
+                <Link 
+                    to={company.employerId ? `/company/${company.employerId}` : '#'}
+                    className={`block text-center border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
                     viewMode === 'grid' ? 'w-full py-2.5' : 'w-full md:w-auto px-6 py-2.5 mt-4 md:mt-0'
                 }`}>
                     View Profile
-                </button>
+                </Link>
                 </div>
             ))}
             </div>

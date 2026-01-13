@@ -4,13 +4,24 @@ const Job = require('../models/Job');
 // @desc    Apply to a job
 // @route   POST /api/applications
 // @access  Private (Candidate only)
+// @desc    Apply to a job
+// @route   POST /api/applications
+// @access  Private (Candidate only)
 const applyToJob = async (req, res) => {
-  const { jobId, coverLetter } = req.body;
-  const resume = req.file ? req.file.path : null;
+  const { jobId, coverLetter, resume, screeningAnswers, agreedToTerms } = req.body;
+  // Note: 'resume' is now expected to be a URL string from the profile selection if provided in body.
+  // If file upload is still supported, we might check req.file.path. 
+  // For this refactor, we prioritize the selected resume URL.
+
+  const resumeUrl = resume || (req.file ? req.file.path : null);
 
   try {
-    if (!resume) {
-        return res.status(400).json({ message: 'Please upload a resume' });
+    if (!resumeUrl) {
+        return res.status(400).json({ message: 'Please select or upload a resume' });
+    }
+
+    if (agreedToTerms !== true) {
+        return res.status(400).json({ message: 'You must agree to the terms and conditions' });
     }
 
     const job = await Job.findById(jobId);
@@ -29,12 +40,21 @@ const applyToJob = async (req, res) => {
       return res.status(400).json({ message: 'You have already applied to this job' });
     }
 
+    // Validate screening answers if job has questions
+    if (job.preScreeningQuestions && job.preScreeningQuestions.length > 0) {
+        if (!screeningAnswers || screeningAnswers.length !== job.preScreeningQuestions.length) {
+             return res.status(400).json({ message: 'Please answer all pre-screening questions' });
+        }
+    }
+
     const application = await Application.create({
       job: jobId,
       applicant: req.user._id,
       employer: job.postedBy,
-      resume: resume, // Store file path
+      resume: resumeUrl,
       coverLetter,
+      screeningAnswers: screeningAnswers || [],
+      agreedToTerms
     });
 
     res.status(201).json(application);
@@ -111,9 +131,37 @@ const updateApplicationStatus = async (req, res) => {
   }
 };
 
+
+
+// @desc    Get single application by ID
+// @route   GET /api/applications/:id
+// @access  Private (Employer only)
+const getApplicationById = async (req, res) => {
+    try {
+        const application = await Application.findById(req.params.id)
+            .populate('applicant', 'name email mobile profilePicture')
+            .populate('job', 'title');
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Verify ownership
+        if (application.employer.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to view this application' });
+        }
+
+        res.json(application);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
   applyToJob,
   getJobApplications,
   getMyApplications,
   updateApplicationStatus,
+  getApplicationById,
 };

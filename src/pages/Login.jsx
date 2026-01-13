@@ -202,7 +202,6 @@ const Login = () => {
                         theme="filled_black"
                         shape="pill"
                         size="large"
-                        width="100%"
                     />
                 </div>
 
