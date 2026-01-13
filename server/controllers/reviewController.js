@@ -1,5 +1,6 @@
 const Review = require('../models/Review');
 const User = require('../models/User');
+const Company = require('../models/Company');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
 
@@ -10,10 +11,15 @@ const crypto = require('crypto');
  */
 const createReview = async (req, res) => {
     try {
-        const { companyId, rating, comment, reviewerType, role, department, employeeEmail } = req.body;
+        const { companyId, rating, comment, reviewerType, role, department, employeeEmail, title } = req.body;
 
         if (!companyId || !rating || !comment || !reviewerType) {
             return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        // Public reviews REQUIRE login
+        if (reviewerType === 'Public' && !req.user) {
+            return res.status(401).json({ message: 'You must be logged in to leave a public review. For employee reviews, please use your work email.' });
         }
 
         // Check if company exists
@@ -23,11 +29,13 @@ const createReview = async (req, res) => {
         }
 
         const reviewData = {
-            reviewer: req.user._id,
+            reviewer: req.user?._id, // Optional for employees
             company: companyId,
             rating,
             comment,
             reviewerType,
+            title,
+            employeeEmail // Store for verification
         };
 
         if (reviewerType === 'Employee') {
@@ -141,8 +149,18 @@ const verifyReview = async (req, res) => {
  */
 const getMyReviews = async (req, res) => {
     try {
-        // Find reviews for this employer
-        const reviews = await Review.find({ company: req.user._id })
+        // Find reviews for this employer (or any member of their company)
+        let targetIds = [req.user._id];
+
+        if (req.user.companyId) {
+             // Find all users linked to this company (Admin + Recruiters)
+            const companyUsers = await User.find({ companyId: req.user.companyId }).select('_id');
+            if (companyUsers.length > 0) {
+                targetIds = companyUsers.map(u => u._id);
+            }
+        }
+
+        const reviews = await Review.find({ company: { $in: targetIds } })
             .populate('reviewer', 'name profilePicture email')
             .sort({ createdAt: -1 });
 
@@ -210,9 +228,24 @@ const toggleReviewVisibility = async (req, res) => {
             return res.status(404).json({ message: 'Review not found' });
         }
 
-        // Only the company being reviewed can moderate
-        if (review.company.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Not authorized to moderate this review' });
+        // Only the company being reviewed (or its recruiters) can moderate
+        let authorizedIds = [req.user._id];
+
+        if (req.user.companyId) {
+             // Find all users linked to this company
+            const companyUsers = await User.find({ companyId: req.user.companyId }).select('_id');
+            if (companyUsers.length > 0) {
+                authorizedIds = companyUsers.map(u => u._id.toString());
+            }
+        }
+        
+        // Check if the review's company ID is in the list of authorized IDs
+        // Note: review.company is an ObjectId, so we convert to string
+        if (!authorizedIds.includes(review.company.toString())) {
+             // Fallback: Check if req.user._id matches directly (redundant but safe)
+             if (review.company.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to moderate this review' });
+             }
         }
 
         review.isHidden = !review.isHidden;

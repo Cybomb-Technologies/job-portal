@@ -61,6 +61,7 @@ router.route('/profile')
     .get(protect, getUserProfile)
     .put(protect, upload.fields([
         { name: 'profilePicture', maxCount: 1 },
+        { name: 'bannerPicture', maxCount: 1 },
         { name: 'resume', maxCount: 1 }
     ]), updateUserProfile)
     .delete(protect, deleteAccount);

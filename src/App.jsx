@@ -23,6 +23,17 @@ import EmployerProfileLayout from './pages/employer/EmployerProfileLayout';
 import EmployerRecruiterInfo from './pages/employer/EmployerRecruiterInfo';
 import EmployerCompanyInfo from './pages/employer/EmployerCompanyInfo';
 import EmployerReviews from './pages/employer/EmployerReviews';
+import EmployerWhyJoinUs from './pages/employer/EmployerWhyJoinUs';
+import TeamManagement from './pages/employer/TeamManagement';
+
+// Admin Imports
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminEmployers from './pages/admin/AdminEmployers';
+import AdminCompanies from './pages/admin/AdminCompanies';
+import AdminSupport from './pages/admin/AdminSupport';
 
 // Profile Imports
 import ProfileLayout from './pages/profile/ProfileLayout';
@@ -165,8 +176,28 @@ function App() {
           >
             <Route index element={<EmployerRecruiterInfo />} />
             <Route path="company" element={<EmployerCompanyInfo />} />
+            <Route path="why-join-us" element={<EmployerWhyJoinUs />} />
             <Route path="reviews" element={<EmployerReviews />} />
+            <Route path="team" element={<TeamManagement />} />
             <Route path="password" element={<ChangePassword />} />
+          </Route>
+
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="employers" element={<AdminEmployers />} />
+            <Route path="companies" element={<AdminCompanies />} />
+            <Route path="support" element={<AdminSupport />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Routes>
       </Layout>

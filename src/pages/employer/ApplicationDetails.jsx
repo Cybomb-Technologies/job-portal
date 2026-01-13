@@ -155,6 +155,20 @@ const ApplicationDetails = () => {
                             </div>
                         </div>
                     </div>
+
+                    {application.screeningAnswers && application.screeningAnswers.length > 0 && (
+                        <div className="mt-6">
+                            <h2 className="text-sm font-bold text-gray-900 mb-3">Screening Questions</h2>
+                            <div className="grid grid-cols-1 gap-4 bg-gray-50 rounded-xl p-4 border border-gray-100 text-left">
+                                {application.screeningAnswers.map((item, index) => (
+                                    <div key={index} className="pb-3 border-b border-gray-200 last:border-0 last:pb-0">
+                                        <p className="text-xs font-bold text-gray-500 mb-1">{item.question}</p>
+                                        <p className="text-sm font-medium text-gray-900">{item.answer}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Resume Section */}
@@ -189,19 +203,6 @@ const ApplicationDetails = () => {
                         </div>
                     )}
 
-                    {application.screeningAnswers && application.screeningAnswers.length > 0 && (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">Screening Questions</h2>
-                            <div className="space-y-4">
-                                {application.screeningAnswers.map((item, index) => (
-                                    <div key={index} className="border-b border-gray-50 last:border-0 pb-3 last:pb-0">
-                                        <p className="text-sm font-medium text-gray-700 mb-1">{item.question}</p>
-                                        <p className="text-sm text-gray-800">{item.answer}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

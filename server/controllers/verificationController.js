@@ -45,6 +45,23 @@ const sendVerificationOTP = async (req, res) => {
             });
         }
 
+        // Check 2: Is this domain already verified by someone else?
+        const existingVerifiedUser = await User.findOne({
+            _id: { $ne: user._id },
+            role: 'Employer',
+            'employerVerification.emailVerified': true,
+            email: { $regex: new RegExp(`@${emailDomain}$`, 'i') }
+        });
+
+        if (existingVerifiedUser) {
+            // If the current user also claims the same website/company name, it's definitely a duplicate
+            // Even if names differ, same domain usually means same organization
+            return res.status(403).json({
+                success: false,
+                message: `The domain "${emailDomain}" is already verified by another official representative of this company. If you are from the same organization, please coordinate with your team or contact support.`
+            });
+        }
+
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         

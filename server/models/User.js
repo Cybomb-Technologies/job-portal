@@ -25,15 +25,18 @@ const userSchema = mongoose.Schema(
     password: {
       type: String,
     },
-    role: {
-      type: String,
-      enum: ['Job Seeker', 'Employer'],
-      required: true,
-    },
+      role: {
+        type: String,
+        enum: ['Job Seeker', 'Employer', 'Admin'],
+        required: true,
+      },
     googleId: {
       type: String,
     },
     profilePicture: {
+      type: String,
+    },
+    bannerPicture: {
       type: String,
     },
     title: {
@@ -62,6 +65,10 @@ const userSchema = mongoose.Schema(
         endYear: String,
         description: String
     }],
+    totalExperience: {
+        type: Number,
+        default: 0
+    },
     education: [{
         institute: String,
         university: String,
@@ -133,6 +140,32 @@ const userSchema = mongoose.Schema(
         },
         verificationOTP: String,
         verificationOTPExpire: Date
+    },
+    whyJoinUs: {
+        videos: [{
+            url: String, // YouTube URL
+            description: String
+        }],
+        blogs: [{
+            title: String,
+            content: String,
+            date: {
+                type: Date,
+                default: Date.now
+            }
+        }]
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company'
+    },
+    companyRole: {
+        type: String,
+        enum: ['Admin', 'Recruiter']
     }
   },
   {

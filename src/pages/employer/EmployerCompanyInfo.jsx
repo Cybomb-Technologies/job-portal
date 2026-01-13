@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Camera, Save, Globe, Mail, Briefcase, Calendar, Users, Search, MapPin } from 'lucide-react';
+import { Building2, Camera, Save, Globe, Mail, Briefcase, Calendar, Users, Search, MapPin, Shield } from 'lucide-react';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { commonCompanyCategories, commonCompanyTypes } from '../../utils/profileData';
@@ -28,6 +28,8 @@ const EmployerCompanyInfo = () => {
 
     const [profilePic, setProfilePic] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [bannerPic, setBannerPic] = useState(null);
+    const [bannerPreview, setBannerPreview] = useState(null);
 
     // Autocomplete State
     const [suggestions, setSuggestions] = useState([]);
@@ -63,6 +65,9 @@ const EmployerCompanyInfo = () => {
                 if (data.profilePicture) {
                     setPreview(data.profilePicture.startsWith('http') ? data.profilePicture : `http://localhost:8000${data.profilePicture}`);
                 }
+                if (data.bannerPicture) {
+                    setBannerPreview(data.bannerPicture.startsWith('http') ? data.bannerPicture : `http://localhost:8000${data.bannerPicture}`);
+                }
                 // Keep the token from localStorage when updating context
                 const currentUser = JSON.parse(userStr);
                 login({ ...data, token: currentUser.token }); 
@@ -89,6 +94,9 @@ const EmployerCompanyInfo = () => {
             });
             if (user.profilePicture) {
                 setPreview(user.profilePicture.startsWith('http') ? user.profilePicture : `http://localhost:8000${user.profilePicture}`);
+            }
+            if (user.bannerPicture) {
+                setBannerPreview(user.bannerPicture.startsWith('http') ? user.bannerPicture : `http://localhost:8000${user.bannerPicture}`);
             }
         }
     }, [user]);
@@ -201,6 +209,14 @@ const EmployerCompanyInfo = () => {
         }
     };
 
+    const handleBannerChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setBannerPic(file);
+            setBannerPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -221,6 +237,9 @@ const EmployerCompanyInfo = () => {
         if (profilePic) {
             data.append('profilePicture', profilePic);
         }
+        if (bannerPic) {
+            data.append('bannerPicture', bannerPic);
+        }
 
         try {
             const res = await api.put('/auth/profile', data, {
@@ -235,9 +254,20 @@ const EmployerCompanyInfo = () => {
         }
     };
 
+    const isRecruiter = user?.companyRole === 'Recruiter';
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-            <h2 className="text-xl font-bold text-black mb-6">Company Information</h2>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-xl font-bold text-black">Company Information</h2>
+                    {isRecruiter && (
+                        <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
+                            <Shield size={14} /> Only company admins can edit these details.
+                        </p>
+                    )}
+                </div>
+            </div>
 
             {message && (
                 <div className="bg-green-50 text-green-700 p-4 rounded-lg border border-green-200 mb-6">
@@ -262,15 +292,45 @@ const EmployerCompanyInfo = () => {
                                 <Building2 className="w-12 h-12 text-gray-400" />
                             )}
                         </div>
-                        <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
-                            <Camera className="w-8 h-8 text-white" />
-                            <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                        </label>
+                        {!isRecruiter && (
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
+                                <Camera className="w-8 h-8 text-white" />
+                                <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                            </label>
+                        )}
                     </div>
                     <div className="flex-1 text-center sm:text-left">
                         <h3 className="text-lg font-medium text-gray-900">Company Logo</h3>
                         <p className="text-sm text-gray-500 mt-1">
                             Upload your company logo. This will be displayed on your job posts and company profile.
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2">JPG, PNG or GIF. Max 5MB.</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 pb-8 border-b border-gray-100">
+                    <div className="relative group">
+                        <div className="w-64 h-32 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300">
+                            {bannerPreview ? (
+                                <img src={bannerPreview} alt="Company Banner" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="text-center">
+                                    <Camera className="w-12 h-12 text-gray-400 mx-auto" />
+                                    <span className="text-xs text-gray-400">Add Banner</span>
+                                </div>
+                            )}
+                        </div>
+                        {!isRecruiter && (
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
+                                <Camera className="w-8 h-8 text-white" />
+                                <input type="file" className="hidden" onChange={handleBannerChange} accept="image/*" />
+                            </label>
+                        )}
+                    </div>
+                    <div className="flex-1 text-center sm:text-left">
+                        <h3 className="text-lg font-medium text-gray-900">Company Banner</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Upload a banner image for your company profile. Recommended size: 1200x400.
                         </p>
                         <p className="text-xs text-gray-400 mt-2">JPG, PNG or GIF. Max 5MB.</p>
                     </div>
@@ -287,9 +347,10 @@ const EmployerCompanyInfo = () => {
                             onChange={handleCompanyNameChange}
                             placeholder="e.g. Acme Corp"
                             autoComplete="off"
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            disabled={isRecruiter}
+                            className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         />
-                         {showSuggestions && suggestions.length > 0 && (
+                         {showSuggestions && suggestions.length > 0 && !isRecruiter && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                                 {suggestions.map((company, index) => (
                                     <div 
@@ -311,7 +372,7 @@ const EmployerCompanyInfo = () => {
                             </div>
                         )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Start typing to search for your company.</p>
+                    {!isRecruiter && <p className="text-xs text-gray-500 mt-1">Start typing to search for your company.</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -325,7 +386,8 @@ const EmployerCompanyInfo = () => {
                                 value={formData.website}
                                 onChange={handleChange}
                                 placeholder="https://example.com"
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             />
                         </div>
                     </div>
@@ -345,7 +407,8 @@ const EmployerCompanyInfo = () => {
                                 value={formData.companyEmail}
                                 onChange={handleChange}
                                 placeholder="contact@example.com"
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             />
                         </div>
                     </div>
@@ -363,12 +426,13 @@ const EmployerCompanyInfo = () => {
                             name="companyLocation"
                             value={formData.companyLocation}
                             onChange={handleChange}
-                            onFocus={() => setShowLocationSuggestions(true)}
+                            onFocus={() => !isRecruiter && setShowLocationSuggestions(true)}
                             placeholder="e.g. New York, USA"
                             autoComplete="off"
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            disabled={isRecruiter}
+                            className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                         />
-                        {showLocationSuggestions && locationSuggestions.length > 0 && (
+                        {showLocationSuggestions && locationSuggestions.length > 0 && !isRecruiter && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                                 {locationSuggestions.map((loc, index) => (
                                     <div 
@@ -385,7 +449,7 @@ const EmployerCompanyInfo = () => {
                                 ))}
                             </div>
                         )}
-                        {isLoadingLocations && (
+                        {isLoadingLocations && !isRecruiter && (
                             <div className="absolute right-3 top-3">
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
                             </div>
@@ -404,14 +468,17 @@ const EmployerCompanyInfo = () => {
                                 value={formData.companyCategory}
                                 onChange={handleChange}
                                 onFocus={() => {
-                                    setCategorySuggestions(commonCompanyCategories);
-                                    setShowCategorySuggestions(true);
+                                    if (!isRecruiter) {
+                                        setCategorySuggestions(commonCompanyCategories);
+                                        setShowCategorySuggestions(true);
+                                    }
                                 }}
                                 placeholder="e.g. IT Services, Healthcare, Fintech"
                                 autoComplete="off"
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             />
-                            {showCategorySuggestions && categorySuggestions.length > 0 && (
+                            {showCategorySuggestions && categorySuggestions.length > 0 && !isRecruiter && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                                     {categorySuggestions.map((category, index) => (
                                         <div 
@@ -439,14 +506,17 @@ const EmployerCompanyInfo = () => {
                                 value={formData.companyType}
                                 onChange={handleChange}
                                 onFocus={() => {
-                                    setTypeSuggestions(commonCompanyTypes);
-                                    setShowTypeSuggestions(true);
+                                    if (!isRecruiter) {
+                                        setTypeSuggestions(commonCompanyTypes);
+                                        setShowTypeSuggestions(true);
+                                    }
                                 }}
                                 placeholder="e.g. Private Limited, Startup, NGO"
                                 autoComplete="off"
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             />
-                            {showTypeSuggestions && typeSuggestions.length > 0 && (
+                            {showTypeSuggestions && typeSuggestions.length > 0 && !isRecruiter && (
                                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                                     {typeSuggestions.map((type, index) => (
                                         <div 
@@ -479,7 +549,8 @@ const EmployerCompanyInfo = () => {
                                 placeholder="Year (e.g. 2020)"
                                 min="1900"
                                 max={new Date().getFullYear()}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             />
                         </div>
                     </div>
@@ -491,7 +562,8 @@ const EmployerCompanyInfo = () => {
                                 name="employeeCount"
                                 value={formData.employeeCount}
                                 onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
+                                disabled={isRecruiter}
+                                className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                             >
                                 <option value="">Select Size</option>
                                 <option value="1-10">1-10 Employees</option>
@@ -512,24 +584,27 @@ const EmployerCompanyInfo = () => {
                         onChange={handleChange}
                         rows="6"
                         placeholder="Tell us about your company..."
-                        className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        disabled={isRecruiter}
+                        className={`w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${isRecruiter ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                 </div>
 
-                <div className="flex justify-end pt-4">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-6 py-2 bg-[#4169E1] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    >
-                        {loading ? 'Saving...' : (
-                            <>
-                                <Save className="w-5 h-5" />
-                                Save Changes
-                            </>
-                        )}
-                    </button>
-                </div>
+                {!isRecruiter && (
+                    <div className="flex justify-end pt-4">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2 bg-[#4169E1] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        >
+                            {loading ? 'Saving...' : (
+                                <>
+                                    <Save className="w-5 h-5" />
+                                    Save Changes
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
             </form>
         </div>
     );

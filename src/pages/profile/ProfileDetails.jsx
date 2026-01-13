@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, CheckCircle, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Sparkles } from 'lucide-react';
+import { User, Mail, CheckCircle, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle} from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
 
@@ -25,6 +25,7 @@ const ProfileDetails = () => {
     const [skills, setSkills] = useState('');
     const [currentLocation, setCurrentLocation] = useState('');
     const [preferredLocations, setPreferredLocations] = useState([]);
+    const [totalExperience, setTotalExperience] = useState(0);
     
     // Structured Data
     const [experience, setExperience] = useState([]);
@@ -138,6 +139,7 @@ const ProfileDetails = () => {
             setSkills(data.skills ? data.skills.join(', ') : '');
             setCurrentLocation(data.currentLocation || '');
             setPreferredLocations(data.preferredLocations || []);
+            setTotalExperience(data.totalExperience || 0);
             
             if (Array.isArray(data.experience)) setExperience(data.experience);
             else setExperience([]);
@@ -522,6 +524,7 @@ const ProfileDetails = () => {
         formData.append('education', JSON.stringify(education));
         formData.append('currentLocation', currentLocation);
         formData.append('preferredLocations', JSON.stringify(preferredLocations));
+        formData.append('totalExperience', totalExperience);
 
         if (profilePicture && typeof profilePicture === 'object') {
             formData.append('profilePicture', profilePicture);
@@ -734,6 +737,19 @@ const ProfileDetails = () => {
                                              {touched.title && formErrors.title && <p className="text-xs text-red-500 mt-1 font-medium">{formErrors.title}</p>}
                                         </div>
                                     </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                     <label className="block text-sm font-bold text-gray-700">Total Experience (Years)</label>
+                                     <input 
+                                         type="number" 
+                                         min="0"
+                                         step="0.1"
+                                         placeholder="e.g. 3.5"
+                                         value={totalExperience}
+                                         onChange={(e) => setTotalExperience(parseFloat(e.target.value) || 0)}
+                                         className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all border-gray-200 focus:border-[#4169E1]`}
+                                     />
                                 </div>
 
                                 <div className="space-y-2">

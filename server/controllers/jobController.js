@@ -15,22 +15,18 @@ const createJob = async (req, res) => {
     // Let's assume req.user might not have employerVerification if it's a new field and token isn't refreshed.
     // Safe bet: fetch user.
     
-    if (user.employerVerification.level < 1) {
-        // Option 1: Block entirely
-        // return res.status(403).json({ message: 'You must verify your company identity (Level 1) to post jobs.' });
-        
-        // Option 2: Allow but set to Draft/Hidden (As per user request "Cannot publish jobs publicly")
-        // We'll set status to 'Closed' or a new 'Draft' status if we had one. 
-        // User request says "Create profile, Post drafts". 
-        // So let's force status to 'Closed' if they try to set 'Active'
+    const company = await require('../models/Company').findById(user.companyId);
+
+    if (!company || company.employerVerification.level < 1) {
         if (req.body.status !== 'Closed') {
-             return res.status(403).json({ message: 'Unverified employers can only post Drafts (Closed jobs). Please verify your identity to publish active jobs.' });
+             return res.status(403).json({ message: 'Unverified companies can only post Drafts (Closed jobs). Please verify your company identity to publish active jobs.' });
         }
     }
 
     const job = await Job.create({
       ...req.body,
       postedBy: req.user._id,
+      companyId: user.companyId
     });
     res.status(201).json(job);
   } catch (error) {
@@ -161,8 +157,9 @@ const getJobById = async (req, res) => {
 // @access  Private (Employer only)
 const getMyJobs = async (req, res) => {
   try {
+      const query = req.user.companyId ? { companyId: req.user.companyId } : { postedBy: req.user._id };
       const jobs = await Job.aggregate([
-          { $match: { postedBy: req.user._id } },
+          { $match: query },
           {
               $lookup: {
                   from: 'applications',
@@ -197,7 +194,11 @@ const updateJob = async (req, res) => {
   const job = await Job.findById(req.params.id);
 
   if (job) {
-    if (job.postedBy.toString() !== req.user._id.toString()) {
+    // Check if user belongs to the same company or is the original author
+    const isOwner = job.postedBy.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && job.companyId && job.companyId.toString() === req.user.companyId.toString();
+
+    if (!isOwner && !isCompanyMember) {
       return res.status(401).json({ message: 'Not authorized to update this job' });
     }
 
@@ -230,7 +231,10 @@ const deleteJob = async (req, res) => {
   const job = await Job.findById(req.params.id);
 
   if (job) {
-    if (job.postedBy.toString() !== req.user._id.toString()) {
+    const isOwner = job.postedBy.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && job.companyId && job.companyId.toString() === req.user.companyId.toString();
+
+    if (!isOwner && !isCompanyMember) {
       return res.status(401).json({ message: 'Not authorized to delete this job' });
     }
 
@@ -246,7 +250,8 @@ const deleteJob = async (req, res) => {
 // @access  Private (Employer)
 const getEmployerStats = async (req, res) => {
     try {
-        const jobs = await Job.find({ postedBy: req.user._id });
+        const query = req.user.companyId ? { companyId: req.user.companyId } : { postedBy: req.user._id };
+        const jobs = await Job.find(query);
         const jobIds = jobs.map(job => job._id);
 
         const activeJobs = jobs.filter(job => job.status === 'Active').length;

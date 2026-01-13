@@ -37,6 +37,8 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/candidates', candidateRoutes);
 app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/team', require('./routes/teamRoutes'));
 // app.use('/api/scrape', require('./routes/scrapingRoutes')); // Removed in favor of custom reviews
 
 // Make uploads folder static

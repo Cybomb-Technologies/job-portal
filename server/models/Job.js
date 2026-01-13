@@ -89,6 +89,10 @@ const jobSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company'
+    },
     jobId: {
         type: String,
         unique: true

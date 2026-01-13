@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Company = require('../models/Company');
 const Job = require('../models/Job');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
@@ -23,16 +24,8 @@ const authUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      companyName: user.companyName,
-      website: user.website,
-      companyEmail: user.companyEmail,
-      companyLocation: user.companyLocation,
-      companyCategory: user.companyCategory,
-      companyType: user.companyType,
-      foundedYear: user.foundedYear,
-      employeeCount: user.employeeCount,
-      about: user.about,
-      profilePicture: user.profilePicture,
+      companyId: user.companyId,
+      companyRole: user.companyRole,
       token: generateToken(user._id),
     });
   } else {
@@ -57,16 +50,8 @@ const registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      companyName: user.companyName,
-      website: user.website,
-      companyEmail: user.companyEmail,
-      companyLocation: user.companyLocation,
-      companyCategory: user.companyCategory,
-      companyType: user.companyType,
-      foundedYear: user.foundedYear,
-      employeeCount: user.employeeCount,
-      about: user.about,
-      profilePicture: user.profilePicture,
+      companyId: user.companyId,
+      companyRole: user.companyRole,
       token: generateToken(user._id),
     });
   } else {
@@ -95,16 +80,8 @@ const googleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        companyName: user.companyName,
-        website: user.website,
-        companyEmail: user.companyEmail,
-        companyLocation: user.companyLocation,
-        companyCategory: user.companyCategory,
-        companyType: user.companyType,
-        foundedYear: user.foundedYear,
-        employeeCount: user.employeeCount,
-        about: user.about,
-        profilePicture: user.profilePicture,
+        companyId: user.companyId,
+        companyRole: user.companyRole,
         token: generateToken(user._id),
       });
     } else {
@@ -123,15 +100,8 @@ const googleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        companyName: user.companyName,
-        website: user.website,
-        companyEmail: user.companyEmail,
-        companyCategory: user.companyCategory,
-        companyType: user.companyType,
-        foundedYear: user.foundedYear,
-        employeeCount: user.employeeCount,
-        about: user.about,
-        profilePicture: user.profilePicture,
+        companyId: user.companyId,
+        companyRole: user.companyRole,
         token: generateToken(user._id),
       });
     }
@@ -223,17 +193,9 @@ const getUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
-    res.json({
+    let responseData = {
       _id: user._id,
       name: user.name,
-      companyName: user.companyName,
-      website: user.website,
-      companyEmail: user.companyEmail,
-      companyLocation: user.companyLocation,
-      companyCategory: user.companyCategory,
-      companyType: user.companyType,
-      foundedYear: user.foundedYear,
-      employeeCount: user.employeeCount,
       email: user.email,
       role: user.role,
       title: user.title,
@@ -247,7 +209,50 @@ const getUserProfile = async (req, res) => {
       resume: user.resume,
       resumes: user.resumes,
       profilePicture: user.profilePicture,
-    });
+      bannerPicture: user.bannerPicture,
+      companyId: user.companyId,
+      companyRole: user.companyRole,
+      totalExperience: user.totalExperience
+    };
+
+    if (user.companyId) {
+        const company = await Company.findById(user.companyId);
+        if (company) {
+            responseData = {
+                ...responseData,
+                companyName: company.name,
+                website: company.website,
+                companyEmail: company.companyEmail,
+                companyLocation: company.companyLocation,
+                companyCategory: company.companyCategory,
+                companyType: company.companyType,
+                foundedYear: company.foundedYear,
+                employeeCount: company.employeeCount,
+                about: company.about, // Company about
+                profilePicture: company.profilePicture, // Company Logo
+                bannerPicture: company.bannerPicture,
+                whyJoinUs: company.whyJoinUs,
+                employerVerification: company.employerVerification
+            };
+        }
+    } else {
+        // Fallback for non-team users or job seekers
+        responseData = {
+            ...responseData,
+            companyName: user.companyName,
+            website: user.website,
+            companyEmail: user.companyEmail,
+            companyLocation: user.companyLocation,
+            companyCategory: user.companyCategory,
+            companyType: user.companyType,
+            foundedYear: user.foundedYear,
+            employeeCount: user.employeeCount,
+            whyJoinUs: user.whyJoinUs,
+            employerVerification: user.employerVerification
+        };
+    }
+
+    res.json(responseData);
   } else {
     res.status(404).json({ message: 'User not found' });
   }
@@ -260,169 +265,164 @@ const updateUserProfile = async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
+    // 1. Update Personal Info (Always)
     user.name = req.body.name || user.name;
-    user.companyName = req.body.companyName || user.companyName;
-    user.website = req.body.website || user.website;
-    user.companyEmail = req.body.companyEmail || user.companyEmail;
-    user.companyLocation = req.body.companyLocation || user.companyLocation;
-    user.companyCategory = req.body.companyCategory || user.companyCategory;
-    user.companyType = req.body.companyType || user.companyType;
-    user.foundedYear = req.body.foundedYear || user.foundedYear;
-    user.employeeCount = req.body.employeeCount || user.employeeCount;
-
-    // Email cannot be edited
     user.title = req.body.title || user.title;
-    user.about = req.body.about || user.about;
+    user.about = req.body.about || user.about; // Personal bio
     user.currentLocation = req.body.currentLocation || user.currentLocation;
     
-    if (req.body.preferredLocations) {
-        if (typeof req.body.preferredLocations === 'string') {
-            try {
-                user.preferredLocations = JSON.parse(req.body.preferredLocations);
-            } catch (e) {
-                user.preferredLocations = [req.body.preferredLocations];
-            }
-        } else {
-            user.preferredLocations = req.body.preferredLocations;
-        }
+    if (req.body.totalExperience !== undefined) {
+        user.totalExperience = Number(req.body.totalExperience);
     }
-    
-    // Parse structured data (coming as JSON strings from FormData)
+
+    // Handle structured personal data
     if (req.body.skills) {
-         // Handle both comma-separated string and array
-         if (typeof req.body.skills === 'string') {
-            user.skills = req.body.skills.split(',').map(skill => skill.trim());
-         } else if (Array.isArray(req.body.skills)) {
-            user.skills = req.body.skills;
-         }
+      user.skills = typeof req.body.skills === 'string' 
+        ? req.body.skills.split(',').map(s => s.trim()) 
+        : req.body.skills;
     }
-    
+
     if (req.body.experience) {
-        if (typeof req.body.experience === 'string') {
-            // Try to parse as JSON first
-            try {
-                const parsed = JSON.parse(req.body.experience);
-                if (Array.isArray(parsed)) user.experience = parsed;
-                else user.experience = [{ description: req.body.experience }];
-            } catch (e) {
-                // If parse fails, treat as simple string description
-                user.experience = [{ description: req.body.experience }];
-            }
-        } else if (Array.isArray(req.body.experience)) {
-             user.experience = req.body.experience;
-        }
+        try {
+            user.experience = typeof req.body.experience === 'string' ? JSON.parse(req.body.experience) : req.body.experience;
+        } catch (e) { user.experience = [{ description: req.body.experience }]; }
     }
 
     if (req.body.education) {
-        if (typeof req.body.education === 'string') {
-            try {
-                const parsed = JSON.parse(req.body.education);
-                if (Array.isArray(parsed)) user.education = parsed;
-                else user.education = [{ degree: req.body.education }];
-            } catch (e) {
-                user.education = [{ degree: req.body.education }];
-            }
-        } else if (Array.isArray(req.body.education)) {
-            user.education = req.body.education;
-        }
+        try {
+            user.education = typeof req.body.education === 'string' ? JSON.parse(req.body.education) : req.body.education;
+        } catch (e) { user.education = [{ degree: req.body.education }]; }
     }
 
     if (req.body.certifications) {
-         try {
-             if (typeof req.body.certifications === 'string') {
-                  user.certifications = JSON.parse(req.body.certifications);
-             } else {
-                  user.certifications = req.body.certifications;
-             }
+        try {
+            user.certifications = typeof req.body.certifications === 'string' ? JSON.parse(req.body.certifications) : req.body.certifications;
         } catch (e) { console.error("Error parsing certifications", e); }
     }
-    
-    // Handle Files
+
+    if (req.body.preferredLocations) {
+        try {
+            user.preferredLocations = typeof req.body.preferredLocations === 'string' ? JSON.parse(req.body.preferredLocations) : req.body.preferredLocations;
+        } catch (e) { user.preferredLocations = [req.body.preferredLocations]; }
+    }
+
+    // Handle Personal Files (Avatars, Resumes)
     if (req.files) {
-        if (req.files.profilePicture) {
+        if (req.files.profilePicture && user.role !== 'Employer') {
             user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
         }
         if (req.files.resume) {
-            // Check limit (Max 3)
-            if (user.resumes.length >= 3) {
-                 return res.status(400).json({ message: 'Maximum 3 resumes allowed. Please delete one to upload a new one.' });
-            }
-
-            const newResumePath = `/uploads/${req.files.resume[0].filename}`;
-            const newResumeName = req.files.resume[0].originalname;
-
-            // Add to resumes array
-            user.resumes.push({
-                name: newResumeName,
-                file: newResumePath,
-                uploadedAt: new Date()
-            });
-
-            // Set as active resume
-            user.resume = newResumePath;
+            if (user.resumes.length >= 3) return res.status(400).json({ message: 'Maximum 3 resumes allowed.' });
+            const path = `/uploads/${req.files.resume[0].filename}`;
+            user.resumes.push({ name: req.files.resume[0].originalname, file: path, uploadedAt: new Date() });
+            user.resume = path;
         }
     }
-    
-    // Handle Setting Active Resume
+
+    // Handle Resumes (Delete/Set Active)
     if (req.body.activeResumeId) {
-        const targetResume = user.resumes.id(req.body.activeResumeId);
-        if (targetResume) {
-            user.resume = targetResume.file;
-        }
+        const target = user.resumes.id(req.body.activeResumeId);
+        if (target) user.resume = target.file;
     }
-
-    // Handle Resume Deletion
     if (req.body.deleteResumeId) {
         const resumeToDelete = user.resumes.id(req.body.deleteResumeId);
         if (resumeToDelete) {
-            // Remove from array
             user.resumes.pull(req.body.deleteResumeId);
-            
-            // If the deleted resume was the active one, pick the most recent one or null
             if (user.resume === resumeToDelete.file) {
-                if (user.resumes.length > 0) {
-                    // Set the last one as active
-                    user.resume = user.resumes[user.resumes.length - 1].file;
-                } else {
-                    user.resume = undefined;
-                }
+                user.resume = user.resumes.length > 0 ? user.resumes[user.resumes.length - 1].file : undefined;
             }
         }
-    } else if (req.body.deleteResume === 'true') {
-        // Fallback for old single delete logic - clear active and all resumes? 
-        // Or just clear active? Let's assume clear all for safety or just handle legacy
-        user.resume = undefined;
-        user.resumes = []; 
+    }
+
+    // 2. Update Company Info (Only for Admin role)
+    let company = null;
+    if (user.role === 'Employer' && user.companyId) {
+        company = await Company.findById(user.companyId);
+        if (company) {
+            // Only update company fields if user is Admin
+            if (user.companyRole === 'Admin') {
+                company.name = req.body.companyName || company.name;
+                company.website = req.body.website ? req.body.website.toLowerCase() : company.website;
+                company.companyEmail = req.body.companyEmail || company.companyEmail;
+                company.companyLocation = req.body.companyLocation || company.companyLocation;
+                company.companyCategory = req.body.companyCategory || company.companyCategory;
+                company.companyType = req.body.companyType || company.companyType;
+                company.foundedYear = req.body.foundedYear || company.foundedYear;
+                company.employeeCount = req.body.employeeCount || company.employeeCount;
+                company.about = req.body.about || company.about; // Company bio
+
+                if (req.body.whyJoinUs) {
+                    try {
+                        company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+                    } catch (e) { console.error("Error parsing whyJoinUs", e); }
+                }
+
+                // Handle Company Files
+                if (req.files) {
+                    if (req.files.profilePicture) {
+                        company.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+                    }
+                    if (req.files.bannerPicture) {
+                        company.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
+                    }
+                }
+
+                await company.save();
+            }
+        }
+    } else if (user.role === 'Employer' && !user.companyId) {
+        // Fallback for legacy employers not yet migrated
+        user.companyName = req.body.companyName || user.companyName;
+        user.website = req.body.website ? req.body.website.toLowerCase() : user.website;
+        // ... other fields as fallback
+        if (req.files?.profilePicture) user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
     }
 
     const updatedUser = await user.save();
 
-    res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      companyName: updatedUser.companyName,
-      website: updatedUser.website,
-      companyEmail: updatedUser.companyEmail,
-      companyLocation: updatedUser.companyLocation,
-      companyCategory: updatedUser.companyCategory,
-      companyType: updatedUser.companyType,
-      foundedYear: updatedUser.foundedYear,
-      employeeCount: updatedUser.employeeCount,
-      title: updatedUser.title,
-      about: updatedUser.about,
-      skills: updatedUser.skills,
-      experience: updatedUser.experience,
-      education: updatedUser.education,
-      certifications: updatedUser.certifications,
-      currentLocation: updatedUser.currentLocation,
-      preferredLocations: updatedUser.preferredLocations,
-      resume: updatedUser.resume,
-      resumes: updatedUser.resumes,
-      profilePicture: updatedUser.profilePicture,
-      token: generateToken(updatedUser._id),
-    });
+    // 3. Return Merged Profile
+    let responseData = {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        title: updatedUser.title,
+        about: updatedUser.about, // User about
+        skills: updatedUser.skills,
+        experience: updatedUser.experience,
+        education: updatedUser.education,
+        certifications: updatedUser.certifications,
+        currentLocation: updatedUser.currentLocation,
+        preferredLocations: updatedUser.preferredLocations,
+        resume: updatedUser.resume,
+        resumes: updatedUser.resumes,
+        profilePicture: updatedUser.profilePicture,
+        bannerPicture: updatedUser.bannerPicture,
+        companyId: updatedUser.companyId,
+        companyRole: updatedUser.companyRole,
+        token: generateToken(updatedUser._id)
+    };
+
+    if (company) {
+        responseData = {
+            ...responseData,
+            companyName: company.name,
+            website: company.website,
+            companyEmail: company.companyEmail,
+            companyLocation: company.companyLocation,
+            companyCategory: company.companyCategory,
+            companyType: company.companyType,
+            foundedYear: company.foundedYear,
+            employeeCount: company.employeeCount,
+            about: company.about, // Company about
+            profilePicture: company.profilePicture, // Company logo
+            bannerPicture: company.bannerPicture,
+            whyJoinUs: company.whyJoinUs,
+            employerVerification: company.employerVerification
+        };
+    }
+
+    res.json(responseData);
   } else {
     res.status(404).json({ message: 'User not found' });
   }
@@ -453,13 +453,36 @@ const changePassword = async (req, res) => {
 // @access  Public
 const getPublicUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    // Try fetching as Company ID first
+    let company = await Company.findById(req.params.id);
+    
+    if (company) {
+      return res.json({
+        _id: company._id,
+        companyName: company.name,
+        website: company.website,
+        companyEmail: company.companyEmail,
+        companyLocation: company.companyLocation,
+        companyCategory: company.companyCategory,
+        companyType: company.companyType,
+        foundedYear: company.foundedYear,
+        employeeCount: company.employeeCount,
+        about: company.about,
+        location: company.companyLocation,
+        profilePicture: company.profilePicture,
+        bannerPicture: company.bannerPicture,
+        employerVerification: company.employerVerification,
+        whyJoinUs: company.whyJoinUs,
+        isCompanyEntity: true
+      });
+    }
 
+    // Fallback to User if not a Company (Legacy compatibility or Job Seeker profile)
+    const user = await User.findById(req.params.id);
     if (user) {
-      // Only return public info needed for company profile
       res.json({
         _id: user._id,
-        name: user.name, // Employer Name (or Company Representative)
+        name: user.name,
         companyName: user.companyName,
         website: user.website,
         companyEmail: user.companyEmail,
@@ -468,15 +491,17 @@ const getPublicUserProfile = async (req, res) => {
         companyType: user.companyType,
         foundedYear: user.foundedYear,
         employeeCount: user.employeeCount,
-        email: user.email, // Can limit if privacy needed, but often useful for contact
+        email: user.email,
         about: user.about,
         location: user.companyLocation || user.currentLocation,  
         profilePicture: user.profilePicture,
+        bannerPicture: user.bannerPicture,
         role: user.role,
-        employerVerification: user.employerVerification
+        employerVerification: user.employerVerification,
+        whyJoinUs: user.whyJoinUs,
       });
     } else {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: 'Profile not found' });
     }
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -499,14 +524,15 @@ const deleteAccount = async (req, res) => {
 // @access  Public
 const getCompanies = async (req, res) => {
   try {
-    const employers = await User.find({ role: 'Employer', companyName: { $exists: true, $ne: '' } })
-      .select('_id companyName companyLocation companyCategory companyType employeeCount about profilePicture website');
+    const companies = await Company.find({});
 
     const companiesWithJobCount = await Promise.all(
-      employers.map(async (employer) => {
-        const jobCount = await Job.countDocuments({ postedBy: employer._id, status: 'Active' });
+      companies.map(async (company) => {
+        const jobCount = await Job.countDocuments({ companyId: company._id, status: 'Active' });
         return {
-          ...employer._doc,
+          ...company._doc,
+          companyName: company.name, // compatibility with frontend
+          companyLocation: company.companyLocation,
           jobCount,
         };
       })

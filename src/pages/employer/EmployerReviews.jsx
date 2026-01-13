@@ -25,7 +25,7 @@ const EmployerReviews = () => {
 
     const toggleVisibility = async (id) => {
         try {
-            const { data } = await api.put(`/reviews/${id}/visibility`);
+            const { data } = await api.patch(`/reviews/${id}/visibility`);
             setReviews(reviews.map(review => 
                 review._id === id ? { ...review, isHidden: data.isHidden } : review
             ));
@@ -68,15 +68,17 @@ const EmployerReviews = () => {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
-                                        {review.candidate?.profilePicture ? (
-                                             <img src={review.candidate.profilePicture} alt={review.candidate.name} className="w-full h-full object-cover" />
+                                        {review.reviewer?.profilePicture ? (
+                                             <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `http://localhost:8000${review.reviewer.profilePicture}`} alt={review.reviewer.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            review.candidate?.name?.charAt(0) || 'U'
+                                            review.reviewer?.name?.charAt(0) || 'U'
                                         )}
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-gray-900">{review.title}</h4>
-                                        <p className="text-sm text-gray-500">by {review.candidate?.name || 'Anonymous'}</p>
+                                        <h4 className="font-bold text-gray-900">{review.title || 'Company Review'}</h4>
+                                        <p className="text-sm text-gray-500">
+                                            by {review.reviewer?.name || (review.reviewerType === 'Employee' ? 'Verified Employee' : 'Anonymous')}
+                                        </p>
                                     </div>
                                 </div>
                                 <button 
