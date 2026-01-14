@@ -22,15 +22,26 @@ const createReview = async (req, res) => {
             return res.status(401).json({ message: 'You must be logged in to leave a public review. For employee reviews, please use your work email.' });
         }
 
-        // Check if company exists
-        const company = await User.findById(companyId);
-        if (!company || company.role !== 'Employer') {
+        // Check if company exists (Handle both User ID and Company ID)
+        let targetUserId = companyId;
+        let companyUser = await User.findById(companyId);
+
+        if (!companyUser) {
+            // Try as Company ID
+            const companyObj = await Company.findById(companyId);
+            if (companyObj) {
+                // Find Admin user for this company
+                companyUser = await User.findOne({ companyId: companyId, companyRole: 'Admin' });
+            }
+        }
+
+        if (!companyUser || companyUser.role !== 'Employer') {
             return res.status(404).json({ message: 'Company not found' });
         }
 
         const reviewData = {
             reviewer: req.user?._id, // Optional for employees
-            company: companyId,
+            company: companyUser._id, // Always store User ID
             rating,
             comment,
             reviewerType,
@@ -44,9 +55,9 @@ const createReview = async (req, res) => {
             }
 
             // Strict domain check vs company website
-            if (company.website) {
+            if (companyUser.website) {
                 // Extract domain from website (e.g., google.com from https://www.google.com/about)
-                const companyDomain = company.website
+                const companyDomain = companyUser.website
                     .replace('https://', '')
                     .replace('http://', '')
                     .replace('www.', '')
@@ -70,7 +81,7 @@ const createReview = async (req, res) => {
 
                 if (!isDirectMatch && !isCrossTldMatch) {
                     return res.status(400).json({ 
-                        message: `Invalid email domain. Reviews for ${company.companyName} must be verified using a @${companyDomain} (or .com equivalent) email address.` 
+                        message: `Invalid email domain. Reviews for ${companyUser.companyName} must be verified using a @${companyDomain} (or .com equivalent) email address.` 
                     });
                 }
             } else {
@@ -92,14 +103,14 @@ const createReview = async (req, res) => {
         if (reviewerType === 'Employee') {
             // Send verification email
             const verifyUrl = `${req.protocol}://${req.get('host')}/api/reviews/verify/${review.verificationToken}`;
-            const message = `Please verify your employment at ${company.companyName} by clicking the link below: \n\n ${verifyUrl}`;
+            const message = `Please verify your employment at ${companyUser.companyName || companyUser.name} by clicking the link below: \n\n ${verifyUrl}`;
             
             try {
                 await sendEmail({
                     email: employeeEmail,
                     subject: 'Employment Verification for Review',
                     message,
-                    html: `<p>Please verify your employment at <strong>${company.companyName}</strong> to publish your review.</p><p><a href="${verifyUrl}">Click here to verify</a></p>`
+                    html: `<p>Please verify your employment at <strong>${companyUser.companyName || companyUser.name}</strong> to publish your review.</p><p><a href="${verifyUrl}">Click here to verify</a></p>`
                 });
                 return res.status(201).json({ 
                     message: 'Review submitted. Please check your workplace email to verify and publish.',
@@ -181,8 +192,19 @@ const getCompanyReviews = async (req, res) => {
         const { id } = req.params;
         const { sort = 'newest', rating } = req.query;
 
+        let targetIds = [id];
+
+        // check if ID is a Company ID
+        const companyObj = await Company.findById(id);
+        if (companyObj) {
+             const companyUsers = await User.find({ companyId: id }).select('_id');
+             if (companyUsers.length > 0) {
+                 targetIds = companyUsers.map(u => u._id);
+             }
+        }
+
         let query = { 
-            company: id, 
+            company: { $in: targetIds }, 
             isVerified: true, 
             isHidden: false 
         };

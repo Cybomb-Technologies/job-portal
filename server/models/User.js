@@ -166,7 +166,15 @@ const userSchema = mongoose.Schema(
     companyRole: {
         type: String,
         enum: ['Admin', 'Recruiter']
-    }
+    },
+    following: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User' // For Job Seekers: Companies they follow
+    }],
+    followers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User' // For Companies: Job Seekers following them
+    }]
   },
   {
     timestamps: true,

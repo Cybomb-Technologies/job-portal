@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
 import api from '../../api';
 
 const ApplicationDetails = () => {
@@ -9,6 +9,7 @@ const ApplicationDetails = () => {
     const [application, setApplication] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         const fetchApplication = async () => {
@@ -74,6 +75,14 @@ const ApplicationDetails = () => {
         }
     };
 
+    const handleCopyEmail = () => {
+        if (application?.applicant?.email) {
+            navigator.clipboard.writeText(application.applicant.email);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
     if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
     if (!application) return <div className="text-center p-10">Application not found</div>;
@@ -119,9 +128,16 @@ const ApplicationDetails = () => {
                                 <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                                     <div className="flex items-center">
                                         <Mail className="w-4 h-4 mr-1.5" />
-                                        <a href={`mailto:${application.applicant.email}`} className="hover:text-[#4169E1] transition-colors">
+                                        <a href={`mailto:${application.applicant.email}`} className="hover:text-[#4169E1] transition-colors mr-2">
                                             {application.applicant.email}
                                         </a>
+                                        <button 
+                                            onClick={handleCopyEmail}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#4169E1]"
+                                            title="Copy Email"
+                                        >
+                                            {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        </button>
                                     </div>
                                     <div className="flex items-center">
                                         <Calendar className="w-4 h-4 mr-1.5" />

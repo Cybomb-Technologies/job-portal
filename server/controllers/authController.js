@@ -1,6 +1,7 @@
 const User = require('../models/User');
-const Company = require('../models/Company');
 const Job = require('../models/Job');
+const jwt = require('jsonwebtoken');
+const Company = require('../models/Company');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
@@ -212,7 +213,9 @@ const getUserProfile = async (req, res) => {
       bannerPicture: user.bannerPicture,
       companyId: user.companyId,
       companyRole: user.companyRole,
-      totalExperience: user.totalExperience
+      totalExperience: user.totalExperience,
+      following: user.following,
+      followers: user.followers
     };
 
     if (user.companyId) {
@@ -306,10 +309,13 @@ const updateUserProfile = async (req, res) => {
         } catch (e) { user.preferredLocations = [req.body.preferredLocations]; }
     }
 
-    // Handle Personal Files (Avatars, Resumes)
+    // Handle Personal Files (Avatars, Resumes, Banners)
     if (req.files) {
         if (req.files.profilePicture && user.role !== 'Employer') {
             user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+        }
+        if (req.files.bannerPicture && user.role !== 'Employer') {
+             user.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
         }
         if (req.files.resume) {
             if (user.resumes.length >= 3) return res.status(400).json({ message: 'Maximum 3 resumes allowed.' });
@@ -400,7 +406,9 @@ const updateUserProfile = async (req, res) => {
         bannerPicture: updatedUser.bannerPicture,
         companyId: updatedUser.companyId,
         companyRole: updatedUser.companyRole,
-        token: generateToken(updatedUser._id)
+        token: generateToken(updatedUser._id),
+        following: updatedUser.following,
+        followers: updatedUser.followers
     };
 
     if (company) {
@@ -522,27 +530,117 @@ const deleteAccount = async (req, res) => {
 // @desc    Get all companies (Employers)
 // @route   GET /api/auth/companies
 // @access  Public
+
+// ... (Inside getCompanies)
+
+// @route   GET /api/auth/companies
+// @access  Public
 const getCompanies = async (req, res) => {
-  try {
-    const companies = await Company.find({});
+    try {
+        const { search, location } = req.query;
+        let query = { role: 'Employer', isActive: true };
 
-    const companiesWithJobCount = await Promise.all(
-      companies.map(async (company) => {
-        const jobCount = await Job.countDocuments({ companyId: company._id, status: 'Active' });
-        return {
-          ...company._doc,
-          companyName: company.name, // compatibility with frontend
-          companyLocation: company.companyLocation,
-          jobCount,
-        };
-      })
-    );
+        if (search) {
+            query.companyName = { $regex: search, $options: 'i' };
+        }
+        if (location) {
+            query.companyLocation = { $regex: location, $options: 'i' };
+        }
 
-    res.json(companiesWithJobCount);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
-  }
+        const companies = await User.find(query).select('-password');
+
+        // Add Job Count
+        const companiesWithJobs = await Promise.all(companies.map(async (company) => {
+            const jobCount = await Job.countDocuments({ 
+                postedBy: company._id, 
+                status: 'Active' 
+            });
+            return {
+                ...company.toObject(),
+                jobCount
+            };
+        }));
+
+        res.json(companiesWithJobs);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Follow a company
+// @route   POST /api/auth/follow/:id
+// @access  Private (Job Seeker)
+const followCompany = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        const jobSeekerId = req.user._id;
+
+        const company = await User.findById(companyId);
+        if (!company || company.role !== 'Employer') {
+             return res.status(404).json({ message: 'Company not found' });
+        }
+
+        // Add to Job Seeker's following list
+        await User.findByIdAndUpdate(jobSeekerId, {
+            $addToSet: { following: companyId }
+        });
+
+        // Add to Company's followers list
+        await User.findByIdAndUpdate(companyId, {
+            $addToSet: { followers: jobSeekerId }
+        });
+
+        const Notification = require('../models/Notification');
+        await Notification.create({
+            recipient: companyId,
+            sender: jobSeekerId,
+            type: 'FOLLOW',
+            message: `${req.user.name} started following your company`,
+            relatedId: jobSeekerId,
+            relatedModel: 'User'
+        });
+
+        // Real-time Push Notification
+        if (req.io) {
+            req.io.to(companyId).emit('notification', {
+                message: `${req.user.name} started following your company`,
+                type: 'FOLLOW'
+            });
+        }
+
+        res.json({ message: 'Followed successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Unfollow a company
+// @route   DELETE /api/auth/unfollow/:id
+// @access  Private (Job Seeker)
+const unfollowCompany = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        const jobSeekerId = req.user._id;
+
+        // Remove from Job Seeker's following list
+        await User.findByIdAndUpdate(jobSeekerId, {
+            $pull: { following: companyId }
+        });
+
+        // Remove from Company's followers list
+        await User.findByIdAndUpdate(companyId, {
+            $pull: { followers: jobSeekerId }
+        });
+
+        res.json({ message: 'Unfollowed successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
 module.exports = { 
@@ -556,5 +654,7 @@ module.exports = {
   changePassword,
   deleteAccount,
   getPublicUserProfile,
-  getCompanies
+  getCompanies,
+  followCompany,
+  unfollowCompany
 };

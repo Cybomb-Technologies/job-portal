@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import JobFilters from '../components/jobs/JobFilters';
 import JobCard from '../components/jobs/JobCard';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { Grid, List, Search, MapPin, SlidersHorizontal } from 'lucide-react';
 
 const Jobs = () => {
@@ -11,7 +12,23 @@ const Jobs = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+        if (user && user.role === 'Job Seeker') {
+            try {
+                const { data } = await api.get('/jobs/recommendations');
+                setRecommendedJobs(data);
+            } catch (err) {
+                console.error('Failed to fetch recommendations', err);
+            }
+        }
+    };
+    fetchRecommendations();
+  }, [user]);
 
   // Filters State
   const [filters, setFilters] = useState({
@@ -207,6 +224,29 @@ const Jobs = () => {
 
               </div>
             </div>
+
+            {/* Recommended Jobs Section */}
+            {user && user.role === 'Job Seeker' && recommendedJobs.length > 0 && !searchQuery && !filters.jobType && !filters.location && !filters.experience && (
+                <div className="mb-10">
+                    <div className="flex items-center gap-2 mb-4">
+                        
+                        <h2 className="text-xl font-bold text-gray-900">Recommended For You</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {recommendedJobs.map((job) => (
+                            <div key={`rec-${job._id}`} className="relative">
+                                <div className="absolute -top-2 -left-2 bg-yellow-400 text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
+                                    
+                                    Best Match
+                                </div>
+                                <JobCard job={job} />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="my-8 border-t border-gray-200"></div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">All Jobs</h2>
+                </div>
+            )}
 
             {/* Jobs Grid/List */}
             {loading ? (

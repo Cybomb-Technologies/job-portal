@@ -47,6 +47,7 @@ import ContactUs from './pages/ContactUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import SalaryCalculator from './pages/SalaryCalculator';
+import ReportIssue from './pages/ReportIssue';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -75,6 +76,7 @@ function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/salary-calculator" element={<SalaryCalculator />} />
+          <Route path="/report-issue" element={<ReportIssue />} />
           
           {/* Enhanced Profile Routes */}
           <Route 

@@ -58,6 +58,25 @@ const applyToJob = async (req, res) => {
       agreedToTerms
     });
 
+    // Notify Employer
+    const Notification = require('../models/Notification');
+    await Notification.create({
+        recipient: job.postedBy, // Assuming postedBy is the Recruiter/Owner
+        sender: req.user._id,
+        type: 'NEW_APPLICATION',
+        message: `${req.user.name} applied for ${job.title}`,
+        relatedId: application._id,
+        relatedModel: 'Application'
+    });
+
+    // Real-time Push Notification
+    if (req.io) {
+        req.io.to(job.postedBy.toString()).emit('notification', {
+            message: `${req.user.name} applied for ${job.title}`,
+            type: 'NEW_APPLICATION'
+        });
+    }
+
     res.status(201).json(application);
   } catch (error) {
     res.status(400).json({ message: 'Application failed: ' + error.message });

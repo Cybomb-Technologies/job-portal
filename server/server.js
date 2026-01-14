@@ -18,11 +18,44 @@ const chatRoutes = require('./routes/chatRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:5173", // Vite default port
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    }
+});
+
+// Socket.io Connection Handler
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+
+    socket.on('join', (userId) => {
+        if (userId) {
+            socket.join(userId);
+            console.log(`User ${userId} joined room`);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected', socket.id);
+    });
+});
+
 const PORT = process.env.PORT || 8000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Attach io to req
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 // Database Connection
 connectDB();
@@ -39,6 +72,8 @@ app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/team', require('./routes/teamRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/issues', require('./routes/issueRoutes'));
 // app.use('/api/scrape', require('./routes/scrapingRoutes')); // Removed in favor of custom reviews
 
 // Make uploads folder static
@@ -48,6 +83,6 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

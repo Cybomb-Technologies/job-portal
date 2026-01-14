@@ -12,7 +12,9 @@ const {
     changePassword,
     deleteAccount,
     getPublicUserProfile,
-    getCompanies
+    getCompanies,
+    followCompany,
+    unfollowCompany
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -69,5 +71,7 @@ router.route('/profile')
 router.put('/update-password', protect, changePassword);
 router.get('/user/:id', getPublicUserProfile);
 router.get('/companies', getCompanies);
+router.post('/follow/:id', protect, followCompany);
+router.delete('/unfollow/:id', protect, unfollowCompany);
 
 module.exports = router;

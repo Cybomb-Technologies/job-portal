@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, MapPin, Briefcase, GraduationCap, Calendar, Mail, Phone, ExternalLink, ArrowLeft, Download, X, Eye, Award } from 'lucide-react';
+import { User, MapPin, Briefcase, GraduationCap, Calendar, Mail, Phone, ExternalLink, ArrowLeft, Download, X, Eye, Award, Copy, Check } from 'lucide-react';
 import api from '../../api';
 
 const CandidateDetailsPage = () => {
@@ -8,6 +8,7 @@ const CandidateDetailsPage = () => {
     const [candidate, setCandidate] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showResumeModal, setShowResumeModal] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         const fetchCandidate = async () => {
@@ -22,6 +23,14 @@ const CandidateDetailsPage = () => {
         };
         fetchCandidate();
     }, [id]);
+
+    const handleCopyEmail = () => {
+        if (candidate?.email) {
+            navigator.clipboard.writeText(candidate.email);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
 
     if (loading) {
         return (
@@ -110,6 +119,13 @@ const CandidateDetailsPage = () => {
                                 <div className="flex items-center gap-2">
                                     <Mail className="w-4 h-4" />
                                     <span><b>Mail:</b> {candidate.email}</span>
+                                    <button 
+                                        onClick={handleCopyEmail}
+                                        className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#4169E1]"
+                                        title="Copy Email"
+                                    >
+                                        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
                                 </div>
                             </div>
 

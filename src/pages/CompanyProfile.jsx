@@ -361,7 +361,7 @@ const CompanyProfile = () => {
 
     const averageRating = reviews.length > 0 
         ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1) 
-        : 4.0;
+        : 0.0;
 
     useEffect(() => {
         const fetchCompanyData = async () => {
@@ -386,8 +386,19 @@ const CompanyProfile = () => {
 
         if (id) {
             fetchCompanyData();
+            // Check follow status
+            if (currentUser && currentUser.role === 'Job Seeker') {
+                // We need to check if companyId is in user's following list
+                // Since we don't have the updated user object with 'following' populated in context immediately after follow,
+                // we might need to fetch user profile or check against a list.
+                // For now, let's fetch the user profile again to get fresh 'following' list
+                api.get('/auth/profile').then(res => {
+                    const isFollowed = res.data.following?.some(f => f._id === id || f === id);
+                    setIsFollowing(!!isFollowed);
+                }).catch(err => console.error(err));
+            }
         }
-    }, [id]);
+    }, [id, currentUser]);
 
     const filteredJobs = jobs.filter(job => {
         const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -505,7 +516,21 @@ const CompanyProfile = () => {
                                         <div className="text-xs text-gray-500 font-medium">{reviews.length} Reviews</div>
                                     </div>
                                     <button 
-                                        onClick={() => setIsFollowing(!isFollowing)}
+                                        onClick={async () => {
+                                            if (!currentUser) return alert("Please login to follow companies");
+                                            try {
+                                                if (isFollowing) {
+                                                    await api.delete(`/auth/unfollow/${id}`);
+                                                    setIsFollowing(false);
+                                                } else {
+                                                    await api.post(`/auth/follow/${id}`);
+                                                    setIsFollowing(true);
+                                                }
+                                            } catch (err) {
+                                                console.error("Follow error:", err);
+                                                alert("Failed to update follow status");
+                                            }
+                                        }}
                                         className={`px-8 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${
                                             isFollowing 
                                             ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 

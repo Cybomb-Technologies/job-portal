@@ -55,8 +55,8 @@ const JobCard = ({ job }) => {
                 </div>
             </div>
             </div>
-            <div className="flex flex-col items-end">
-            <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wide">
+            <div className="flex flex-col items-end mt-2">
+            <span className="whitespace-nowrap px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wide mt-6">
                 {job.experienceMin} - {job.experienceMax} years
             </span>
             <span
