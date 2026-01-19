@@ -101,13 +101,40 @@ const AdminLayout = () => {
         };
     }, [user]);
 
-    const markAsRead = async (id) => {
+    const handleNotificationClick = async (notification) => {
         try {
-            await api.put(`/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-            setUnreadCount(prev => Math.max(0, prev - 1));
+            if (!notification.isRead) {
+                await api.put(`/notifications/${notification._id}/read`);
+                setNotifications(prev => prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+
+            // Navigation Logic for Admin
+            switch (notification.type) {
+                case 'NEW_ISSUE':
+                case 'ISSUE_UPDATE':
+                    navigate('/admin/support');
+                    break;
+                case 'CONTACT_FORM':
+                    navigate('/admin/messages');
+                    break;
+                case 'SYSTEM':
+                    if (notification.message.toLowerCase().includes('verification')) {
+                        navigate('/admin/verifications');
+                    }
+                    else if (notification.relatedModel === 'User') {
+                         navigate('/admin/users');
+                    }
+                    break;
+                case 'JOB_ALERT': // If admin gets alerts about jobs
+                    navigate('/admin/dashboard'); 
+                    break;
+                default:
+                    break;
+            }
+             setShowNotifications(false);
         } catch (err) {
-            console.error("Failed to mark read");
+            console.error("Failed to mark read", err);
         }
     };
 
@@ -215,7 +242,7 @@ const AdminLayout = () => {
                                             notifications.map(notification => (
                                                 <div 
                                                     key={notification._id} 
-                                                    onClick={() => markAsRead(notification._id)}
+                                                    onClick={() => handleNotificationClick(notification)}
                                                     className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
                                                 >
                                                     <div className="flex gap-3">

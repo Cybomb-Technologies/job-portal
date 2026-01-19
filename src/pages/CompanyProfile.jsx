@@ -4,7 +4,7 @@ import {
     Building2, MapPin, Mail, Globe, ArrowLeft, Briefcase, 
     CheckCircle, Users, Calendar, Search, Filter, 
     Star, MessageSquare, ChevronRight, Share2, Plus, Sparkles, ExternalLink,
-    PlayCircle, Video, FileText
+    PlayCircle, Video, FileText, CheckCheck
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -491,9 +491,32 @@ const CompanyProfile = () => {
                                 <div>
                                     <div className="flex items-center gap-3">
                                         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">{company.companyName || company.name}</h1>
-                                        {company.employerVerification?.isVerified && (
-                                            <div className="bg-blue-50 p-1 rounded-full border border-blue-100 shadow-sm" title="Verified Employer">
-                                                <CheckCircle className="w-6 h-6 text-blue-500 fill-blue-50" />
+                                        {(company.employerVerification?.status === 'Verified' || (company.employerVerification?.level || 0) >= 1) && (
+                                            <div className="group relative">
+                                                <div className={`p-1.5 rounded-full border shadow-sm transition-colors ${
+                                                    (company.employerVerification?.level || 1) >= 2 
+                                                    ? 'bg-green-50 border-green-200 text-green-600' 
+                                                    : 'bg-blue-50 border-blue-200 text-blue-600'
+                                                }`}>
+                                                    {(company.employerVerification?.level || 1) >= 2 ? (
+                                                        <CheckCheck className="w-5 h-5" strokeWidth={2.5} />
+                                                    ) : (
+                                                        <CheckCircle className="w-5 h-5" strokeWidth={2.5} />
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Professional Disclaimer Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-gray-900/95 backdrop-blur-sm text-white text-xs p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 invisible group-hover:visible z-50 shadow-xl border border-white/10">
+                                                    <div className="font-bold mb-1 text-sm border-b border-white/10 pb-1">
+                                                        {(company.employerVerification?.level || 1) >= 2 ? "Level 2 Verified" : "Level 1 Verified"}
+                                                    </div>
+                                                    <p className="leading-relaxed text-gray-300">
+                                                        {(company.employerVerification?.level || 1) >= 2 
+                                                            ? "This company has verified their identity and legal business documents."
+                                                            : "This company has verified their official work email and identity."}
+                                                    </p>
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/95"></div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -742,7 +765,7 @@ const CompanyProfile = () => {
                             </div>
 
                             {/* Verification Badge card */}
-                            {company.employerVerification?.isVerified && (
+                            {(company.employerVerification?.status === 'Verified' || (company.employerVerification?.level || 0) >= 1) && (
                                 <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg overflow-hidden relative">
                                     <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                                     <h4 className="flex items-center gap-2 font-bold text-lg mb-2">

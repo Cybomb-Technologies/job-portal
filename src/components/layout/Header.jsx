@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, User, Briefcase, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
@@ -10,6 +10,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Notifications State
   const [notifications, setNotifications] = React.useState([]);
@@ -84,13 +85,43 @@ const Header = () => {
     };
   }, [user]);
 
-  const markAsRead = async (id) => {
+  const handleNotificationClick = async (notification) => {
       try {
-          await api.put(`/notifications/${id}/read`);
-          setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-          setUnreadCount(prev => Math.max(0, prev - 1));
+          if (!notification.isRead) {
+              await api.put(`/notifications/${notification._id}/read`);
+              setNotifications(prev => prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n));
+              setUnreadCount(prev => Math.max(0, prev - 1));
+          }
+
+          // Navigation Logic
+          switch (notification.type) {
+              case 'SYSTEM':
+                  if (notification.message.toLowerCase().includes('verification')) {
+                      navigate('/employer/verification');
+                  }
+                  break;
+              case 'NEW_APPLICATION':
+                  navigate('/employer/my-jobs');
+                  break;
+              case 'JOB_ALERT':
+                  navigate(`/jobs/${notification.relatedId}`); // Assuming relatedId is jobId
+                  break;
+              default:
+                  // Default navigation if needed
+                  break;
+          }
+          
+          setShowNotifications(false);
       } catch (err) {
-          console.error("Failed to mark read");
+          console.error("Failed to mark read", err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err.response?.data?.message || 'Failed to mark notification as read',
+            toast: true,
+            position: 'top-end',
+            timer: 3000
+          });
       }
   };
 
@@ -184,7 +215,7 @@ const Header = () => {
                                     notifications.map(notification => (
                                         <div 
                                             key={notification._id} 
-                                            onClick={() => markAsRead(notification._id)}
+                                            onClick={() => handleNotificationClick(notification)}
                                             className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
                                         >
                                             <div className="flex gap-3">
@@ -266,7 +297,7 @@ const Header = () => {
                                     notifications.map(notification => (
                                         <div 
                                             key={notification._id} 
-                                            onClick={() => markAsRead(notification._id)}
+                                            onClick={() => handleNotificationClick(notification)}
                                             className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
                                         >
                                             <div className="flex gap-3">
