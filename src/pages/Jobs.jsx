@@ -234,13 +234,7 @@ const Jobs = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {recommendedJobs.map((job) => (
-                            <div key={`rec-${job._id}`} className="relative">
-                                <div className="absolute -top-2 -left-2 bg-yellow-400 text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
-                                    
-                                    Best Match
-                                </div>
-                                <JobCard job={job} />
-                            </div>
+                            <JobCard key={`rec-${job._id}`} job={job} />
                         ))}
                     </div>
                     <div className="my-8 border-t border-gray-200"></div>
@@ -270,7 +264,7 @@ const Jobs = () => {
             ) : (
                 <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'space-y-4'}`}>
                 {jobs.map((job) => (
-                    <div key={job._id} className="animate-fade-in-up"> 
+                    <div key={job._id} className="animate-fade-in-up h-full"> 
                         <JobCard job={job} />
                     </div>
                 ))}

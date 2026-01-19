@@ -53,11 +53,12 @@
     background: white;
     border-radius: 16px;
     border: 1px solid #e2e8f0;
-    overflow: hidden;
+    overflow-x: auto; /* Enable horizontal scroll */
 }
 
 .admin-table {
     width: 100%;
+    min-width: 800px; /* Force minimum width to trigger scroll */
     border-collapse: collapse;
     text-align: left;
 }

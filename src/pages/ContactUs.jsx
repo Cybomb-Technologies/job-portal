@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
+import api from '../api';
+import Swal from 'sweetalert2';
 
 const ContactUs = () => {
   const [formData, setFormData] = useState({
@@ -8,6 +10,7 @@ const ContactUs = () => {
     subject: '',
     message: ''
   });
+  const [sending, setSending] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -16,12 +19,29 @@ const ContactUs = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder for form submission logic
-    console.log('Form submitted:', formData);
-    alert('Thank you for contacting us. We will get back to you shortly.');
-    setFormData({ name: '', email: '', subject: '', message: '' });
+    setSending(true);
+    try {
+        await api.post('/contact', formData);
+        Swal.fire({
+            icon: 'success',
+            title: 'Message Sent!',
+            text: 'Thank you for contacting us. We will get back to you shortly.',
+            confirmButtonColor: '#4169E1'
+        });
+        setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+        console.error(err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Something went wrong. Please try again later.',
+            confirmButtonColor: '#4169E1'
+        });
+    } finally {
+        setSending(false);
+    }
   };
 
   return (
@@ -133,10 +153,11 @@ const ContactUs = () => {
 
                 <button
                   type="submit"
-                  className="w-full md:w-auto px-8 py-3 bg-[#4169E1] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  disabled={sending}
+                  className="w-full md:w-auto px-8 py-3 bg-[#4169E1] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Send Message</span>
+                  <span>{sending ? 'Sending...' : 'Send Message'}</span>
                 </button>
               </form>
             </div>

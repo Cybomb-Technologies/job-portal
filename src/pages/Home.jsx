@@ -63,7 +63,7 @@ const Home = () => {
       <section className="bg-white py-20 border-b border-gray-100">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl font-bold text-black mb-6">
+            <h1 className="text-3xl md:text-5xl font-bold text-black mb-6">
               Find Your <span className="text-[#4169E1]">Dream Job</span> Here
             </h1>
             <p className="text-xl text-gray-600 mb-10">
@@ -149,7 +149,7 @@ const Home = () => {
                     <h2 className="text-3xl font-bold text-black mb-2">Recommended For You</h2>
                     <p className="text-gray-600">Jobs that match your profile skills</p>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                     {recommendedJobs.map((job) => (
                     <JobCard key={job._id} job={job} />
                     ))}
@@ -181,7 +181,7 @@ const Home = () => {
           ) : error ? (
             <div className="text-center text-red-500 py-10">{error}</div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 {featuredJobs.map((job) => (
                 <JobCard key={job._id} job={job} />
                 ))}

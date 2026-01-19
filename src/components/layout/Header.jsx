@@ -237,9 +237,57 @@ const Header = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center space-x-4">
-{/* Mobile Search Toggle Removed */}
+          {/* Mobile Actions */}
+          <div className="flex md:hidden items-center space-x-2">
+            {user && (
+                 <div className="relative" ref={notificationRef}>
+                    <button 
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="p-2 relative hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                        <Bell className="w-6 h-6 text-gray-600" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                        )}
+                    </button>
+                    {/* Mobile Dropdown */}
+                    {showNotifications && (
+                        <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <h3 className="font-bold text-gray-900">Notifications</h3>
+                                {unreadCount > 0 && (
+                                    <button onClick={markAllRead} className="text-xs text-[#4169E1] font-bold hover:underline">Mark all read</button>
+                                )}
+                            </div>
+                            <div className="max-h-80 overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-500 text-sm">No notifications</div>
+                                ) : (
+                                    notifications.map(notification => (
+                                        <div 
+                                            key={notification._id} 
+                                            onClick={() => markAsRead(notification._id)}
+                                            className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
+                                        >
+                                            <div className="flex gap-3">
+                                                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notification.isRead ? 'bg-[#4169E1]' : 'bg-gray-200'}`}></div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900 text-left">
+                                                        {notification.message}
+                                                    </p>
+                                                    <span className="text-xs text-gray-400 mt-1 block text-left">
+                                                        {new Date(notification.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                 </div>
+            )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-black hover:text-[#4169E1]"
@@ -271,15 +319,26 @@ const Header = () => {
               ))}
               <div className="pt-4 border-t border-gray-100 space-y-4">
                 {user ? (
-                   <button
-                    onClick={() => {
-                      logout();
-                      window.location.href = '/';
-                    }}
-                    className="block w-full text-center py-2 border border-[#4169E1] text-[#4169E1] rounded-lg font-medium"
-                  >
-                    Logout
-                  </button>
+                   <>
+                    <NavLink
+                        to={user.role === 'Employer' ? "/employer/profile" : "/profile"}
+                        className="block w-full text-center py-2 text-gray-700 font-medium hover:text-[#4169E1]"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        My Profile
+                    </NavLink>
+
+                    
+                     <button
+                        onClick={() => {
+                        logout();
+                        window.location.href = '/';
+                        }}
+                        className="block w-full text-center py-2 border border-[#4169E1] text-[#4169E1] rounded-lg font-medium"
+                    >
+                        Logout
+                    </button>
+                   </>
                 ) : (
                   <>
                   <Link

@@ -162,3 +162,51 @@
 .admin-main::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Mobile Sidebar & Responsive Styles */
+@media (max-width: 768px) {
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .admin-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 40;
+    backdrop-filter: blur(2px);
+  }
+
+  .admin-header {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .admin-content {
+    padding: 16px;
+  }
+
+  /* Hide sidebar on mobile unless opens */
+  /* We use transform instead of display:none for animation */
+}
+
+/* Helper utility for mobile menu button since we used Tailwind class in JSX */
+.md\:hidden {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .md\:hidden {
+    display: block;
+  }
+}

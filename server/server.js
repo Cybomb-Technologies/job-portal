@@ -16,6 +16,7 @@ const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 
 const app = express();
 const http = require('http');
@@ -51,6 +52,10 @@ const PORT = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 
+// Rate Limiting
+const limiter = require('./middleware/limiter');
+app.use(limiter);
+
 // Attach io to req
 app.use((req, res, next) => {
     req.io = io;
@@ -74,6 +79,7 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/team', require('./routes/teamRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/issues', require('./routes/issueRoutes'));
+app.use('/api/contact', contactRoutes);
 // app.use('/api/scrape', require('./routes/scrapingRoutes')); // Removed in favor of custom reviews
 
 // Make uploads folder static

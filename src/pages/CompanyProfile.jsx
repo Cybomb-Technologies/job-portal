@@ -448,7 +448,7 @@ const CompanyProfile = () => {
                 </div>
 
                 {/* Banner & Logo */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-36 lg:mb-28">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-96 md:mb-28">
                     <div className="h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 relative shadow-inner">
                         {company.bannerPicture ? (
                             <img 
@@ -473,7 +473,7 @@ const CompanyProfile = () => {
                     </div>
 
                     {/* Branding Bar */}
-                    <div className="absolute -bottom-24 left-4 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-10 w-[calc(100%-2rem)] md:w-[calc(100%-6rem)]">
+                    <div className="absolute -bottom-72 md:-bottom-24 left-4 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-10 w-[calc(100%-2rem)] md:w-[calc(100%-6rem)]">
                         <div className="w-32 h-32 md:w-44 md:h-44 bg-white rounded-3xl p-2 shadow-2xl border-4 border-white flex items-center justify-center overflow-hidden shrink-0">
                             {company.profilePicture ? (
                                 <img 
@@ -913,7 +913,7 @@ const CompanyProfile = () => {
                                 <div className="grid grid-cols-1 gap-8">
                                     {company.whyJoinUs.blogs.map((blog, index) => (
                                         <div key={index} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-300">
-                                            <div className="flex justify-between items-start mb-6">
+                                            <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-2">
                                                 <h4 className="text-xl font-bold text-gray-900 group-hover:text-[#4169E1] transition-colors">{blog.title}</h4>
                                                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 px-3 py-1 rounded-full">
                                                     {new Date(blog.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}

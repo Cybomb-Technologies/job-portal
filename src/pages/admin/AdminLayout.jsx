@@ -1,15 +1,23 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  FiGrid, 
-  FiUsers, 
-  FiBriefcase, 
-  FiLayers, 
-  FiHelpCircle, 
+import {
+  FiGrid,
+  FiUsers,
+  FiBriefcase,
+  FiLayers,
+  FiHelpCircle,
   FiLogOut,
   FiShield,
-  FiBell
+  FiBell,
+  FiMenu,
+  FiX
 } from 'react-icons/fi';
+import {
+  Building2,
+  MessageSquare,
+  CheckSquare,
+  Mail
+} from 'lucide-react';
 import './AdminLayout.css';
 import { useState, useEffect, useRef } from 'react';
 import api from '../../api';
@@ -25,6 +33,10 @@ const AdminLayout = () => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
     const notificationRef = useRef(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+    const closeSidebar = () => setIsSidebarOpen(false);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -118,16 +130,24 @@ const AdminLayout = () => {
         { name: 'Dashboard', icon: <FiGrid />, path: '/admin/dashboard' },
         { name: 'Users', icon: <FiUsers />, path: '/admin/users' },
         { name: 'Employers', icon: <FiBriefcase />, path: '/admin/employers' },
-        { name: 'Companies', icon: <FiLayers />, path: '/admin/companies' },
-        { name: 'Support', icon: <FiHelpCircle />, path: '/admin/support' },
+        { name: 'Companies', path: '/admin/companies', icon: <Building2 /> },
+        { name: 'Verifications', path: '/admin/verifications', icon: <CheckSquare /> },
+        { name: 'Messages', path: '/admin/messages', icon: <Mail /> },
+        { name: 'Support', path: '/admin/support', icon: <MessageSquare /> }
     ];
 
     return (
         <div className="admin-container">
-            <aside className="admin-sidebar">
+            {/* Overlay for mobile */}
+            {isSidebarOpen && <div className="admin-overlay" onClick={closeSidebar}></div>}
+
+            <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="admin-sidebar-header">
                     <FiShield className="admin-logo-icon" />
                     <span>Admin Panel</span>
+                    <button className="md:hidden ml-auto text-gray-500" onClick={closeSidebar}>
+                        <FiX size={24} />
+                    </button>
                 </div>
                 
                 <nav className="admin-nav">
@@ -138,6 +158,7 @@ const AdminLayout = () => {
                             className={({ isActive }) => 
                                 isActive ? 'admin-nav-item active' : 'admin-nav-item'
                             }
+                            onClick={closeSidebar}
                         >
                             <span className="nav-icon">{item.icon}</span>
                             <span className="nav-text">{item.name}</span>
@@ -157,6 +178,12 @@ const AdminLayout = () => {
                 <header className="admin-header">
                     <div className="header-search">
                         {/* Add search or other header elements here if needed */}
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <button className="md:hidden p-2 -ml-2 text-gray-600" onClick={toggleSidebar}>
+                            <FiMenu size={24} />
+                        </button>
                     </div>
 
                     <div className="flex items-center gap-6">

@@ -144,10 +144,10 @@ const Companies = () => {
                 >
                     <div 
                         className={`bg-white rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-lg hover:border-blue-100 animate-fade-in-up h-full ${
-                            viewMode === 'grid' ? 'p-6' : 'p-6 flex flex-col md:flex-row items-center gap-6'
+                            viewMode === 'grid' ? 'p-6 flex flex-col' : 'p-6 flex flex-col md:flex-row items-center gap-6'
                         }`}
                     >
-                    <div className={`${viewMode === 'list' && 'flex-1 w-full flex flex-col md:flex-row items-center gap-6'}`}>
+                    <div className={`${viewMode === 'grid' ? 'flex-1' : ''} ${viewMode === 'list' && 'flex-1 w-full flex flex-col md:flex-row items-center gap-6'}`}>
                          <div className={`flex items-start justify-between ${viewMode === 'grid' ? 'mb-4' : 'w-full md:w-auto flex-col md:flex-row items-center md:items-start'}`}>
                             <div className="flex flex-col md:flex-row items-center gap-4">
                                  <div className="bg-blue-50 p-0 rounded-xl group-hover:scale-110 transition-transform duration-300 overflow-hidden w-16 h-16 flex items-center justify-center">
