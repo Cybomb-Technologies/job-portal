@@ -89,6 +89,10 @@ const jobSchema = mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Company'
+    },
     jobId: {
         type: String,
         unique: true
@@ -127,6 +131,15 @@ jobSchema.pre('save', async function(next) {
     }
     next();
 });
+
+// Indexes for Search Performance
+jobSchema.index({ title: 'text', company: 'text', skills: 'text', description: 'text' });
+jobSchema.index({ postedBy: 1 });
+jobSchema.index({ companyId: 1 });
+jobSchema.index({ status: 1 });
+jobSchema.index({ type: 1 });
+jobSchema.index({ experienceMin: 1 });
+jobSchema.index({ salaryMin: 1 });
 
 const Job = mongoose.model('Job', jobSchema);
 

@@ -48,7 +48,10 @@ const getCandidates = async (req, res) => {
         }
         
         // Exclude password and other sensitive fields
-        const candidates = await User.find(query).select('-password -resetPasswordToken -resetPasswordExpire');
+        // Sort by updatedAt descending (most recently updated first)
+        const candidates = await User.find(query)
+            .select('-password -resetPasswordToken -resetPasswordExpire')
+            .sort({ updatedAt: -1 });
 
         res.json(candidates);
     } catch (error) {

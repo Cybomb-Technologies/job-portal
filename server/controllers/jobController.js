@@ -15,23 +15,49 @@ const createJob = async (req, res) => {
     // Let's assume req.user might not have employerVerification if it's a new field and token isn't refreshed.
     // Safe bet: fetch user.
     
-    if (user.employerVerification.level < 1) {
-        // Option 1: Block entirely
-        // return res.status(403).json({ message: 'You must verify your company identity (Level 1) to post jobs.' });
-        
-        // Option 2: Allow but set to Draft/Hidden (As per user request "Cannot publish jobs publicly")
-        // We'll set status to 'Closed' or a new 'Draft' status if we had one. 
-        // User request says "Create profile, Post drafts". 
-        // So let's force status to 'Closed' if they try to set 'Active'
+    const company = await require('../models/Company').findById(user.companyId);
+
+    if (!company || company.employerVerification.level < 1) {
         if (req.body.status !== 'Closed') {
-             return res.status(403).json({ message: 'Unverified employers can only post Drafts (Closed jobs). Please verify your identity to publish active jobs.' });
+             return res.status(403).json({ message: 'Unverified companies can only post Drafts (Closed jobs). Please verify your company identity to publish active jobs.' });
         }
     }
 
     const job = await Job.create({
       ...req.body,
       postedBy: req.user._id,
+      companyId: user.companyId
     });
+
+    // Notify all followers
+    // Note: 'user' here is the recruiter/admin posting the job.
+    // If 'user' has followers (which are users following this company), we notify them.
+    // Ensure we fetch followers if they aren't populated (authMiddleware usually doesn't populate arrays deeply)
+    // We already fetched 'user' in line 10 but check if followers are there
+    const companyUser = await require('../models/User').findById(req.user._id).populate('followers');
+    if (companyUser && companyUser.followers && companyUser.followers.length > 0) {
+        const Notification = require('../models/Notification');
+        const notifications = companyUser.followers.map(follower => ({
+            recipient: follower._id,
+            sender: companyUser._id,
+            type: 'JOB_ALERT',
+            message: `${companyUser.companyName || companyUser.name} posted a new job: ${job.title}`,
+            relatedId: job._id,
+            relatedModel: 'Job'
+        }));
+        await Notification.insertMany(notifications);
+
+        // Real-time Push Notification
+        notifications.forEach(notif => {
+            if (req.io) {
+                req.io.to(notif.recipient.toString()).emit('notification', {
+                    message: notif.message,
+                    type: 'JOB_ALERT'
+                });
+            }
+        });
+    }
+
     res.status(201).json(job);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -161,8 +187,9 @@ const getJobById = async (req, res) => {
 // @access  Private (Employer only)
 const getMyJobs = async (req, res) => {
   try {
+      const query = req.user.companyId ? { companyId: req.user.companyId } : { postedBy: req.user._id };
       const jobs = await Job.aggregate([
-          { $match: { postedBy: req.user._id } },
+          { $match: query },
           {
               $lookup: {
                   from: 'applications',
@@ -197,7 +224,11 @@ const updateJob = async (req, res) => {
   const job = await Job.findById(req.params.id);
 
   if (job) {
-    if (job.postedBy.toString() !== req.user._id.toString()) {
+    // Check if user belongs to the same company or is the original author
+    const isOwner = job.postedBy.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && job.companyId && job.companyId.toString() === req.user.companyId.toString();
+
+    if (!isOwner && !isCompanyMember) {
       return res.status(401).json({ message: 'Not authorized to update this job' });
     }
 
@@ -230,7 +261,10 @@ const deleteJob = async (req, res) => {
   const job = await Job.findById(req.params.id);
 
   if (job) {
-    if (job.postedBy.toString() !== req.user._id.toString()) {
+    const isOwner = job.postedBy.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && job.companyId && job.companyId.toString() === req.user.companyId.toString();
+
+    if (!isOwner && !isCompanyMember) {
       return res.status(401).json({ message: 'Not authorized to delete this job' });
     }
 
@@ -246,7 +280,8 @@ const deleteJob = async (req, res) => {
 // @access  Private (Employer)
 const getEmployerStats = async (req, res) => {
     try {
-        const jobs = await Job.find({ postedBy: req.user._id });
+        const query = req.user.companyId ? { companyId: req.user.companyId } : { postedBy: req.user._id };
+        const jobs = await Job.find(query);
         const jobIds = jobs.map(job => job._id);
 
         const activeJobs = jobs.filter(job => job.status === 'Active').length;
@@ -270,27 +305,90 @@ const getEmployerStats = async (req, res) => {
 // @access  Private
 const getRecommendedJobs = async (req, res) => {
     try {
-        // We assume req.user is populated by protect middleware, but we need full user details including skills
-        // Or we can rely on req.user if we updated the middleware to select everything. 
-        // Let's fetch cleanly to be sure.
-        const User = require('../models/User'); // Ensure Model is imported
+        const User = require('../models/User');
         const user = await User.findById(req.user._id);
 
-        if (!user || !user.skills || user.skills.length === 0) {
-            // Fallback to recent jobs if no skills
-             const jobs = await Job.find({ status: 'Open' }).sort({ createdAt: -1 }).limit(5);
-             return res.json(jobs);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        const jobs = await Job.find({
-            status: 'Open',
-            $or: [
-                { skills: { $in: user.skills } },
-                { title: { $regex: user.skills.join('|'), $options: 'i' } } // Naive match title with any skill
-            ]
-        }).limit(10);
+        // 1. Fetch Candidate Jobs (Active only)
+        // Optimization: In a large DB, we might want to pre-filter by at least one matching skill or location in MongoDB query
+        // For now, we fetch all active jobs to score them properly in JS.
+        const jobs = await Job.find({ status: 'Active' })
+            .populate('postedBy', 'name email profilePicture employerVerification')
+            .sort({ createdAt: -1 })
+            .limit(100); // Analyze top 100 recent jobs for relevance to keep it fast
 
-        res.json(jobs);
+        if (!user.skills || user.skills.length === 0) {
+             // Fallback: Return standard recent jobs if no profile data to match on
+             return res.json(jobs.slice(0, 5));
+        }
+
+        // 2. Scoring Logic
+        const scoredJobs = jobs.map(job => {
+            let score = 0;
+            const reasons = [];
+
+            // A. Skill Match (High Weight: 10 per skill)
+            if (job.skills && job.skills.length > 0) {
+                const userSkillsLower = user.skills.map(s => s.toLowerCase());
+                const matchingSkills = job.skills.filter(s => userSkillsLower.includes(s.toLowerCase()));
+                if (matchingSkills.length > 0) {
+                    score += (matchingSkills.length * 10);
+                    reasons.push(`${matchingSkills.length} matching skills`);
+                }
+            }
+
+            // B. Title Match (Medium Weight: 20)
+            if (user.title && job.title) {
+                const userTitle = user.title.toLowerCase();
+                const jobTitle = job.title.toLowerCase();
+                if (jobTitle.includes(userTitle) || userTitle.includes(jobTitle)) {
+                    score += 20;
+                    reasons.push('Job title match');
+                }
+            }
+
+            // C. Location Match (Medium Weight: 15)
+            if (user.currentLocation || (user.preferredLocations && user.preferredLocations.length > 0)) {
+                const jobLoc = job.location.toLowerCase();
+                const userLoc = (user.currentLocation || '').toLowerCase();
+                const prefLocs = user.preferredLocations.map(l => l.toLowerCase());
+
+                if (jobLoc.includes(userLoc) || prefLocs.some(pl => jobLoc.includes(pl))) {
+                    score += 15;
+                    reasons.push('Location match');
+                } else if (jobLoc === 'remote' || job.type === 'Remote') {
+                    // Slight boost for Remote if not exact location match but user might be open
+                    score += 5; 
+                }
+            }
+
+            // D. Experience Match (Low Weight: 10)
+            if (user.totalExperience !== undefined) {
+                if (user.totalExperience >= job.experienceMin && user.totalExperience <= job.experienceMax) {
+                    score += 10;
+                    reasons.push('Experience level match');
+                }
+            }
+
+            return { ...job.toObject(), score, matchReasons: reasons };
+        });
+
+        // 3. Sort and Filter
+        scoredJobs.sort((a, b) => b.score - a.score);
+
+        // Filter out zero-score jobs unless we really need to fill space
+        // Returning top 5 recommendations
+        const recommendations = scoredJobs.filter(j => j.score > 0).slice(0, 5);
+
+        // Fallback if no relevant matches found
+        if (recommendations.length === 0) {
+             return res.json(jobs.slice(0, 5));
+        }
+
+        res.json(recommendations);
 
     } catch (error) {
         console.error(error);

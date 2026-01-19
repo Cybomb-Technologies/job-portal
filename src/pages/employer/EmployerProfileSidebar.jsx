@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Building2, Lock } from 'lucide-react';
+import { User, Building2, Lock, PlayCircle, Users } from 'lucide-react';
 
 const EmployerProfileSidebar = () => {
     return (
@@ -39,6 +39,20 @@ const EmployerProfileSidebar = () => {
                 </NavLink>
 
                 <NavLink 
+                    to="/employer/profile/why-join-us" 
+                    className={({ isActive }) => 
+                        `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            isActive 
+                            ? 'bg-blue-50 text-[#4169E1]' 
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`
+                    }
+                >
+                    <PlayCircle className="w-5 h-5" />
+                    <span>Why Join Us</span>
+                </NavLink>
+
+                <NavLink 
                     to="/employer/profile/reviews" 
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
@@ -50,6 +64,20 @@ const EmployerProfileSidebar = () => {
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     <span>Reviews</span>
+                </NavLink>
+
+                <NavLink 
+                    to="/employer/profile/team" 
+                    className={({ isActive }) => 
+                        `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            isActive 
+                            ? 'bg-blue-50 text-[#4169E1]' 
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`
+                    }
+                >
+                    <Users className="w-5 h-5" />
+                    <span>Team Management</span>
                 </NavLink>
 
                 <NavLink 

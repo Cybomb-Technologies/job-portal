@@ -7,12 +7,12 @@ const {
     toggleReviewVisibility
 } = require('../controllers/reviewController');
 
-const { protect } = require('../middleware/authMiddleware');
+const { protect, optionalProtect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.route('/')
-    .post(protect, createReview);
+    .post(optionalProtect, createReview);
 
 router.route('/company/:id')
     .get(getCompanyReviews);

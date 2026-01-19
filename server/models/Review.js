@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const reviewSchema = new mongoose.Schema({
     reviewer: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: 'User'
+    },
+    employeeEmail: {
+        type: String,
+        required: function() { return this.reviewerType === 'Employee'; }
     },
     company: {
         type: mongoose.Schema.Types.ObjectId,

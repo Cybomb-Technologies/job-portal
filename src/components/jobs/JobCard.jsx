@@ -6,8 +6,8 @@ const JobCard = ({ job }) => {
 
   
   return (
-    <Link to={`/job/${job._id}`} className="block group">
-        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 p-6 transition-all duration-300 animate-fade-in-up hover:border-blue-100 h-full relative">
+    <Link to={`/job/${job._id}`} className="block group h-full">
+        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 p-6 transition-all duration-300 animate-fade-in-up hover:border-blue-100 h-full relative flex flex-col">
         <div className="flex justify-between items-start">
             <div className="flex items-start space-x-4">
             <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -47,6 +47,7 @@ const JobCard = ({ job }) => {
                             ? `Starts from ${Number(job.salaryMin).toLocaleString()}` 
                             : `${Number(job.salaryMin).toLocaleString()} - ${Number(job.salaryMax).toLocaleString()}`
                     }
+                    {job.salaryFrequency ? ` / ${job.salaryFrequency}` : ''}
                 </span>
                 <span className="flex items-center text-gray-500 text-sm">
                     <Clock className="w-4 h-4 mr-1" />
@@ -55,8 +56,8 @@ const JobCard = ({ job }) => {
                 </div>
             </div>
             </div>
-            <div className="flex flex-col items-end">
-            <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wide">
+            <div className="flex flex-col items-end mt-2">
+            <span className="whitespace-nowrap px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wide mt-6">
                 {job.experienceMin} - {job.experienceMax} years
             </span>
             <span
@@ -66,7 +67,7 @@ const JobCard = ({ job }) => {
             </span>
             </div>
         </div>
-        <div className="mt-4 pt-4 border-t border-gray-50">
+        <div className="mt-4 pt-4 border-t border-gray-50 flex-1">
             <div 
                 className="text-gray-600 text-sm line-clamp-2 mb-4"
                 dangerouslySetInnerHTML={{ __html: job.description }}

@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { 
     Building2, MapPin, Mail, Globe, ArrowLeft, Briefcase, 
     CheckCircle, Users, Calendar, Search, Filter, 
-    Star, MessageSquare, ChevronRight, Share2, Plus, Sparkles, ExternalLink
+    Star, MessageSquare, ChevronRight, Share2, Plus, Sparkles, ExternalLink,
+    PlayCircle, Video, FileText
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -156,16 +157,23 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                 <p className="text-gray-500 font-medium">How would you like to review this company?</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button 
-                                    onClick={() => { setReviewType('Public'); setStep(2); }}
-                                    className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
-                                >
-                                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                        <Users className="w-6 h-6 text-[#4169E1]" />
-                                    </div>
-                                    <h4 className="font-bold text-gray-900 mb-1">Public Review</h4>
-                                    <p className="text-xs text-gray-500 font-medium">Post as a job seeker or visitor. Your name will be visible.</p>
-                                </button>
+                                    <button 
+                                        onClick={() => { 
+                                            if (!currentUser) {
+                                                alert('You must be logged in to leave a public review. For employee reviews, please use the Employee Review option.');
+                                                return;
+                                            }
+                                            setReviewType('Public'); 
+                                            setStep(2); 
+                                        }}
+                                        className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
+                                    >
+                                        <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <Users className="w-6 h-6 text-[#4169E1]" />
+                                        </div>
+                                        <h4 className="font-bold text-gray-900 mb-1">Public Review</h4>
+                                        <p className="text-xs text-gray-500 font-medium">Post as a job seeker or visitor. Login required.</p>
+                                    </button>
                                 <button 
                                     onClick={() => { setReviewType('Employee'); setStep(2); }}
                                     className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
@@ -174,7 +182,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                         <ShieldCheck className="w-6 h-6 text-indigo-600" />
                                     </div>
                                     <h4 className="font-bold text-gray-900 mb-1">Employee Review</h4>
-                                    <p className="text-xs text-gray-500 font-medium">Post anonymously using your workplace email id.</p>
+                                    <p className="text-xs text-gray-500 font-medium">Post using workplace email. No login needed.</p>
                                 </button>
                             </div>
                         </div>
@@ -306,6 +314,31 @@ const CompanyProfile = () => {
     const { user: currentUser } = useAuth();
     const isOwner = currentUser?._id === id;
 
+    const handleShare = async () => {
+        const shareData = {
+            title: company.companyName || company.name,
+            text: `Check out ${company.companyName || company.name} on Cybomb Job Portal`,
+            url: window.location.href,
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(window.location.href);
+                alert('Profile link copied to clipboard!');
+            }
+        } catch (err) {
+            console.error('Error sharing:', err);
+        }
+    };
+
+    const getYoutubeId = (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
     const fetchReviews = async () => {
         try {
             setReviewsLoading(true);
@@ -328,7 +361,7 @@ const CompanyProfile = () => {
 
     const averageRating = reviews.length > 0 
         ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1) 
-        : 4.0;
+        : 0.0;
 
     useEffect(() => {
         const fetchCompanyData = async () => {
@@ -353,8 +386,19 @@ const CompanyProfile = () => {
 
         if (id) {
             fetchCompanyData();
+            // Check follow status
+            if (currentUser && currentUser.role === 'Job Seeker') {
+                // We need to check if companyId is in user's following list
+                // Since we don't have the updated user object with 'following' populated in context immediately after follow,
+                // we might need to fetch user profile or check against a list.
+                // For now, let's fetch the user profile again to get fresh 'following' list
+                api.get('/auth/profile').then(res => {
+                    const isFollowed = res.data.following?.some(f => f._id === id || f === id);
+                    setIsFollowing(!!isFollowed);
+                }).catch(err => console.error(err));
+            }
         }
-    }, [id]);
+    }, [id, currentUser]);
 
     const filteredJobs = jobs.filter(job => {
         const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -404,23 +448,33 @@ const CompanyProfile = () => {
                 </div>
 
                 {/* Banner & Logo */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-20 lg:mb-16">
-                    <div className="h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 relative">
-                        {/* Simulated Banner Patterns */}
-                        <div className="absolute inset-0 opacity-20 pointer-events-none">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl -ml-16 -mb-16"></div>
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                             <div className="text-white text-center">
-                                 <h2 className="text-3xl md:text-5xl font-bold opacity-30 tracking-widest uppercase">{company.companyName || company.name}</h2>
-                             </div>
-                        </div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-96 md:mb-28">
+                    <div className="h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 relative shadow-inner">
+                        {company.bannerPicture ? (
+                            <img 
+                                src={company.bannerPicture.startsWith('http') ? company.bannerPicture : `http://localhost:8000${company.bannerPicture}`} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <>
+                                {/* Simulated Banner Patterns */}
+                                <div className="absolute inset-0 opacity-20 pointer-events-none">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl -ml-16 -mb-16"></div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                     <div className="text-white text-center">
+                                         <h2 className="text-3xl md:text-5xl font-bold opacity-30 tracking-widest uppercase">{company.companyName || company.name}</h2>
+                                     </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Branding Bar */}
-                    <div className="absolute -bottom-16 left-8 md:left-16 flex flex-col md:flex-row md:items-end gap-6 w-[calc(100%-4rem)] md:w-auto">
-                        <div className="w-32 h-32 md:w-40 md:h-40 bg-white rounded-2xl p-2 shadow-xl border-4 border-white flex items-center justify-center overflow-hidden">
+                    <div className="absolute -bottom-72 md:-bottom-24 left-4 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-10 w-[calc(100%-2rem)] md:w-[calc(100%-6rem)]">
+                        <div className="w-32 h-32 md:w-44 md:h-44 bg-white rounded-3xl p-2 shadow-2xl border-4 border-white flex items-center justify-center overflow-hidden shrink-0">
                             {company.profilePicture ? (
                                 <img 
                                     src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
@@ -432,8 +486,8 @@ const CompanyProfile = () => {
                             )}
                         </div>
                         
-                        <div className="pb-2 flex-grow">
-                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="pb-4 flex-grow">
+                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div>
                                     <div className="flex items-center gap-3">
                                         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">{company.companyName || company.name}</h1>
@@ -462,7 +516,21 @@ const CompanyProfile = () => {
                                         <div className="text-xs text-gray-500 font-medium">{reviews.length} Reviews</div>
                                     </div>
                                     <button 
-                                        onClick={() => setIsFollowing(!isFollowing)}
+                                        onClick={async () => {
+                                            if (!currentUser) return alert("Please login to follow companies");
+                                            try {
+                                                if (isFollowing) {
+                                                    await api.delete(`/auth/unfollow/${id}`);
+                                                    setIsFollowing(false);
+                                                } else {
+                                                    await api.post(`/auth/follow/${id}`);
+                                                    setIsFollowing(true);
+                                                }
+                                            } catch (err) {
+                                                console.error("Follow error:", err);
+                                                alert("Failed to update follow status");
+                                            }
+                                        }}
                                         className={`px-8 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${
                                             isFollowing 
                                             ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
@@ -476,7 +544,10 @@ const CompanyProfile = () => {
                                             </>
                                         )}
                                     </button>
-                                    <button className="p-2.5 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 border border-gray-200 transition-colors">
+                                    <button 
+                                        onClick={handleShare}
+                                        className="p-2.5 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 border border-gray-200 transition-colors"
+                                    >
                                         <Share2 className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -544,13 +615,7 @@ const CompanyProfile = () => {
                                             <option value="lowest">Lowest Rated</option>
                                         </select>
                                         <button 
-                                            onClick={() => {
-                                                if (!currentUser) {
-                                                    alert('Please login to write a review');
-                                                    return;
-                                                }
-                                                setShowReviewModal(true);
-                                            }}
+                                            onClick={() => setShowReviewModal(true)}
                                             className="flex-grow md:flex-none px-6 py-2 bg-[#4169E1] text-white font-bold rounded-xl hover:bg-blue-700 transition-all active:scale-95 text-sm"
                                         >
                                             Write a Review
@@ -800,17 +865,78 @@ const CompanyProfile = () => {
                 )}
 
                 {activeTab === 'why join us' && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-                         <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Sparkles className="w-12 h-12 text-[#4169E1]" />
-                         </div>
-                         <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Culture at {company.companyName || company.name}</h2>
-                         <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed text-lg font-medium">
-                            We're working on something amazing here. Stay tuned to learn more about our benefits, work culture, and why you should be part of our journey!
-                         </p>
-                         <button className="mt-8 px-8 py-3 bg-[#4169E1] text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-xl active:scale-95">
-                             Set Job Alerts
-                         </button>
+                    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Videos Section */}
+                        {company.whyJoinUs?.videos?.length > 0 && (
+                            <section>
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="p-2 bg-blue-50 rounded-lg text-[#4169E1]">
+                                        <Video className="w-6 h-6" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900">Life at {company.companyName || company.name}</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {company.whyJoinUs.videos.map((video, index) => (
+                                        <div key={index} className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+                                            <div className="aspect-video relative overflow-hidden bg-black">
+                                                {getYoutubeId(video.url) ? (
+                                                    <iframe
+                                                        src={`https://www.youtube.com/embed/${getYoutubeId(video.url)}`}
+                                                        title={video.description}
+                                                        className="absolute inset-0 w-full h-full"
+                                                        allowFullScreen
+                                                    ></iframe>
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <PlayCircle className="w-16 h-16 text-white/50" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-5">
+                                                <p className="text-gray-700 leading-relaxed font-medium">{video.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Blogs Section */}
+                        {company.whyJoinUs?.blogs?.length > 0 && (
+                            <section>
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="p-2 bg-blue-50 rounded-lg text-[#4169E1]">
+                                        <FileText className="w-6 h-6" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900">Inside Stories</h3>
+                                </div>
+                                <div className="grid grid-cols-1 gap-8">
+                                    {company.whyJoinUs.blogs.map((blog, index) => (
+                                        <div key={index} className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:border-blue-200 hover:shadow-md transition-all duration-300">
+                                            <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-2">
+                                                <h4 className="text-xl font-bold text-gray-900 group-hover:text-[#4169E1] transition-colors">{blog.title}</h4>
+                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 px-3 py-1 rounded-full">
+                                                    {new Date(blog.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                                </span>
+                                            </div>
+                                            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{blog.content}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {(!company.whyJoinUs?.videos?.length && !company.whyJoinUs?.blogs?.length) && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                                <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <Sparkles className="w-12 h-12 text-[#4169E1]" />
+                                </div>
+                                <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Culture at {company.companyName || company.name}</h2>
+                                <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed text-lg font-medium">
+                                    We're working on something amazing here. Stay tuned to learn more about our culture, and why you should be part of our journey!
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

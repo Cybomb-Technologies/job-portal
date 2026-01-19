@@ -51,11 +51,31 @@ const applyToJob = async (req, res) => {
       job: jobId,
       applicant: req.user._id,
       employer: job.postedBy,
+      companyId: job.companyId,
       resume: resumeUrl,
       coverLetter,
       screeningAnswers: screeningAnswers || [],
       agreedToTerms
     });
+
+    // Notify Employer
+    const Notification = require('../models/Notification');
+    await Notification.create({
+        recipient: job.postedBy, // Assuming postedBy is the Recruiter/Owner
+        sender: req.user._id,
+        type: 'NEW_APPLICATION',
+        message: `${req.user.name} applied for ${job.title}`,
+        relatedId: application._id,
+        relatedModel: 'Application'
+    });
+
+    // Real-time Push Notification
+    if (req.io) {
+        req.io.to(job.postedBy.toString()).emit('notification', {
+            message: `${req.user.name} applied for ${job.title}`,
+            type: 'NEW_APPLICATION'
+        });
+    }
 
     res.status(201).json(application);
   } catch (error) {
@@ -68,24 +88,79 @@ const applyToJob = async (req, res) => {
 // @access  Private (Employer only)
 const getJobApplications = async (req, res) => {
   try {
-    const application = await Application.find({ job: req.params.jobId })
-      .populate('applicant', 'name email')
-      .sort({ createdAt: -1 });
-
-    // Check if the user requesting is the employer who posted the job
+    const jobData = await Job.findById(req.params.jobId);
+    
+    // Security Check: Ensure requester belongs to the same company as the job
     // Ideally this check should be done, but for simplicity we rely on route params.
     // However, stronger security would fetch the job first and check postedBy.
+    // We already populate req.user in middleware
     
-    // Security Check: Ensure the requester is indeed the employer of this job
-    const job = await Job.findById(req.params.jobId);
-    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (!jobData) {
+         return res.status(404).json({ message: 'Job not found' });
+    }
+
+    const { ats } = req.query;
+
+    const isOwner = jobData.postedBy.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && jobData.companyId && jobData.companyId.toString() === req.user.companyId.toString();
     
-    if (job.postedBy.toString() !== req.user._id.toString()) {
+    if (!isOwner && !isCompanyMember) {
         return res.status(401).json({ message: 'Not authorized to view these applications' });
     }
 
-    res.json(application);
+    let applications = await Application.find({ job: req.params.jobId })
+      .populate('applicant', 'name email skills totalExperience experience') // Added skills and experience for scoring
+      .sort({ createdAt: -1 });
+
+    if (ats === 'true') {
+        const jobSkills = jobData.skills || [];
+        // Map experience level from string to number if needed, or rely on jobData.experienceMin
+        const minExp = jobData.experienceMin || 0;
+
+        applications = applications.map(app => {
+            const applicant = app.applicant;
+            if (!applicant) return { ...app.toObject(), matchScore: 0 };
+
+            let score = 0;
+            const reasons = [];
+
+            // 1. Skill Match (Weight: 60%)
+            // Assuming applicant.skills is an array of strings
+            const applicantSkills = applicant.skills || [];
+            if (jobSkills.length > 0) {
+                const matchedSkills = jobSkills.filter(skill => 
+                    applicantSkills.some(as => as.toLowerCase().includes(skill.toLowerCase()))
+                );
+                const skillMatchRatio = matchedSkills.length / jobSkills.length;
+                score += skillMatchRatio * 60;
+                if (matchedSkills.length > 0) reasons.push(`${matchedSkills.length}/${jobSkills.length} Skills Matched`);
+            }
+
+            // 2. Experience Match (Weight: 40%)
+            const applicantExp = applicant.totalExperience || 0;
+            if (applicantExp >= minExp) {
+                score += 40;
+                reasons.push(`Experience Met (${applicantExp} Years)`);
+            } else {
+                // Partial score for experience? 
+                // Let's say max score if >= minExp.
+                // If minExp is 2 and applicant has 1, score = (1/2) * 40
+                if (minExp > 0) {
+                     const expRatio = applicantExp / minExp;
+                     score += expRatio * 40;
+                }
+            }
+
+            return { ...app.toObject(), matchScore: Math.round(score), matchReasons: reasons };
+        });
+
+        // Sort by matchScore descending
+        applications.sort((a, b) => b.matchScore - a.matchScore);
+    }
+
+    res.json(applications);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -117,8 +192,11 @@ const updateApplicationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    // Verify ownership
-    if (application.employer.toString() !== req.user._id.toString()) {
+    // Verify ownership or company membership
+    const isOwner = application.employer.toString() === req.user._id.toString();
+    const isCompanyMember = req.user.companyId && application.companyId && application.companyId.toString() === req.user.companyId.toString();
+
+    if (!isOwner && !isCompanyMember) {
       return res.status(401).json({ message: 'Not authorized to update this application' });
     }
 
@@ -146,8 +224,11 @@ const getApplicationById = async (req, res) => {
             return res.status(404).json({ message: 'Application not found' });
         }
 
-        // Verify ownership
-        if (application.employer.toString() !== req.user._id.toString()) {
+        // Verify ownership or company membership
+        const isOwner = application.employer.toString() === req.user._id.toString();
+        const isCompanyMember = req.user.companyId && application.companyId && application.companyId.toString() === req.user.companyId.toString();
+
+        if (!isOwner && !isCompanyMember) {
             return res.status(401).json({ message: 'Not authorized to view this application' });
         }
 

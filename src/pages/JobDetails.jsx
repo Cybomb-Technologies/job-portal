@@ -280,6 +280,7 @@ const JobDetails = () => {
                             ? `Starts from ${Number(job.salaryMin).toLocaleString()}` 
                             : `${Number(job.salaryMin).toLocaleString()} - ${Number(job.salaryMax).toLocaleString()}`
                     }
+                    {job.salaryFrequency ? ` / ${job.salaryFrequency}` : ''}
                   </span>
                 </div>
                 <div className="flex items-center text-gray-600">

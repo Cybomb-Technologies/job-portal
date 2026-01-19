@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
 import api from '../../api';
 
 const ApplicationDetails = () => {
@@ -9,6 +9,7 @@ const ApplicationDetails = () => {
     const [application, setApplication] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         const fetchApplication = async () => {
@@ -74,6 +75,14 @@ const ApplicationDetails = () => {
         }
     };
 
+    const handleCopyEmail = () => {
+        if (application?.applicant?.email) {
+            navigator.clipboard.writeText(application.applicant.email);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
     if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
     if (!application) return <div className="text-center p-10">Application not found</div>;
@@ -119,9 +128,16 @@ const ApplicationDetails = () => {
                                 <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                                     <div className="flex items-center">
                                         <Mail className="w-4 h-4 mr-1.5" />
-                                        <a href={`mailto:${application.applicant.email}`} className="hover:text-[#4169E1] transition-colors">
+                                        <a href={`mailto:${application.applicant.email}`} className="hover:text-[#4169E1] transition-colors mr-2">
                                             {application.applicant.email}
                                         </a>
+                                        <button 
+                                            onClick={handleCopyEmail}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#4169E1]"
+                                            title="Copy Email"
+                                        >
+                                            {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        </button>
                                     </div>
                                     <div className="flex items-center">
                                         <Calendar className="w-4 h-4 mr-1.5" />
@@ -155,6 +171,20 @@ const ApplicationDetails = () => {
                             </div>
                         </div>
                     </div>
+
+                    {application.screeningAnswers && application.screeningAnswers.length > 0 && (
+                        <div className="mt-6">
+                            <h2 className="text-sm font-bold text-gray-900 mb-3">Screening Questions</h2>
+                            <div className="grid grid-cols-1 gap-4 bg-gray-50 rounded-xl p-4 border border-gray-100 text-left">
+                                {application.screeningAnswers.map((item, index) => (
+                                    <div key={index} className="pb-3 border-b border-gray-200 last:border-0 last:pb-0">
+                                        <p className="text-xs font-bold text-gray-500 mb-1">{item.question}</p>
+                                        <p className="text-sm font-medium text-gray-900">{item.answer}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Resume Section */}
@@ -189,19 +219,6 @@ const ApplicationDetails = () => {
                         </div>
                     )}
 
-                    {application.screeningAnswers && application.screeningAnswers.length > 0 && (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">Screening Questions</h2>
-                            <div className="space-y-4">
-                                {application.screeningAnswers.map((item, index) => (
-                                    <div key={index} className="border-b border-gray-50 last:border-0 pb-3 last:pb-0">
-                                        <p className="text-sm font-medium text-gray-700 mb-1">{item.question}</p>
-                                        <p className="text-sm text-gray-800">{item.answer}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

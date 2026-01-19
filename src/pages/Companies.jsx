@@ -41,8 +41,8 @@ const Companies = () => {
   // Filter and Sort Companies
   const filteredCompanies = companies
     .filter(company => 
-        company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        company.location.toLowerCase().includes(searchQuery.toLowerCase())
+        (company.name && company.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (company.location && company.location.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .sort((a, b) => {
         if (sortOption === 'name') {
@@ -137,91 +137,95 @@ const Companies = () => {
         ) : (
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'flex flex-col gap-4'}>
             {filteredCompanies.map((company, index) => (
-                <div 
-                    key={index} 
-                    className={`bg-white rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-lg hover:border-blue-100 group animate-fade-in-up ${
-                        viewMode === 'grid' ? 'p-6' : 'p-6 flex flex-col md:flex-row items-center gap-6'
-                    }`}
-                >
-                <div className={`${viewMode === 'list' && 'flex-1 w-full flex flex-col md:flex-row items-center gap-6'}`}>
-                     <div className={`flex items-start justify-between ${viewMode === 'grid' ? 'mb-4' : 'w-full md:w-auto flex-col md:flex-row items-center md:items-start'}`}>
-                        <div className="flex flex-col md:flex-row items-center gap-4">
-                             <div className="bg-blue-50 p-0 rounded-xl group-hover:scale-110 transition-transform duration-300 overflow-hidden w-16 h-16 flex items-center justify-center">
-                                {company.profilePicture ? (
-                                    <img 
-                                        src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
-                                        alt={company.name}
-                                        className="w-full h-full object-contain"
-                                    />
-                                ) : (
-                                    <Building2 className="w-8 h-8 text-[#4169E1]" />
-                                )}
-                            </div>
-                            {viewMode === 'list' && (
-                                <div className="text-center md:text-left">
-                                     <h3 className="text-xl font-bold text-black mb-1 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
-                                     <div className="text-gray-500 text-sm flex items-center justify-center md:justify-start gap-1">
-                                         <MapPin className="w-3 h-3"/> {company.location}
-                                     </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {viewMode === 'grid' && (
-                            <span className="bg-blue-50 text-[#4169E1] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                                {company.openPositions} Jobs
-                            </span>
-                        )}
-                    </div>
-                    
-                    {viewMode === 'grid' && (
-                         <>
-                            <h3 className="text-xl font-bold text-black mb-2 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
-                            <p className="text-gray-600 mb-4 line-clamp-2 text-sm">{company.description}</p>
-                        </>
-                    )}
-
-                    {viewMode === 'list' && (
-                         <div className="text-center md:text-left flex-1 hidden md:block">
-                            <p className="text-gray-600 line-clamp-2 text-sm">{company.description}</p>
-                         </div>
-                    )}
-                    
-                    <div className={`space-y-2 ${viewMode === 'grid' ? 'mb-6' : 'w-full md:w-auto flex flex-wrap justify-center gap-4 md:space-y-0'}`}>
-                        {viewMode === 'grid' && (
-                            <>
-                                <div className="flex items-center text-gray-500 text-sm">
-                                <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                                {company.location}
-                                </div>
-                                <div className="flex items-center text-gray-500 text-sm">
-                                <Users className="w-4 h-4 mr-2 text-gray-400" />
-                                {company.employees} Employees
-                                </div>
-                            </>
-                        )}
-                         {viewMode === 'list' && (
-                            <div className="flex items-center text-gray-500 text-sm">
-                                <Users className="w-4 h-4 mr-2 text-gray-400" />
-                                {company.employees}
-                            </div>
-                         )}
-                         {viewMode === 'list' && (
-                             <span className="bg-blue-50 text-[#4169E1] px-3 py-1 rounded-full text-xs font-bold uppercase inline-block">
-                                {company.openPositions} Jobs
-                            </span>
-                         )}
-                    </div>
-                </div>
-                
                 <Link 
                     to={company.employerId ? `/company/${company.employerId}` : '#'}
-                    className={`block text-center border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
-                    viewMode === 'grid' ? 'w-full py-2.5' : 'w-full md:w-auto px-6 py-2.5 mt-4 md:mt-0'
-                }`}>
-                    View Profile
+                    key={index}
+                    className="block group"
+                >
+                    <div 
+                        className={`bg-white rounded-xl border border-gray-100 transition-all duration-300 hover:shadow-lg hover:border-blue-100 animate-fade-in-up h-full ${
+                            viewMode === 'grid' ? 'p-6 flex flex-col' : 'p-6 flex flex-col md:flex-row items-center gap-6'
+                        }`}
+                    >
+                    <div className={`${viewMode === 'grid' ? 'flex-1' : ''} ${viewMode === 'list' && 'flex-1 w-full flex flex-col md:flex-row items-center gap-6'}`}>
+                         <div className={`flex items-start justify-between ${viewMode === 'grid' ? 'mb-4' : 'w-full md:w-auto flex-col md:flex-row items-center md:items-start'}`}>
+                            <div className="flex flex-col md:flex-row items-center gap-4">
+                                 <div className="bg-blue-50 p-0 rounded-xl group-hover:scale-110 transition-transform duration-300 overflow-hidden w-16 h-16 flex items-center justify-center">
+                                    {company.profilePicture ? (
+                                        <img 
+                                            src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
+                                            alt={company.name}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    ) : (
+                                        <Building2 className="w-8 h-8 text-[#4169E1]" />
+                                    )}
+                                </div>
+                                {viewMode === 'list' && (
+                                    <div className="text-center md:text-left">
+                                         <h3 className="text-xl font-bold text-black mb-1 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                         <div className="text-gray-500 text-sm flex items-center justify-center md:justify-start gap-1">
+                                             <MapPin className="w-3 h-3"/> {company.location}
+                                         </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {viewMode === 'grid' && (
+                                <span className="bg-blue-50 text-[#4169E1] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                                    {company.openPositions} Jobs
+                                </span>
+                            )}
+                        </div>
+                        
+                        {viewMode === 'grid' && (
+                             <>
+                                <h3 className="text-xl font-bold text-black mb-2 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                <p className="text-gray-600 mb-4 line-clamp-2 text-sm">{company.description}</p>
+                            </>
+                        )}
+
+                        {viewMode === 'list' && (
+                             <div className="text-center md:text-left flex-1 hidden md:block">
+                                <p className="text-gray-600 line-clamp-2 text-sm">{company.description}</p>
+                             </div>
+                        )}
+                        
+                        <div className={`space-y-2 ${viewMode === 'grid' ? 'mb-6' : 'w-full md:w-auto flex flex-wrap justify-center gap-4 md:space-y-0'}`}>
+                            {viewMode === 'grid' && (
+                                <>
+                                    <div className="flex items-center text-gray-500 text-sm">
+                                    <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                                    {company.location}
+                                    </div>
+                                    <div className="flex items-center text-gray-500 text-sm">
+                                    <Users className="w-4 h-4 mr-2 text-gray-400" />
+                                    {company.employees} Employees
+                                    </div>
+                                </>
+                            )}
+                             {viewMode === 'list' && (
+                                <div className="flex items-center text-gray-500 text-sm">
+                                    <Users className="w-4 h-4 mr-2 text-gray-400" />
+                                    {company.employees}
+                                </div>
+                             )}
+                             {viewMode === 'list' && (
+                                 <span className="bg-blue-50 text-[#4169E1] px-3 py-1 rounded-full text-xs font-bold uppercase inline-block">
+                                    {company.openPositions} Jobs
+                                </span>
+                             )}
+                        </div>
+                    </div>
+                    
+                    <div 
+                        className={`block text-center border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white transition-colors duration-300 ${
+                        viewMode === 'grid' ? 'w-full py-2.5' : 'w-full md:w-auto px-6 py-2.5 mt-4 md:mt-0'
+                    }`}>
+                        View Profile
+                    </div>
+                    </div>
                 </Link>
-                </div>
             ))}
             </div>
         )}
