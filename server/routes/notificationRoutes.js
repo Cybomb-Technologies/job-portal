@@ -5,7 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 router.get('/', protect, getNotifications);
-router.put('/:id/read', protect, markAsRead);
 router.put('/read-all', protect, markAllAsRead);
+router.put('/:id/read', protect, markAsRead);
 
 module.exports = router;

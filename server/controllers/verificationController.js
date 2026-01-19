@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const dns = require('dns');
 const util = require('util');
 
@@ -187,6 +188,23 @@ const uploadDocuments = async (req, res) => {
         user.employerVerification.status = 'Pending'; // Set mainly to pending waiting for admin
         
         await user.save();
+
+        // Notify Admins
+        try {
+            const admins = await User.find({ role: 'Admin' });
+            for (const admin of admins) {
+                await Notification.create({
+                    recipient: admin._id,
+                    sender: user._id,
+                    type: 'SYSTEM',
+                    message: `New verification document (${docType}) uploaded by ${user.companyName || user.name}`,
+                    relatedId: user._id,
+                    relatedModel: 'User'
+                });
+            }
+        } catch (error) {
+            console.error('Error sending admin notification:', error);
+        }
 
         res.status(200).json({
             success: true,
