@@ -75,10 +75,16 @@ const getJobs = async (req, res) => {
       location, 
       salaryMin, 
       salaryMax, 
-      experience 
+      experience,
+      directApply
     } = req.query;
 
     const query = { status: 'Active' };
+
+    // Filter by Direct Apply
+    if (directApply === 'true') {
+        query.applyMethod = 'direct';
+    }
 
     // Search functionality (Title or Company or Skills)
     if (search) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, MapPin, Users, Globe, ExternalLink, Search, Grid, List, TrendingUp } from 'lucide-react';
+import { Building2, MapPin, Users, Globe, ExternalLink, Search, Grid, List, TrendingUp, ShieldCheck, CheckCircle } from 'lucide-react';
 import api from '../api';
 
 const Companies = () => {
@@ -24,7 +24,8 @@ const Companies = () => {
           employees: company.employeeCount || "100-500", 
           openPositions: company.jobCount || 0,
           employerId: company._id,
-          profilePicture: company.profilePicture
+          profilePicture: company.profilePicture,
+          employerVerification: company.employerVerification
         }));
         setCompanies(formattedCompanies);
         setLoading(false);
@@ -163,7 +164,19 @@ const Companies = () => {
                                 </div>
                                 {viewMode === 'list' && (
                                     <div className="text-center md:text-left">
-                                         <h3 className="text-xl font-bold text-black mb-1 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                         <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+                                            <h3 className="text-xl font-bold text-black group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                            {company.employerVerification?.level >= 1 && (
+                                                <span title="Verified Company" className="text-blue-600">
+                                                    <ShieldCheck size={16} fill="currentColor" className="text-blue-100" />
+                                                </span>
+                                            )}
+                                            {company.employerVerification?.level >= 2 && (
+                                                <span title="Registered Business" className="text-green-600">
+                                                    <CheckCircle size={16} fill="currentColor" className="text-green-100" />
+                                                </span>
+                                            )}
+                                         </div>
                                          <div className="text-gray-500 text-sm flex items-center justify-center md:justify-start gap-1">
                                              <MapPin className="w-3 h-3"/> {company.location}
                                          </div>
@@ -180,7 +193,19 @@ const Companies = () => {
                         
                         {viewMode === 'grid' && (
                              <>
-                                <h3 className="text-xl font-bold text-black mb-2 group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="text-xl font-bold text-black group-hover:text-[#4169E1] transition-colors">{company.name}</h3>
+                                    {company.employerVerification?.level >= 1 && (
+                                        <span title="Verified Company" className="text-blue-600">
+                                            <ShieldCheck size={18} className="fill-blue-50" />
+                                        </span>
+                                    )}
+                                    {company.employerVerification?.level >= 2 && (
+                                        <span title="Registered Business" className="text-green-600">
+                                            <CheckCircle size={18} className="fill-green-50" />
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-gray-600 mb-4 line-clamp-2 text-sm">{company.description}</p>
                             </>
                         )}

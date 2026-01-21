@@ -44,6 +44,9 @@ const Jobs = () => {
 
   // Sort State
   const [sortBy, setSortBy] = useState('newest');
+  
+  // Direct Apply State
+  const [directApply, setDirectApply] = useState(searchParams.get('directApply') === 'true');
 
   const parseSalary = (range) => {
     if(!range) return {};
@@ -68,7 +71,10 @@ const Jobs = () => {
         location: locationQuery || filters.location, 
         type: filters.jobType,
         experience: filters.experience,
-        sort: sortBy
+        type: filters.jobType,
+        experience: filters.experience,
+        sort: sortBy,
+        directApply: directApply
       };
 
       const salaryParams = parseSalary(filters.salaryRange);
@@ -89,7 +95,7 @@ const Jobs = () => {
         fetchJobs();
     }, 500);
     return () => clearTimeout(timer);
-  }, [filters, searchQuery, locationQuery, sortBy]);
+  }, [filters, searchQuery, locationQuery, sortBy, directApply]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -105,6 +111,7 @@ const Jobs = () => {
     setSearchQuery('');
     setLocationQuery('');
     setSortBy('newest');
+    setDirectApply(false);
   };
 
   return (
@@ -197,6 +204,16 @@ const Jobs = () => {
                         <option value="salary_low">Sort by: Salary (Low to High)</option>
                         <option value="relevance">Sort by: Relevance</option>
                     </select>
+
+                    <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={directApply}
+                            onChange={(e) => setDirectApply(e.target.checked)}
+                            className="w-4 h-4 text-[#4169E1] rounded border-gray-300 focus:ring-[#4169E1]"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Direct Apply</span>
+                    </label>
                     
                     <div className="flex items-center border border-gray-200 rounded-lg p-1 bg-gray-50">
                     <button
