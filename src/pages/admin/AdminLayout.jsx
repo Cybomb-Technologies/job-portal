@@ -150,7 +150,7 @@ const AdminLayout = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/admin/login');
+        navigate('/admin');
     };
 
     const navItems = [

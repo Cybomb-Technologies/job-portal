@@ -32,12 +32,48 @@ const AdminDashboard = () => {
     if (loading) return <div className="admin-loading">Loading Dashboard Stats...</div>;
     if (error) return <div className="admin-error">Error: {error}</div>;
 
+    const getGrowthColor = (growth) => {
+        if (growth > 0) return 'text-green-500';
+        if (growth < 0) return 'text-red-500';
+        return 'text-gray-500';
+    };
+
     const cards = [
-        { title: 'Total Jobs', value: stats.totalJobs, icon: <FiBriefcase />, color: '#3b82f6' },
-        { title: 'Job Seekers', value: stats.totalJobSeekers, icon: <FiUsers />, color: '#8b5cf6' },
-        { title: 'Total Employers', value: stats.totalEmployers, icon: <FiUsers />, color: '#10b981' },
-        { title: 'Verified Employers', value: stats.totalVerifiedEmployers, icon: <FiUserCheck />, color: '#f59e0b' },
-        { title: 'Total Companies', value: stats.totalCompanies, icon: <FiLayers />, color: '#6366f1' },
+        { 
+            title: 'Total Jobs', 
+            value: stats.jobs.total, 
+            growth: stats.jobs.growth,
+            icon: <FiBriefcase />, 
+            color: '#3b82f6' 
+        },
+        { 
+            title: 'Job Seekers', 
+            value: stats.jobSeekers.total, 
+            growth: stats.jobSeekers.growth,
+            icon: <FiUsers />, 
+            color: '#8b5cf6' 
+        },
+        { 
+            title: 'Total Employers', 
+            value: stats.employers.total, 
+            growth: stats.employers.growth,
+            icon: <FiUsers />, 
+            color: '#10b981' 
+        },
+        { 
+            title: 'Verified Employers', 
+            value: stats.verifiedEmployers.total, 
+            growth: stats.verifiedEmployers.growth,
+            icon: <FiUserCheck />, 
+            color: '#f59e0b' 
+        },
+        { 
+            title: 'Total Companies', 
+            value: stats.companies.total, 
+            growth: stats.companies.growth,
+            icon: <FiLayers />, 
+            color: '#6366f1' 
+        },
     ];
 
     return (
@@ -57,9 +93,10 @@ const AdminDashboard = () => {
                             <h3>{card.title}</h3>
                             <p className="stat-value">{card.value}</p>
                         </div>
-                        <div className="stat-chart-stub">
+                        <div className={`stat-chart-stub flex items-center gap-1 ${getGrowthColor(card.growth)}`}>
                             <FiTrendingUp />
-                            <span>+12%</span>
+                            <span>{card.growth > 0 ? '+' : ''}{card.growth}%</span>
+                            <span className="text-xs text-gray-400 ml-1">vs last 30 days</span>
                         </div>
                     </div>
                 ))}
