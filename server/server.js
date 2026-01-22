@@ -2,7 +2,17 @@ const express = require('express');
 const dotenv = require('dotenv');
 
 // Load env vars immediately
+const cron = require('node-cron');
+const { sendDailyEmails } = require('./services/recommendationService');
+
+// Load env vars immediately
 dotenv.config();
+
+// Schedule Daily Email at 9:00 AM
+cron.schedule('0 9 * * *', () => {
+    console.log('Running Daily Job Recommendation Email Task...');
+    sendDailyEmails();
+});
 
 console.log("Debug: GEMINI_API_KEY is " + (process.env.GEMINI_API_KEY ? "LOADED" : "MISSING"));
 if (process.env.GEMINI_API_KEY) {

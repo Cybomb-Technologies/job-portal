@@ -312,86 +312,26 @@ const getEmployerStats = async (req, res) => {
 const getRecommendedJobs = async (req, res) => {
     try {
         const User = require('../models/User');
+        const { findMatchesForUser } = require('../services/recommendationService');
+        
         const user = await User.findById(req.user._id);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // 1. Fetch Candidate Jobs (Active only)
-        // Optimization: In a large DB, we might want to pre-filter by at least one matching skill or location in MongoDB query
-        // For now, we fetch all active jobs to score them properly in JS.
-        const jobs = await Job.find({ status: 'Active' })
-            .populate('postedBy', 'name email profilePicture employerVerification')
-            .sort({ createdAt: -1 })
-            .limit(100); // Analyze top 100 recent jobs for relevance to keep it fast
+        const recommendations = await findMatchesForUser(user, 10); // Check top 10 for dashboard
 
-        if (!user.skills || user.skills.length === 0) {
-             // Fallback: Return standard recent jobs if no profile data to match on
-             return res.json(jobs.slice(0, 5));
-        }
-
-        // 2. Scoring Logic
-        const scoredJobs = jobs.map(job => {
-            let score = 0;
-            const reasons = [];
-
-            // A. Skill Match (High Weight: 10 per skill)
-            if (job.skills && job.skills.length > 0) {
-                const userSkillsLower = user.skills.map(s => s.toLowerCase());
-                const matchingSkills = job.skills.filter(s => userSkillsLower.includes(s.toLowerCase()));
-                if (matchingSkills.length > 0) {
-                    score += (matchingSkills.length * 10);
-                    reasons.push(`${matchingSkills.length} matching skills`);
-                }
-            }
-
-            // B. Title Match (Medium Weight: 20)
-            if (user.title && job.title) {
-                const userTitle = user.title.toLowerCase();
-                const jobTitle = job.title.toLowerCase();
-                if (jobTitle.includes(userTitle) || userTitle.includes(jobTitle)) {
-                    score += 20;
-                    reasons.push('Job title match');
-                }
-            }
-
-            // C. Location Match (Medium Weight: 15)
-            if (user.currentLocation || (user.preferredLocations && user.preferredLocations.length > 0)) {
-                const jobLoc = job.location.toLowerCase();
-                const userLoc = (user.currentLocation || '').toLowerCase();
-                const prefLocs = user.preferredLocations.map(l => l.toLowerCase());
-
-                if (jobLoc.includes(userLoc) || prefLocs.some(pl => jobLoc.includes(pl))) {
-                    score += 15;
-                    reasons.push('Location match');
-                } else if (jobLoc === 'remote' || job.type === 'Remote') {
-                    // Slight boost for Remote if not exact location match but user might be open
-                    score += 5; 
-                }
-            }
-
-            // D. Experience Match (Low Weight: 10)
-            if (user.totalExperience !== undefined) {
-                if (user.totalExperience >= job.experienceMin && user.totalExperience <= job.experienceMax) {
-                    score += 10;
-                    reasons.push('Experience level match');
-                }
-            }
-
-            return { ...job.toObject(), score, matchReasons: reasons };
-        });
-
-        // 3. Sort and Filter
-        scoredJobs.sort((a, b) => b.score - a.score);
-
-        // Filter out zero-score jobs unless we really need to fill space
-        // Returning top 5 recommendations
-        const recommendations = scoredJobs.filter(j => j.score > 0).slice(0, 5);
-
-        // Fallback if no relevant matches found
+        // If no strict functional matches, maybe fallback to recent jobs? 
+        // The service logic returns strict matches. 
+        // If empty, let's return standard recent jobs so dashboard isn't empty.
+        
         if (recommendations.length === 0) {
-             return res.json(jobs.slice(0, 5));
+             const jobs = await Job.find({ status: 'Active' })
+                .populate('postedBy', 'name email profilePicture employerVerification')
+                .sort({ createdAt: -1 })
+                .limit(5);
+             return res.json(jobs);
         }
 
         res.json(recommendations);

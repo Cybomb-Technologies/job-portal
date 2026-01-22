@@ -5,23 +5,73 @@ const sendEmail = require('../utils/sendEmail');
 // @desc    Get all admin dashboard stats
 // @route   GET /api/admin/stats
 // @access  Private/Admin
+// Helper to calculate growth
+const calculateGrowth = async (Model, query = {}) => {
+    const now = new Date();
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    const total = await Model.countDocuments(query);
+    const totalLastMonth = await Model.countDocuments({
+        ...query,
+        createdAt: { $lt: lastMonth }
+    });
+
+    let growth = 0;
+    if (totalLastMonth > 0) {
+        growth = ((total - totalLastMonth) / totalLastMonth) * 100;
+    } else if (total > 0) {
+        growth = 100; // 100% growth if started from 0
+    }
+
+    return { total, growth: parseFloat(growth.toFixed(1)) };
+};
+
+// @desc    Get all admin dashboard stats
+// @route   GET /api/admin/stats
+// @access  Private/Admin
 const getStats = async (req, res) => {
     try {
-        const totalJobs = await Job.countDocuments();
-        const totalJobSeekers = await User.countDocuments({ role: 'Job Seeker' });
-        const totalEmployers = await User.countDocuments({ role: 'Employer' });
-        const totalVerifiedEmployers = await User.countDocuments({ 
+        const jobs = await calculateGrowth(Job);
+        const jobSeekers = await calculateGrowth(User, { role: 'Job Seeker' });
+        const employers = await calculateGrowth(User, { role: 'Employer' });
+        const verifiedEmployers = await calculateGrowth(User, { 
             role: 'Employer', 
             'employerVerification.status': 'Verified' 
         });
-        const totalCompanies = await User.distinct('companyName', { role: 'Employer' });
+
+        // Companies Growth (approximate using unique company names created)
+        // Since we can't easily track distinct company growth over time without aggregation on timestamps,
+        // we'll use the Employer creation as a proxy for company growth for now or simple count.
+        // Better approach: Count unique companies now, and unique companies from users created < 30 days ago.
+        
+        const companiesTotalList = await User.distinct('companyName', { role: 'Employer' });
+        const totalCompanies = companiesTotalList.length;
+
+        // For efficiency, let's just use employer growth as a proxy for company growth or 0 for now 
+        // if exact historical distinct count is too expensive. 
+        // Let's try to do it right:
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        
+        const companiesLastMonthList = await User.distinct('companyName', { 
+            role: 'Employer',
+            createdAt: { $lt: lastMonth }
+        });
+        const totalCompaniesLastMonth = companiesLastMonthList.length;
+
+        let companiesGrowth = 0;
+        if (totalCompaniesLastMonth > 0) {
+            companiesGrowth = ((totalCompanies - totalCompaniesLastMonth) / totalCompaniesLastMonth) * 100;
+        } else if (totalCompanies > 0) {
+            companiesGrowth = 100;
+        }
 
         res.json({
-            totalJobs,
-            totalJobSeekers,
-            totalEmployers,
-            totalVerifiedEmployers,
-            totalCompanies: totalCompanies.length
+            jobs,
+            jobSeekers,
+            employers,
+            verifiedEmployers,
+            companies: { total: totalCompanies, growth: parseFloat(companiesGrowth.toFixed(1)) }
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
