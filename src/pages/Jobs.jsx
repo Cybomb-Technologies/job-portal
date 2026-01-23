@@ -71,8 +71,6 @@ const Jobs = () => {
         location: locationQuery || filters.location, 
         type: filters.jobType,
         experience: filters.experience,
-        type: filters.jobType,
-        experience: filters.experience,
         sort: sortBy,
         directApply: directApply
       };

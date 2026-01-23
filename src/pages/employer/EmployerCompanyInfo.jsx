@@ -63,10 +63,10 @@ const EmployerCompanyInfo = () => {
                     employeeCount: data.employeeCount || '',
                 });
                 if (data.profilePicture) {
-                    setPreview(data.profilePicture.startsWith('http') ? data.profilePicture : `http://localhost:8000${data.profilePicture}`);
+                    setPreview(data.profilePicture.startsWith('http') ? data.profilePicture : `${import.meta.env.VITE_SERVER_URL}${data.profilePicture}`);
                 }
                 if (data.bannerPicture) {
-                    setBannerPreview(data.bannerPicture.startsWith('http') ? data.bannerPicture : `http://localhost:8000${data.bannerPicture}`);
+                    setBannerPreview(data.bannerPicture.startsWith('http') ? data.bannerPicture : `${import.meta.env.VITE_SERVER_URL}${data.bannerPicture}`);
                 }
                 // Keep the token from localStorage when updating context
                 const currentUser = JSON.parse(userStr);
@@ -93,10 +93,10 @@ const EmployerCompanyInfo = () => {
                 employeeCount: user.employeeCount || '',
             });
             if (user.profilePicture) {
-                setPreview(user.profilePicture.startsWith('http') ? user.profilePicture : `http://localhost:8000${user.profilePicture}`);
+                setPreview(user.profilePicture.startsWith('http') ? user.profilePicture : `${import.meta.env.VITE_SERVER_URL}${user.profilePicture}`);
             }
             if (user.bannerPicture) {
-                setBannerPreview(user.bannerPicture.startsWith('http') ? user.bannerPicture : `http://localhost:8000${user.bannerPicture}`);
+                setBannerPreview(user.bannerPicture.startsWith('http') ? user.bannerPicture : `${import.meta.env.VITE_SERVER_URL}${user.bannerPicture}`);
             }
         }
     }, [user]);

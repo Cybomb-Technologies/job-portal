@@ -28,7 +28,7 @@ const ReviewCard = ({ review, isOwner, onUpdate }) => {
                         {review.reviewerType === 'Employee' ? (
                             <ShieldCheck className="w-6 h-6 text-[#4169E1]" />
                         ) : review.reviewer?.profilePicture ? (
-                            <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `http://localhost:8000${review.reviewer.profilePicture}`} alt="" className="w-full h-full object-cover" />
+                            <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `${import.meta.env.VITE_SERVER_URL}${review.reviewer.profilePicture}`} alt="" className="w-full h-full object-cover" />
                         ) : (
                             <Users className="w-6 h-6 text-gray-400" />
                         )}
@@ -452,7 +452,7 @@ const CompanyProfile = () => {
                     <div className="h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 relative shadow-inner">
                         {company.bannerPicture ? (
                             <img 
-                                src={company.bannerPicture.startsWith('http') ? company.bannerPicture : `http://localhost:8000${company.bannerPicture}`} 
+                                src={company.bannerPicture.startsWith('http') ? company.bannerPicture : `${import.meta.env.VITE_SERVER_URL}${company.bannerPicture}`} 
                                 alt="" 
                                 className="w-full h-full object-cover"
                             />
@@ -477,7 +477,7 @@ const CompanyProfile = () => {
                         <div className="w-32 h-32 md:w-44 md:h-44 bg-white rounded-3xl p-2 shadow-2xl border-4 border-white flex items-center justify-center overflow-hidden shrink-0">
                             {company.profilePicture ? (
                                 <img 
-                                    src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
+                                    src={company.profilePicture.startsWith('http') ? company.profilePicture : `${import.meta.env.VITE_SERVER_URL}${company.profilePicture}`} 
                                     alt={company.companyName} 
                                     className="w-full h-full object-contain"
                                 />
@@ -793,7 +793,7 @@ const CompanyProfile = () => {
                                     className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium transition-all"
                                 />
                             </div>
-                            <div className="flex gap-3 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                            <div className="flex gap-3 overflow-x-auto p-1 no-scrollbar">
                                 <select 
                                     value={selectedDept}
                                     onChange={(e) => setSelectedDept(e.target.value)}

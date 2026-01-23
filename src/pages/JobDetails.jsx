@@ -252,7 +252,7 @@ const JobDetails = () => {
                 <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center border border-gray-100 shadow-sm overflow-hidden shrink-0">
                   {job.postedBy?.profilePicture ? (
                     <img 
-                      src={job.postedBy.profilePicture.startsWith('http') ? job.postedBy.profilePicture : `http://localhost:8000${job.postedBy.profilePicture}`} 
+                      src={job.postedBy.profilePicture.startsWith('http') ? job.postedBy.profilePicture : `${import.meta.env.VITE_SERVER_URL}${job.postedBy.profilePicture}`} 
                       alt={job.company} 
                       className="w-full h-full object-contain p-1"
                     />

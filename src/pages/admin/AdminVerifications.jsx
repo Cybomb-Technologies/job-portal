@@ -163,7 +163,7 @@ const AdminVerifications = () => {
                                                     <div className="font-bold text-gray-900">{doc.type} Verification</div>
                                                     <div className="text-xs text-gray-500">Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}</div>
                                                     <a 
-                                                        href={doc.fileUrl.startsWith('http') ? doc.fileUrl : `http://localhost:8000${doc.fileUrl}`} 
+                                                        href={doc.fileUrl.startsWith('http') ? doc.fileUrl : `${import.meta.env.VITE_SERVER_URL}${doc.fileUrl}`} 
                                                         target="_blank" 
                                                         rel="noopener noreferrer"
                                                         className="text-[#4169E1] text-sm font-medium hover:underline flex items-center mt-1"

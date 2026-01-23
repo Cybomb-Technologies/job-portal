@@ -10,7 +10,7 @@ const getJobRecommendationEmail = (user, jobs) => {
                 <strong>Match:</strong> ${job.matchReasons.slice(0, 3).join(', ')}
             </p>
 
-            <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/jobs/${job._id}" 
+            <a href="${process.env.CLIENT_URL}/jobs/${job._id}" 
                style="background-color: #3498db; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-size: 14px; display: inline-block;">
                View Job
             </a>
@@ -45,7 +45,7 @@ const getJobRecommendationEmail = (user, jobs) => {
                 </div>
                 
                 <div style="text-align: center; margin-top: 25px;">
-                    <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/jobs" 
+                    <a href="${process.env.CLIENT_URL}/jobs" 
                        style="background-color: #2c3e50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                        View All Jobs
                     </a>

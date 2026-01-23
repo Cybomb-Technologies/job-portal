@@ -70,7 +70,7 @@ const AdminCompanies = () => {
                                     <div className="company-info-cell">
                                         <div className="company-logo-stub">
                                             {comp.profilePicture ? (
-                                                <img src={comp.profilePicture.startsWith('http') ? comp.profilePicture : `http://localhost:8000${comp.profilePicture}`} alt="" />
+                                                <img src={comp.profilePicture.startsWith('http') ? comp.profilePicture : `${import.meta.env.VITE_SERVER_URL}${comp.profilePicture}`} alt="" />
                                             ) : (
                                                 <FiBriefcase />
                                             )}

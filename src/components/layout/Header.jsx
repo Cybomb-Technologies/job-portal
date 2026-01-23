@@ -16,11 +16,15 @@ const Header = () => {
   const [notifications, setNotifications] = React.useState([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [showNotifications, setShowNotifications] = React.useState(false);
-  const notificationRef = useRef(null);
+  const desktopNotificationRef = useRef(null);
+  const mobileNotificationRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-        if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        const isDesktopOutside = desktopNotificationRef.current && !desktopNotificationRef.current.contains(event.target);
+        const isMobileOutside = mobileNotificationRef.current && !mobileNotificationRef.current.contains(event.target);
+
+        if (isDesktopOutside && isMobileOutside) {
             setShowNotifications(false);
         }
     };
@@ -47,7 +51,7 @@ const Header = () => {
     fetchNotifications();
 
     // Socket.io Connection
-    const socket = io('http://localhost:8000');
+    const socket = io(import.meta.env.VITE_SERVER_URL);
 
     if (user) {
         socket.emit('join', user._id);
@@ -140,6 +144,7 @@ const Header = () => {
     { name: 'Find Jobs', path: '/jobs' },
     { name: 'Companies', path: '/companies' },
     { name: 'Career Tips', path: '/career-tips' },
+    { name: 'Pricing', path: '/pricing' },
   ];
 
   const employerNavItems = [
@@ -147,6 +152,7 @@ const Header = () => {
     { name: 'Post Job', path: '/employer/post-job' },
     { name: 'My Jobs', path: '/employer/my-jobs' },
     { name: 'Find Candidates', path: '/employer/candidates' },
+    { name: 'Pricing', path: '/pricing' },
     { name: 'Verification', path: '/employer/verification' },
   ];
 
@@ -188,7 +194,7 @@ const Header = () => {
             {user ? (
               <>
                  {/* Notification Bell */}
-                 <div className="relative" ref={notificationRef}>
+                 <div className="relative" ref={desktopNotificationRef}>
                     <button 
                         onClick={() => setShowNotifications(!showNotifications)}
                         className="p-2 relative hover:bg-gray-100 rounded-full transition-colors"
@@ -271,7 +277,7 @@ const Header = () => {
           {/* Mobile Actions */}
           <div className="flex md:hidden items-center space-x-2">
             {user && (
-                 <div className="relative" ref={notificationRef}>
+                 <div className="relative" ref={mobileNotificationRef}>
                     <button 
                         onClick={() => setShowNotifications(!showNotifications)}
                         className="p-2 relative hover:bg-gray-100 rounded-full transition-colors"

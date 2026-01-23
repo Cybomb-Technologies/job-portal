@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api';
 import { ShieldCheck, Upload, AlertCircle, CheckCircle, Store, Building2 } from 'lucide-react';
 
 const VerificationCenter = () => {
@@ -28,9 +28,13 @@ const VerificationCenter = () => {
                 return; 
             }
 
-            const res = await axios.get('http://localhost:8000/api/verification/status', {
-                headers: { Authorization: `Bearer ${token}` } // Use retrieved token
-            });
+            if (!token) {
+                // Handle no token case (e.g. redirect or show error)
+                setLoading(false);
+                return; 
+            }
+
+            const res = await api.get('/verification/status');
             setStatus(res.data);
             setLoading(false);
         } catch (error) {
@@ -45,9 +49,7 @@ const VerificationCenter = () => {
             const storedUser = localStorage.getItem('user');
             const token = storedUser ? JSON.parse(storedUser).token : null;
 
-            const res = await axios.post('http://localhost:8000/api/verification/send-otp', {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.post('/verification/send-otp', {});
             setOtpSent(true);
             setMessage({ type: 'success', text: res.data.message });
         } catch (error) {
@@ -63,9 +65,7 @@ const VerificationCenter = () => {
             const storedUser = localStorage.getItem('user');
             const token = storedUser ? JSON.parse(storedUser).token : null;
 
-            const res = await axios.post('http://localhost:8000/api/verification/verify-otp', { otp }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.post('/verification/verify-otp', { otp });
             setStatus({ ...status, level: res.data.level, emailVerified: true, domainVerified: true, status: 'Verified' });
             setMessage({ type: 'success', text: res.data.message });
             setOtpSent(false);
@@ -97,9 +97,8 @@ const VerificationCenter = () => {
             const storedUser = localStorage.getItem('user');
             const token = storedUser ? JSON.parse(storedUser).token : null;
 
-            await axios.post('http://localhost:8000/api/verification/upload-docs', formData, {
+            await api.post('/verification/upload-docs', formData, {
                 headers: { 
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'
                 }
             });

@@ -93,7 +93,7 @@ const AdminEmployers = () => {
                                     <div className="user-info-cell">
                                         <div className="user-avatar-sm">
                                             {emp.profilePicture ? (
-                                                <img src={emp.profilePicture.startsWith('http') ? emp.profilePicture : `http://localhost:8000${emp.profilePicture}`} alt="" />
+                                                <img src={emp.profilePicture.startsWith('http') ? emp.profilePicture : `${import.meta.env.VITE_SERVER_URL}${emp.profilePicture}`} alt="" />
                                             ) : (
                                                 emp.name.charAt(0)
                                             )}
