@@ -69,7 +69,7 @@ const EmployerReviews = () => {
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
                                         {review.reviewer?.profilePicture ? (
-                                             <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `http://localhost:8000${review.reviewer.profilePicture}`} alt={review.reviewer.name} className="w-full h-full object-cover" />
+                                             <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `${import.meta.env.VITE_SERVER_URL}${review.reviewer.profilePicture}`} alt={review.reviewer.name} className="w-full h-full object-cover" />
                                         ) : (
                                             review.reviewer?.name?.charAt(0) || 'U'
                                         )}

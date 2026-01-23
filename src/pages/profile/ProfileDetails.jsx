@@ -738,9 +738,9 @@ const ProfileDetails = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     {/* Experience Section */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 h-full">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-blue-50 text-[#4169E1] rounded-lg">
                                 <Briefcase className="w-6 h-6" />
@@ -769,7 +769,7 @@ const ProfileDetails = () => {
                     </div>
 
                     {/* Education Section */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 h-full">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
                          <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                                 <GraduationCap className="w-6 h-6" />
@@ -920,9 +920,9 @@ const ProfileDetails = () => {
                                     </button>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row gap-8 items-start -mt-12 px-4 relative z-10">
+                                <div className="flex flex-col md:flex-row gap-8 items-start px-4 relative z-10">
                                     {/* Profile Picture Upload - Updated Design */}
-                                    <div className="flex-shrink-0 mx-auto md:mx-0">
+                                    <div className="flex-shrink-0 mx-auto md:mx-0 -mt-12">
                                         <div className="relative group">
                                             <div className="w-36 h-36 rounded-2xl bg-gray-50 border-2 border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
                                                 {previewUrl ? (

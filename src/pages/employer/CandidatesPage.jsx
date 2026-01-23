@@ -276,7 +276,7 @@ const CandidatesPage = () => {
                                             <div className="w-20 h-20 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
                                                 {candidate.profilePicture ? (
                                                     <img 
-                                                        src={candidate.profilePicture.startsWith('http') ? candidate.profilePicture : `http://localhost:8000${candidate.profilePicture}`} 
+                                                        src={candidate.profilePicture.startsWith('http') ? candidate.profilePicture : `${import.meta.env.VITE_SERVER_URL}${candidate.profilePicture}`} 
                                                         alt={candidate.name} 
                                                         className="w-full h-full object-cover" 
                                                     />

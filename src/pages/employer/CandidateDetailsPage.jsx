@@ -67,7 +67,7 @@ const CandidateDetailsPage = () => {
                                 <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                      {candidate.profilePicture ? (
                                         <img 
-                                            src={candidate.profilePicture.startsWith('http') ? candidate.profilePicture : `http://localhost:8000${candidate.profilePicture}`} 
+                                            src={candidate.profilePicture.startsWith('http') ? candidate.profilePicture : `${import.meta.env.VITE_SERVER_URL}${candidate.profilePicture}`} 
                                             alt={candidate.name} 
                                             className="w-full h-full object-cover" 
                                         />
@@ -241,7 +241,7 @@ const CandidateDetailsPage = () => {
                             </button>
                             <div className="flex-1 bg-gray-100 overflow-hidden rounded-xl custom-scrollbar-container">
                                 <iframe 
-                                    src={`http://localhost:8000${candidate.resume}#toolbar=0&navpanes=0&scrollbar=0`} 
+                                    src={`${import.meta.env.VITE_SERVER_URL}${candidate.resume}#toolbar=0&navpanes=0&scrollbar=0`} 
                                     className="w-full h-full border-0 rounded-xl"
                                     title="Resume Preview"
                                 ></iframe>

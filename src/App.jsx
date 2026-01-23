@@ -50,6 +50,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import SalaryCalculator from './pages/SalaryCalculator';
 import ReportIssue from './pages/ReportIssue';
+import Pricing from './pages/Pricing';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -71,6 +72,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/career-tips" element={<CareerTips />} />
+          <Route path="/pricing" element={<Pricing />} />
           
           {/* Info Pages */}
           <Route path="/about" element={<AboutUs />} />

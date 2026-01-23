@@ -154,7 +154,7 @@ const Companies = () => {
                                  <div className="bg-blue-50 p-0 rounded-xl group-hover:scale-110 transition-transform duration-300 overflow-hidden w-16 h-16 flex items-center justify-center">
                                     {company.profilePicture ? (
                                         <img 
-                                            src={company.profilePicture.startsWith('http') ? company.profilePicture : `http://localhost:8000${company.profilePicture}`} 
+                                            src={company.profilePicture.startsWith('http') ? company.profilePicture : `${import.meta.env.VITE_SERVER_URL}${company.profilePicture}`} 
                                             alt={company.name}
                                             className="w-full h-full object-contain"
                                         />

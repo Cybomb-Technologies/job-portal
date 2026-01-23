@@ -67,7 +67,7 @@ const AdminLayout = () => {
         fetchNotifications();
 
         // Socket.io Connection
-        const socket = io('http://localhost:8000');
+        const socket = io(import.meta.env.VITE_SERVER_URL);
 
         if (user) {
             socket.emit('join', user._id);
@@ -268,7 +268,7 @@ const AdminLayout = () => {
                             <span className="admin-name">{user?.name || 'Administrator'}</span>
                             <div className="admin-avatar">
                                 {user?.profilePicture ? (
-                                    <img src={user.profilePicture.startsWith('http') ? user.profilePicture : `http://localhost:8000${user.profilePicture}`} alt="" />
+                                    <img src={user.profilePicture.startsWith('http') ? user.profilePicture : `${import.meta.env.VITE_SERVER_URL}${user.profilePicture}`} alt="" />
                                 ) : (
                                     (user?.name || 'A').charAt(0)
                                 )}
