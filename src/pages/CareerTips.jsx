@@ -213,7 +213,7 @@ const CareerTips = () => {
                                                 AI Coach
                                             </div>
                                         )}
-                                        <div className="prose prose-sm max-w-none break-words">
+                                        <div className="prose prose-sm max-w-none force-normal-break">
                                             <ReactMarkdown 
                                                 components={{
                                                     p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,

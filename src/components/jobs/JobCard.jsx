@@ -7,91 +7,91 @@ const JobCard = ({ job }) => {
   
   return (
     <Link to={`/job/${job._id}`} className="block group h-full">
-        <div className="bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100 p-6 transition-all duration-300 animate-fade-in-up hover:border-blue-100 h-full relative flex flex-col">
-        <div className="flex justify-between items-start">
-            <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                <Briefcase className="w-6 h-6 text-[#4169E1]" />
+        <div className="bg-white rounded-[1.5rem] p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100/80 hover:border-blue-100/80 h-full relative flex flex-col justify-between group-hover:bg-gradient-to-br from-white to-blue-50/30">
+        
+        {/* Card Header & Content */}
+        <div>
+            <div className="flex justify-between items-start mb-6">
+                <div className="flex items-start gap-5">
+                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100 group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                        <Briefcase className="w-7 h-7 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors font-display mb-1.5 leading-tight">
+                            {job.title}
+                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-slate-600 font-semibold text-sm">{job.company}</p>
+                            {job.postedBy?.employerVerification?.level >= 1 && (
+                                <span title="Verified Company" className="inline-flex items-center text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-blue-100 uppercase tracking-wider">
+                                    Verified <ShieldCheck size={10} className="ml-1" />
+                                </span>
+                            )}
+                            {job.postedBy?.employerVerification?.level >= 2 && (
+                                <span title="Registered Business" className="inline-flex items-center text-emerald-600 bg-emerald-50/50 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-emerald-100 uppercase tracking-wider">
+                                    Reg. Business <CheckCircle size={10} className="ml-1" />
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                {(job.applyMethod === 'direct' || !job.applyMethod) && (
+                    <span className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg shadow-blue-200 uppercase tracking-wider flex items-center animate-fadeIn">
+                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1.5 animate-pulse"></span>
+                       Direct
+                    </span>
+                )}
             </div>
-            <div>
-                <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-bold text-black group-hover:text-[#4169E1] transition-colors">{job.title}</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                    <p className="text-gray-700 font-medium">{job.company}</p>
-                    {job.postedBy?.employerVerification?.level >= 1 && (
-                         <span title="Verified Company" className="flex items-center text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-blue-100 uppercase tracking-wider">
-                            Verified <ShieldCheck size={10} className="ml-1" />
-                        </span>
-                    )}
-                     {job.postedBy?.employerVerification?.level >= 2 && (
-                         <span title="Registered Business" className="flex items-center text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-green-100 uppercase tracking-wider">
-                            Reg. Business <CheckCircle size={10} className="ml-1" />
-                        </span>
-                    )}
-                </div>
-                <div className="flex flex-wrap items-center gap-4 mt-3">
-                <span className="flex items-center text-gray-500 text-sm">
-                    <MapPin className="w-4 h-4 mr-1" />
+
+            <div className="flex flex-wrap gap-y-2 gap-x-5 mb-6">
+                <span className="flex items-center text-slate-500 text-sm font-medium">
+                    <MapPin className="w-4 h-4 mr-1.5 text-slate-400" />
                     {job.location}
                 </span>
-                <span className="flex items-center text-gray-500 text-sm">
-                    <Briefcase className="w-4 h-4 mr-1" />
+                <span className="flex items-center text-slate-500 text-sm font-medium">
+                    <Briefcase className="w-4 h-4 mr-1.5 text-slate-400" />
                     {job.type}
                 </span>
-                <span className="flex items-center text-gray-500 text-sm">
-                    <IndianRupee className="w-4 h-4 mr-1" />
+                <span className="flex items-center text-slate-900 text-sm font-bold">
+                    <IndianRupee className="w-4 h-4 mr-1.5 text-slate-400" />
                     {job.salaryType === 'Fixed' 
-                        ? `Fixed: ${Number(job.salaryMin).toLocaleString()}` 
+                        ? `₹${Number(job.salaryMin).toLocaleString()}` 
                         : job.salaryType === 'Starting From' 
-                            ? `Starts from ${Number(job.salaryMin).toLocaleString()}` 
-                            : `${Number(job.salaryMin).toLocaleString()} - ${Number(job.salaryMax).toLocaleString()}`
+                            ? `From ₹${Number(job.salaryMin).toLocaleString()}` 
+                            : `₹${Number(job.salaryMin).toLocaleString()} - ${Number(job.salaryMax).toLocaleString()}`
                     }
-                    {job.salaryFrequency ? ` / ${job.salaryFrequency}` : ''}
                 </span>
-                <span className="flex items-center text-gray-500 text-sm">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {new Date(job.createdAt).toLocaleDateString()}
-                </span>
+            </div>
+
+            <div className="mb-6">
+                 <div className="flex flex-wrap gap-2">
+                    {job.skills.slice(0, 3).map((skill, index) => (
+                        <span
+                        key={index}
+                        className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg border border-transparent group-hover:bg-white group-hover:border-blue-100 group-hover:text-blue-600 transition-colors"
+                        >
+                        {skill}
+                        </span>
+                    ))}
+                    {job.skills.length > 3 && (
+                        <span className="px-2 py-1 text-slate-400 text-xs font-semibold">+ {job.skills.length - 3}</span>
+                    )}
                 </div>
-            </div>
-            </div>
-            <div className="flex flex-col items-end mt-2">
-            <span className="whitespace-nowrap px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full mb-3 uppercase tracking-wide mt-6">
-                {job.experienceMin} - {job.experienceMax} years
-            </span>
-            <span
-                className="px-6 py-2 bg-white border-2 border-[#4169E1] text-[#4169E1] text-sm font-medium rounded-lg group-hover:bg-[#4169E1] group-hover:text-white transition-all duration-300 z-10 relative"
-            >
-                Apply Now
-            </span>
-            </div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-50 flex-1">
-            <div 
-                className="text-gray-600 text-sm line-clamp-2 mb-4"
-                dangerouslySetInnerHTML={{ __html: job.description }}
-            />
-            <div className="flex flex-wrap gap-2">
-            {job.skills.map((skill, index) => (
-                <span
-                key={index}
-                className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full border border-gray-100"
-                >
-                {skill}
-                </span>
-            ))}
             </div>
         </div>
 
-        {(job.applyMethod === 'direct' || !job.applyMethod) && (
-            <div className="absolute top-0 right-0">
-                <span className="bg-[#4169E1] text-white text-[10px] font-bold px-3 py-1.5 rounded-bl-xl rounded-tr-xl shadow-sm uppercase tracking-wider flex items-center">
-                   <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                   Direct Apply
-                </span>
-            </div>
-        )}
+        {/* Card Footer */}
+        <div className="pt-5 border-t border-gray-100 group-hover:border-blue-100/50 transition-colors flex items-center justify-between mt-auto">
+            <span className="flex items-center text-slate-400 text-xs font-medium">
+                <Clock className="w-3.5 h-3.5 mr-1.5" />
+                {new Date(job.createdAt).toLocaleDateString()}
+            </span>
+            <span
+                className="px-5 py-2.5 bg-slate-50 text-slate-700 text-sm font-bold rounded-xl group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-200 transition-all duration-300"
+            >
+                View Details
+            </span>
+        </div>
         </div>
     </Link>
   );

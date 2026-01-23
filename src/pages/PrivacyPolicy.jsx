@@ -15,7 +15,7 @@ const PrivacyPolicy = () => {
       <div className="container mx-auto px-4 py-12 -mt-8">
         <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 max-w-4xl mx-auto">
           
-          <div className="prose prose-lg max-w-none text-gray-600">
+          <div className="prose prose-lg max-w-none text-gray-600 force-normal-break">
             <p className="lead text-xl text-gray-800 font-medium mb-8">
               At JobPortal, we value your privacy and are committed to protecting your personal information. This Privacy Policy outlines how we collect, use, and safeguard your data when you use our platform.
             </p>

@@ -159,26 +159,30 @@ const Header = () => {
   const currentNavItems = user?.role === 'Employer' ? employerNavItems : navItems;
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 border-b border-gray-200">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-gray-200/50 transition-all duration-300">
+      <div className="container mx-auto px-6">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link to={user?.role === 'Employer' ? "/employer/dashboard" : "/"} className="flex items-center space-x-2 users-button">
-            <div className="w-8 h-8 bg-[#4169E1] rounded-lg flex items-center justify-center">
-              <Briefcase className="w-5 h-5 text-white" />
+          <Link to={user?.role === 'Employer' ? "/employer/dashboard" : "/"} className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:shadow-blue-300 transition-all duration-300 group-hover:scale-105">
+              <Briefcase className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-black">JobPortal</span>
+            <span className="text-2xl font-extrabold text-slate-800 tracking-tight font-display">
+              Job<span className="text-blue-600">Portal</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-1">
             {currentNavItems.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `font-medium transition-colors hover:text-[#4169E1] ${
-                    isActive ? 'text-[#4169E1]' : 'text-black'
+                  `px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                    isActive 
+                    ? 'bg-blue-50 text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                   }`
                 }
               >
@@ -190,47 +194,47 @@ const Header = () => {
 {/* Search Bar Removed */}
 
           {/* User Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-5">
             {user ? (
               <>
                  {/* Notification Bell */}
                  <div className="relative" ref={desktopNotificationRef}>
                     <button 
                         onClick={() => setShowNotifications(!showNotifications)}
-                        className="p-2 relative hover:bg-gray-100 rounded-full transition-colors"
+                        className="p-2.5 relative hover:bg-gray-100 rounded-full transition-all duration-300 hover:scale-105 hover:text-blue-600 text-gray-500"
                     >
-                        <Bell className="w-6 h-6 text-gray-600" />
+                        <Bell className="w-6 h-6" />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
                         )}
                     </button>
 
                     {/* Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
-                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                <h3 className="font-bold text-gray-900">Notifications</h3>
+                        <div className="absolute right-0 top-14 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-fadeIn">
+                            <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50 backdrop-blur-sm">
+                                <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
                                 {unreadCount > 0 && (
-                                    <button onClick={markAllRead} className="text-xs text-[#4169E1] font-bold hover:underline">Mark all read</button>
+                                    <button onClick={markAllRead} className="text-xs text-blue-600 font-bold hover:text-blue-700 transition-colors">Mark all read</button>
                                 )}
                             </div>
-                            <div className="max-h-80 overflow-y-auto">
+                            <div className="max-h-[400px] overflow-y-auto">
                                 {notifications.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500 text-sm">No notifications</div>
+                                    <div className="p-10 text-center text-gray-400 text-sm font-medium">No new notifications</div>
                                 ) : (
                                     notifications.map(notification => (
                                         <div 
                                             key={notification._id} 
                                             onClick={() => handleNotificationClick(notification)}
-                                            className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
+                                            className={`p-4 border-b border-gray-50 hover:bg-blue-50/50 transition-colors cursor-pointer group ${!notification.isRead ? 'bg-blue-50/20' : ''}`}
                                         >
-                                            <div className="flex gap-3">
-                                                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notification.isRead ? 'bg-[#4169E1]' : 'bg-gray-200'}`}></div>
+                                            <div className="flex gap-4">
+                                                <div className={`w-2 h-2 mt-2 rounded-full shrink-0 transition-all ${!notification.isRead ? 'bg-blue-500 scale-100' : 'bg-gray-200 scale-75'}`}></div>
                                                 <div>
-                                                    <p className={`text-sm ${!notification.isRead ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                                                    <p className={`text-sm transition-colors ${!notification.isRead ? 'font-bold text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>
                                                         {notification.message}
                                                     </p>
-                                                    <span className="text-xs text-gray-400 mt-1 block">
+                                                    <span className="text-xs text-gray-400 mt-1.5 block font-medium">
                                                         {new Date(notification.createdAt).toLocaleDateString()}
                                                     </span>
                                                 </div>
@@ -243,15 +247,17 @@ const Header = () => {
                     )}
                  </div>
 
-                 <Link to={user.role === 'Employer' ? "/employer/profile" : "/profile"} className="text-black hover:text-[#4169E1]">
-                  <User className="w-6 h-6" />
+                 <Link to={user.role === 'Employer' ? "/employer/profile" : "/profile"} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 transition-all duration-300 border border-transparent hover:border-gray-200">
+                  <div className="w-9 h-9 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center text-gray-600 border border-gray-200 shadow-inner">
+                    <User className="w-5 h-5" />
+                  </div>
                 </Link>
                 <button
                   onClick={() => {
                       logout();
                       window.location.href = '/';
                   }}
-                  className="px-6 py-2 border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white"
+                  className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-all hover:shadow-sm"
                 >
                   Logout
                 </button>
@@ -260,22 +266,22 @@ const Header = () => {
               <>
                 <Link
                   to="/login"
-                  className="px-6 py-2 border-2 border-[#4169E1] text-[#4169E1] rounded-lg font-medium hover:bg-[#4169E1] hover:text-white"
+                  className="px-6 py-2.5 text-gray-600 font-bold hover:text-blue-600 transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="px-6 py-2 bg-[#4169E1] text-white rounded-lg font-medium hover:bg-[#3A5FCD]"
+                  className="px-7 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                 >
-                  Register
+                  Create Account
                 </Link>
               </>
             )}
           </div>
 
           {/* Mobile Actions */}
-          <div className="flex md:hidden items-center space-x-2">
+          <div className="flex md:hidden items-center space-x-4">
             {user && (
                  <div className="relative" ref={mobileNotificationRef}>
                     <button 
@@ -284,16 +290,16 @@ const Header = () => {
                     >
                         <Bell className="w-6 h-6 text-gray-600" />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                         )}
                     </button>
                     {/* Mobile Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
+                        <div className="absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
                             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                                <h3 className="font-bold text-gray-900">Notifications</h3>
+                                <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
                                 {unreadCount > 0 && (
-                                    <button onClick={markAllRead} className="text-xs text-[#4169E1] font-bold hover:underline">Mark all read</button>
+                                    <button onClick={markAllRead} className="text-xs text-blue-600 font-bold hover:underline">Mark all read</button>
                                 )}
                             </div>
                             <div className="max-h-80 overflow-y-auto">
@@ -307,7 +313,7 @@ const Header = () => {
                                             className={`p-4 border-b border-gray-50 hover:bg-blue-50/30 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50/10' : ''}`}
                                         >
                                             <div className="flex gap-3">
-                                                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notification.isRead ? 'bg-[#4169E1]' : 'bg-gray-200'}`}></div>
+                                                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!notification.isRead ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-900 text-left">
                                                         {notification.message}
@@ -327,9 +333,9 @@ const Header = () => {
             )}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-black hover:text-[#4169E1]"
+              className="text-gray-800 hover:text-blue-600 transition-colors"
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
             </button>
           </div>
         </div>
@@ -338,15 +344,15 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-100">
-            <div className="flex flex-col space-y-4">
+          <div className="md:hidden py-6 border-t border-gray-100 animate-slide-up">
+            <div className="flex flex-col space-y-2">
               {currentNavItems.map((item) => (
                 <NavLink
                   key={item.name}
                   to={item.path}
                   className={({ isActive }) =>
-                    `font-medium py-2 ${
-                      isActive ? 'text-[#4169E1]' : 'text-black'
+                    `font-bold py-3 px-4 rounded-xl ${
+                      isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
                     }`
                   }
                   onClick={() => setIsMenuOpen(false)}
@@ -354,15 +360,15 @@ const Header = () => {
                   {item.name}
                 </NavLink>
               ))}
-              <div className="pt-4 border-t border-gray-100 space-y-4">
+              <div className="pt-6 mt-2 border-t border-gray-100 space-y-4 px-2">
                 {user ? (
                    <>
                     <NavLink
                         to={user.role === 'Employer' ? "/employer/profile" : "/profile"}
-                        className="block w-full text-center py-2 text-gray-700 font-medium hover:text-[#4169E1]"
+                        className="flex items-center justify-center gap-2 w-full text-center py-3 text-gray-700 font-bold hover:text-blue-600 bg-gray-50 rounded-xl"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        My Profile
+                        <User className="w-5 h-5" /> My Profile
                     </NavLink>
 
                     
@@ -371,28 +377,28 @@ const Header = () => {
                         logout();
                         window.location.href = '/';
                         }}
-                        className="block w-full text-center py-2 border border-[#4169E1] text-[#4169E1] rounded-lg font-medium"
+                        className="block w-full text-center py-3 border-2 border-red-100 text-red-500 rounded-xl font-bold hover:bg-red-50"
                     >
                         Logout
                     </button>
                    </>
                 ) : (
-                  <>
+                  <div className="grid grid-cols-2 gap-4">
                   <Link
                     to="/login"
-                    className="block text-center py-2 border border-[#4169E1] text-[#4169E1] rounded-lg font-medium"
+                    className="block text-center py-3 border-2 border-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-50"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Login
                   </Link>
                   <Link
                     to="/signup"
-                    className="block text-center py-2 bg-[#4169E1] text-white rounded-lg font-medium"
+                    className="block text-center py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Register
                   </Link>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
