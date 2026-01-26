@@ -15,7 +15,7 @@ const TermsOfService = () => {
       <div className="container mx-auto px-4 py-12 -mt-8">
         <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 max-w-4xl mx-auto">
           
-          <div className="prose prose-lg max-w-none text-gray-600">
+          <div className="prose prose-lg max-w-none text-gray-600 force-normal-break">
             <p className="lead text-xl text-gray-800 font-medium mb-8">
               Welcome to JobPortal. By accessing or using our website, you agree to comply with and be bound by the following Terms of Service. Please read them carefully.
             </p>

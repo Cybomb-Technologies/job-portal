@@ -183,15 +183,15 @@ const Jobs = () => {
           {/* Job Listings */}
           <div className="lg:w-3/4">
             {/* Controls */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-6 sticky top-0 z-20">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-6 sticky top-20 z-20">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 flex-wrap">
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-600">
                     Showing <span className="font-bold text-black">{jobs.length}</span> jobs
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap justify-end">
                     <select 
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}

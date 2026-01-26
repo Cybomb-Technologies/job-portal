@@ -34,7 +34,7 @@ const Signup = () => {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4">
             <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700">
-                <h2 className="text-3xl font-bold mb-6 text-center text-blue-500">Create Account</h2>
+                <h2 className="text-3xl font-bold mb-6 text-center !text-white">Create Account</h2>
                 
                 {error && <div className="bg-red-500/20 text-red-500 p-3 rounded mb-4 text-center">{error}</div>}
 

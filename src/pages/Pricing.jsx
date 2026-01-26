@@ -72,77 +72,75 @@ const Pricing = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50/50 py-12 md:py-20">
-            <div className="container mx-auto px-4">
+        <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans">
+             {/* Decorative Background */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-gradient-to-b from-blue-50/50 to-transparent -z-10 pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-100/40 rounded-full blur-3xl -mr-20 -mt-20 -z-10 pointer-events-none"></div>
+            <div className="absolute top-40 left-0 w-[400px] h-[400px] bg-blue-100/40 rounded-full blur-3xl -ml-20 -z-10 pointer-events-none"></div>
+
+            <div className="container mx-auto px-6 py-24">
                 
                 {/* Header */}
-                <div className="text-center max-w-3xl mx-auto mb-16 animate-fadeIn">
-                    <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">
-                        Simple, Transparent Pricing
+                <div className="text-center max-w-3xl mx-auto mb-20 animate-fadeIn relative z-10">
+                    <h2 className="text-blue-600 font-extrabold tracking-wide uppercase text-sm mb-4">Pricing Plans</h2>
+                    <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 mb-6 font-display tracking-tight leading-tight">
+                        Simple, transparent pricing
                     </h1>
-                    <p className="text-xl text-gray-500 mb-8 leading-relaxed">
-                        Choose the plan that fits your hiring needs. No hidden fees.
+                    <p className="text-xl text-slate-500 mb-10 leading-relaxed font-medium">
+                        Choose the perfect plan for your recruitment needs. <br className="hidden md:inline"/> No hidden fees. Just results.
                     </p>
                     
                     {/* Toggle */}
-                    <div className="flex items-center justify-center gap-4 mb-8">
-                        <span className={`text-sm font-bold ${!isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
+                    <div className="inline-flex items-center justify-center p-1.5 bg-white rounded-2xl shadow-sm border border-slate-200 relative">
+                        <div className="absolute -top-3 -right-3 pointer-events-none z-20">
+                            <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm animate-bounce flex items-center">
+                                SAVE 20%
+                            </span>
+                        </div>
                         <button 
-                            onClick={() => setIsAnnual(!isAnnual)}
-                            className={`w-14 h-8 flex items-center bg-gray-200 rounded-full p-1 transition-all duration-300 ${isAnnual ? 'bg-[#4169E1]' : ''}`}
+                            onClick={() => setIsAnnual(false)}
+                            className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${!isAnnual ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:text-slate-900'}`}
                         >
-                            <div className={`bg-white w-6 h-6 rounded-full shadow-sm transform transition-transform duration-300 ${isAnnual ? 'translate-x-6' : ''}`}></div>
+                            Monthly
                         </button>
-                        <span className={`text-sm font-bold ${isAnnual ? 'text-gray-900' : 'text-gray-500'}`}>
-                            Yearly <span className="text-[#4169E1] text-xs bg-blue-50 px-2 py-0.5 rounded-full ml-1">-20%</span>
-                        </span>
+                        <button 
+                            onClick={() => setIsAnnual(true)}
+                            className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${isAnnual ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'text-slate-500 hover:text-slate-900'}`}
+                        >
+                            Yearly
+                        </button>
                     </div>
                 </div>
 
                 {/* Pricing Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-20">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto mb-24 relative z-10">
                     {plans.map((plan, index) => (
                         <div 
                             key={index} 
-                            className={`relative bg-white rounded-3xl p-8 border hover:shadow-xl transition-shadow duration-300 flex flex-col ${plan.popular ? 'border-[#4169E1] shadow-lg scale-105 z-10' : 'border-gray-200'}`}
+                            className={`relative bg-white rounded-[2.5rem] p-8 md:p-10 border transition-all duration-300 flex flex-col group ${
+                                plan.popular 
+                                ? 'border-blue-600 shadow-2xl shadow-blue-900/10 scale-105 z-20 ring-4 ring-blue-50' 
+                                : 'border-slate-100 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-1'
+                            }`}
                         >
                             {plan.popular && (
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#4169E1] text-white px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wider shadow-md">
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg shadow-blue-600/30">
                                     Most Popular
                                 </div>
                             )}
                             
-                            <div className="mb-8">
-                                <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                                <p className="text-gray-500 mb-6 min-h-[50px]">{plan.description}</p>
-                                <div className="flex items-baseline">
-                                    <span className="text-5xl font-extrabold text-gray-900">
+                            <div className="mb-8 text-center">
+                                <h3 className={`text-2xl font-bold mb-3 ${plan.popular ? 'text-blue-600' : 'text-slate-900'} font-display`}>{plan.name}</h3>
+                                <p className="text-slate-500 mb-8 min-h-[50px] font-medium leading-relaxed">{plan.description}</p>
+                                <div className="flex items-baseline justify-center text-slate-900">
+                                    <span className="text-5xl font-extrabold tracking-tighter">
                                         ₹{plan.price === 0 ? '0' : plan.price.toLocaleString()}
                                     </span>
-                                    <span className="text-gray-500 ml-2 font-medium">/ month</span>
+                                    <span className="text-slate-500 ml-1.5 font-bold text-lg">/ month</span>
                                 </div>
                                 {isAnnual && plan.price > 0 && (
-                                    <p className="text-xs text-[#4169E1] font-bold mt-2">Billed ₹{(plan.price * 12).toLocaleString()} yearly</p>
+                                    <p className="text-sm text-emerald-600 font-bold mt-3 bg-emerald-50 py-1 px-3 rounded-full inline-block">Billed ₹{(plan.price * 12).toLocaleString()} yearly</p>
                                 )}
-                            </div>
-
-                            <div className="flex-grow space-y-4 mb-8">
-                                {plan.features.map((feature, i) => (
-                                    <div key={i} className="flex items-start gap-3">
-                                        <div className="p-1 bg-green-50 rounded-full mt-0.5 shrink-0">
-                                            <Check className="w-3 h-3 text-green-600" strokeWidth={3} />
-                                        </div>
-                                        <span className="text-gray-700 font-medium">{feature}</span>
-                                    </div>
-                                ))}
-                                {plan.notIncluded.map((feature, i) => (
-                                    <div key={i} className="flex items-start gap-3 opacity-50">
-                                        <div className="p-1 bg-gray-100 rounded-full mt-0.5 shrink-0">
-                                            <X className="w-3 h-3 text-gray-400" strokeWidth={3} />
-                                        </div>
-                                        <span className="text-gray-500">{feature}</span>
-                                    </div>
-                                ))}
                             </div>
 
                             <button 
@@ -156,16 +154,26 @@ const Pricing = () => {
                                                 text: `Proceed to payment of ₹${plan.price.toLocaleString()}?`,
                                                 icon: 'question',
                                                 showCancelButton: true,
-                                                confirmButtonColor: '#4169E1',
+                                                confirmButtonColor: '#2563EB',
                                                 cancelButtonColor: '#d33',
-                                                confirmButtonText: 'Yes, Upgrade!'
+                                                confirmButtonText: 'Yes, Upgrade!',
+                                                customClass: {
+                                                    popup: 'rounded-[2rem]',
+                                                    confirmButton: 'rounded-xl',
+                                                    cancelButton: 'rounded-xl'
+                                                }
                                             }).then((result) => {
                                                 if (result.isConfirmed) {
-                                                    Swal.fire(
-                                                        'Success!',
-                                                        'Your account has been upgraded to Pro.',
-                                                        'success'
-                                                    );
+                                                    Swal.fire({
+                                                        title: 'Success!',
+                                                        text: 'Your account has been upgraded to Pro.',
+                                                        icon: 'success',
+                                                        confirmButtonColor: '#2563EB',
+                                                        customClass: {
+                                                            popup: 'rounded-[2rem]',
+                                                            confirmButton: 'rounded-xl'
+                                                        }
+                                                    });
                                                 }
                                             });
                                         }
@@ -173,57 +181,83 @@ const Pricing = () => {
                                         navigate(plan.ctaLink);
                                     }
                                 }}
-                                className={`w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${
+                                className={`w-full py-4 rounded-xl font-bold text-lg text-center transition-all active:scale-95 mb-10 ${
                                     plan.popular 
-                                    ? 'bg-[#4169E1] text-white hover:bg-blue-700 shadow-md hover:shadow-lg' 
-                                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300' 
+                                    : 'bg-slate-50 text-slate-900 hover:bg-slate-100 border border-slate-200 hover:border-blue-200 hover:text-blue-600'
                                 }`}
                             >
                                 {plan.cta}
                             </button>
+
+                            <div className="flex-grow space-y-5">
+                                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">What's included</div>
+                                {plan.features.map((feature, i) => (
+                                    <div key={i} className="flex items-start gap-4 group/item">
+                                        <div className={`p-1 rounded-full mt-0.5 shrink-0 transition-colors ${plan.popular ? 'bg-blue-100 text-blue-600 group-hover/item:bg-blue-600 group-hover/item:text-white' : 'bg-slate-100 text-slate-400 group-hover/item:bg-slate-800 group-hover/item:text-white'}`}>
+                                            <Check className="w-3 h-3" strokeWidth={4} />
+                                        </div>
+                                        <span className="text-slate-700 font-medium">{feature}</span>
+                                    </div>
+                                ))}
+                                {plan.notIncluded.map((feature, i) => (
+                                    <div key={i} className="flex items-start gap-4 opacity-40">
+                                        <div className="p-1 bg-slate-50 rounded-full mt-0.5 shrink-0">
+                                            <X className="w-3 h-3 text-slate-400" strokeWidth={3} />
+                                        </div>
+                                        <span className="text-slate-500 font-medium">{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
                 </div>
 
                 {/* Features Grid */}
-                <div className="max-w-6xl mx-auto mb-20">
-                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Everything you need to hire</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 text-[#4169E1]">
-                                <Zap className="w-6 h-6" />
+                <div className="max-w-6xl mx-auto mb-24">
+                    <h2 className="text-3xl font-bold text-slate-900 text-center mb-16 font-display">Everything you need to hire</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+                        <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+                            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 text-blue-600 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <Zap className="w-7 h-7" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Fast Hiring</h3>
-                            <p className="text-gray-600">Our advanced algorithms match your job posts with the most relevant candidates instantly.</p>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3 font-display">Fast Hiring</h3>
+                            <p className="text-slate-500 leading-relaxed font-medium">Our advanced algorithms match your job posts with the most relevant candidates instantly, reducing your time-to-hire.</p>
                         </div>
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mb-4 text-green-600">
-                                <Shield className="w-6 h-6" />
+                        <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+                            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6 text-emerald-600 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <Shield className="w-7 h-7" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Verified Profiles</h3>
-                            <p className="text-gray-600">We verify candidates and companies to ensure a safe and trustworthy hiring environment.</p>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3 font-display">Verified Profiles</h3>
+                            <p className="text-slate-500 leading-relaxed font-medium">We verify candidates and companies meticulously to ensure a 100% safe and trustworthy hiring environment for you.</p>
                         </div>
-                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-4 text-purple-600">
-                                <Users className="w-6 h-6" />
+                        <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+                            <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mb-6 text-violet-600 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                                <Users className="w-7 h-7" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Quality Candidates</h3>
-                            <p className="text-gray-600">Access a database of skilled professionals across various industries and experience levels.</p>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3 font-display">Quality Candidates</h3>
+                            <p className="text-slate-500 leading-relaxed font-medium">Access a vast database of pre-vetted skilled professionals across various industries and experience levels.</p>
                         </div>
                     </div>
                 </div>
 
                 {/* FAQ Section */}
                 <div className="max-w-3xl mx-auto">
-                    <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Frequently Asked Questions</h2>
-                    <div className="space-y-6">
+                    <div className="text-center mb-12">
+                         <h2 className="text-3xl font-bold text-slate-900 font-display mb-4">Frequently Asked Questions</h2>
+                         <p className="text-slate-500">Have questions? We're here to help.</p>
+                    </div>
+                   
+                    <div className="space-y-4">
                         {faqs.map((faq, index) => (
-                            <div key={index} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-start gap-3">
-                                    <HelpCircle className="w-5 h-5 text-[#4169E1] mt-0.5 shrink-0" />
+                            <div key={index} className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                <h3 className="text-lg font-bold text-slate-900 mb-3 flex items-start gap-4">
+                                    <div className="mt-1 shrink-0 p-1 bg-blue-50 text-blue-600 rounded-lg">
+                                        <HelpCircle className="w-4 h-4" />
+                                    </div>
                                     {faq.question}
                                 </h3>
-                                <p className="text-gray-600 ml-8 leading-relaxed">
+                                <p className="text-slate-600 ml-12 leading-relaxed font-medium text-base">
                                     {faq.answer}
                                 </p>
                             </div>

@@ -124,15 +124,15 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-xl font-bold text-gray-900">Write a Review for {companyName}</h3>
+            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar">
+                <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
+                    <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 min-w-0 break-words">Write a Review for {companyName}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
 
-                <div className="p-8">
+                <div className="p-4 md:p-8">
                     {submitted ? (
                         <div className="text-center py-10">
                             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -153,8 +153,8 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                         </div>
                     ) : step === 1 ? (
                         <div className="space-y-6">
-                            <div className="text-center mb-8">
-                                <p className="text-gray-500 font-medium">How would you like to review this company?</p>
+                            <div className="text-center mb-6">
+                                <p className="text-gray-500 font-medium text-sm sm:text-base">How would you like to review this company?</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <button 
@@ -166,7 +166,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                             setReviewType('Public'); 
                                             setStep(2); 
                                         }}
-                                        className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
+                                        className="p-4 sm:p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Users className="w-6 h-6 text-[#4169E1]" />
@@ -176,7 +176,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                     </button>
                                 <button 
                                     onClick={() => { setReviewType('Employee'); setStep(2); }}
-                                    className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
+                                    className="p-4 sm:p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
                                 >
                                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         <ShieldCheck className="w-6 h-6 text-indigo-600" />
@@ -205,7 +205,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                             </div>
 
                             {reviewType === 'Employee' && (
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Your Role</label>
                                         <input 
@@ -228,7 +228,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-sm"
                                         />
                                     </div>
-                                    <div className="col-span-2 space-y-2">
+                                    <div className="sm:col-span-2 space-y-2">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Workplace Email (for verification)</label>
                                         <div className="relative">
                                             <Mail className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />
@@ -437,19 +437,19 @@ const CompanyProfile = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-20">
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
             {/* Header Section */}
-            <div className="bg-white border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-                    <Link to="/companies" className="text-gray-500 hover:text-[#4169E1] flex items-center mb-6 w-fit transition-colors text-sm font-medium">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
+            <div className="bg-white border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-6 pt-6">
+                    <Link to="/companies" className="text-slate-500 hover:text-blue-600 flex items-center mb-6 w-fit transition-colors text-sm font-bold group">
+                        <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                         Back to Companies
                     </Link>
                 </div>
 
                 {/* Banner & Logo */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-96 md:mb-28">
-                    <div className="h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-blue-600 to-indigo-700 relative shadow-inner">
+                <div className="max-w-7xl mx-auto px-6 relative mb-80 md:mb-32">
+                    <div className="h-56 md:h-72 rounded-[2rem] overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 relative shadow-inner">
                         {company.bannerPicture ? (
                             <img 
                                 src={company.bannerPicture.startsWith('http') ? company.bannerPicture : `${import.meta.env.VITE_SERVER_URL}${company.bannerPicture}`} 
@@ -459,13 +459,13 @@ const CompanyProfile = () => {
                         ) : (
                             <>
                                 {/* Simulated Banner Patterns */}
-                                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-2xl -ml-16 -mb-16"></div>
+                                <div className="absolute inset-0 opacity-30 pointer-events-none">
+                                    <div className="absolute top-0 right-0 w-96 h-96 bg-white/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/20 rounded-full blur-2xl -ml-20 -mb-20"></div>
                                 </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
                                      <div className="text-white text-center">
-                                         <h2 className="text-3xl md:text-5xl font-bold opacity-30 tracking-widest uppercase">{company.companyName || company.name}</h2>
+                                         <h2 className="text-4xl md:text-6xl font-extrabold opacity-20 tracking-widest uppercase font-display">{company.companyName || company.name}</h2>
                                      </div>
                                 </div>
                             </>
@@ -473,8 +473,8 @@ const CompanyProfile = () => {
                     </div>
 
                     {/* Branding Bar */}
-                    <div className="absolute -bottom-72 md:-bottom-24 left-4 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-10 w-[calc(100%-2rem)] md:w-[calc(100%-6rem)]">
-                        <div className="w-32 h-32 md:w-44 md:h-44 bg-white rounded-3xl p-2 shadow-2xl border-4 border-white flex items-center justify-center overflow-hidden shrink-0">
+                    <div className="absolute -bottom-64 md:-bottom-20 left-6 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-8 w-[calc(100%-3rem)] md:w-[calc(100%-6rem)]">
+                        <div className="w-36 h-36 md:w-48 md:h-48 bg-white rounded-[2rem] p-3 shadow-2xl shadow-slate-900/10 border-4 border-white flex items-center justify-center overflow-hidden shrink-0 relative z-10">
                             {company.profilePicture ? (
                                 <img 
                                     src={company.profilePicture.startsWith('http') ? company.profilePicture : `${import.meta.env.VITE_SERVER_URL}${company.profilePicture}`} 
@@ -482,97 +482,99 @@ const CompanyProfile = () => {
                                     className="w-full h-full object-contain"
                                 />
                             ) : (
-                                <Building2 className="w-16 h-16 text-[#4169E1]" />
+                                <Building2 className="w-20 h-20 text-blue-600" />
                             )}
                         </div>
                         
-                        <div className="pb-4 flex-grow">
+                            <div className="pb-2 flex-grow md:translate-y-8">
                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                 <div>
                                     <div className="flex items-center gap-3">
-                                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">{company.companyName || company.name}</h1>
+                                        <h1 className="text-4xl font-extrabold text-slate-900 leading-tight font-display tracking-tight">{company.companyName || company.name}</h1>
                                         {(company.employerVerification?.status === 'Verified' || (company.employerVerification?.level || 0) >= 1) && (
                                             <div className="group relative">
                                                 <div className={`p-1.5 rounded-full border shadow-sm transition-colors ${
                                                     (company.employerVerification?.level || 1) >= 2 
-                                                    ? 'bg-green-50 border-green-200 text-green-600' 
+                                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
                                                     : 'bg-blue-50 border-blue-200 text-blue-600'
                                                 }`}>
                                                     {(company.employerVerification?.level || 1) >= 2 ? (
-                                                        <CheckCheck className="w-5 h-5" strokeWidth={2.5} />
+                                                        <CheckCheck className="w-5 h-5" strokeWidth={3} />
                                                     ) : (
-                                                        <CheckCircle className="w-5 h-5" strokeWidth={2.5} />
+                                                        <CheckCircle className="w-5 h-5" strokeWidth={3} />
                                                     )}
                                                 </div>
                                                 
-                                                {/* Professional Disclaimer Tooltip */}
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-gray-900/95 backdrop-blur-sm text-white text-xs p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 invisible group-hover:visible z-50 shadow-xl border border-white/10">
-                                                    <div className="font-bold mb-1 text-sm border-b border-white/10 pb-1">
+                                                {/* Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 bg-slate-900 text-white text-xs p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 invisible group-hover:visible z-50 shadow-xl">
+                                                    <div className="font-bold mb-1 pb-1 border-b border-white/20">
                                                         {(company.employerVerification?.level || 1) >= 2 ? "Level 2 Verified" : "Level 1 Verified"}
                                                     </div>
-                                                    <p className="leading-relaxed text-gray-300">
+                                                    <p className="leading-relaxed text-slate-300">
                                                         {(company.employerVerification?.level || 1) >= 2 
-                                                            ? "This company has verified their identity and legal business documents."
-                                                            : "This company has verified their official work email and identity."}
+                                                            ? "Identity and business documents verified."
+                                                            : "Official work email and identity verified."}
                                                     </p>
-                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900/95"></div>
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold uppercase tracking-wider">{company.companyCategory || "Industry"}</span>
-                                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold uppercase tracking-wider">{company.companyType || "Company"}</span>
-                                        <span className="flex items-center text-gray-500 text-sm ml-2">
-                                            <Users className="w-4 h-4 mr-1.5" />
+                                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                                        <span className="px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold uppercase tracking-wider">{company.companyCategory || "Industry"}</span>
+                                        <span className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-xs font-bold uppercase tracking-wider">{company.companyType || "Company"}</span>
+                                        <span className="flex items-center text-slate-500 text-sm font-semibold ml-2">
+                                            <Users className="w-4 h-4 mr-1.5 text-slate-400" />
                                             {company.employeeCount ? `${company.employeeCount} Employees` : 'N/A'}
                                         </span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <div className="text-right mr-4 hidden md:block">
-                                        <div className="text-lg font-bold text-gray-900">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right mr-2 hidden md:block">
+                                        <div className="text-2xl font-extrabold text-slate-900 flex items-center justify-end">
                                             {averageRating} 
-                                            <Star className="w-4 h-4 inline-block text-yellow-400 fill-yellow-400 mb-1" />
+                                            <Star className="w-5 h-5 inline-block text-yellow-400 fill-yellow-400 ml-1.5" />
                                         </div>
-                                        <div className="text-xs text-gray-500 font-medium">{reviews.length} Reviews</div>
+                                        <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">{reviews.length} Reviews</div>
                                     </div>
-                                    <button 
-                                        onClick={async () => {
-                                            if (!currentUser) return alert("Please login to follow companies");
-                                            try {
-                                                if (isFollowing) {
-                                                    await api.delete(`/auth/unfollow/${id}`);
-                                                    setIsFollowing(false);
-                                                } else {
-                                                    await api.post(`/auth/follow/${id}`);
-                                                    setIsFollowing(true);
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={async () => {
+                                                if (!currentUser) return alert("Please login to follow companies");
+                                                try {
+                                                    if (isFollowing) {
+                                                        await api.delete(`/auth/unfollow/${id}`);
+                                                        setIsFollowing(false);
+                                                    } else {
+                                                        await api.post(`/auth/follow/${id}`);
+                                                        setIsFollowing(true);
+                                                    }
+                                                } catch (err) {
+                                                    console.error("Follow error:", err);
+                                                    alert("Failed to update follow status");
                                                 }
-                                            } catch (err) {
-                                                console.error("Follow error:", err);
-                                                alert("Failed to update follow status");
-                                            }
-                                        }}
-                                        className={`px-8 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${
-                                            isFollowing 
-                                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
-                                            : 'bg-[#4169E1] text-white hover:bg-blue-700 hover:shadow-lg active:scale-95'
-                                        }`}
-                                    >
-                                        {isFollowing ? 'Following' : (
-                                            <>
-                                                <Plus className="w-5 h-5" />
-                                                Follow
-                                            </>
-                                        )}
-                                    </button>
-                                    <button 
-                                        onClick={handleShare}
-                                        className="p-2.5 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 border border-gray-200 transition-colors"
-                                    >
-                                        <Share2 className="w-5 h-5" />
-                                    </button>
+                                            }}
+                                            className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${
+                                                isFollowing 
+                                                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                                                : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg shadow-blue-200 active:scale-95'
+                                            }`}
+                                        >
+                                            {isFollowing ? 'Following' : (
+                                                <>
+                                                    <Plus className="w-5 h-5" />
+                                                    Follow
+                                                </>
+                                            )}
+                                        </button>
+                                        <button 
+                                            onClick={handleShare}
+                                            className="p-3 bg-white text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 border border-gray-200 transition-all shadow-sm"
+                                        >
+                                            <Share2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </div>
                              </div>
                         </div>
@@ -580,21 +582,21 @@ const CompanyProfile = () => {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-                    <div className="flex items-center gap-8 border-b border-gray-100">
+                <div className="max-w-7xl mx-auto px-6 mt-8">
+                    <div className="flex items-center gap-10 border-b border-gray-200">
                         {['overview', 'jobs', 'why join us'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`py-4 px-2 text-sm font-bold capitalize transition-all relative ${
                                     activeTab === tab 
-                                    ? 'text-[#4169E1]' 
-                                    : 'text-gray-500 hover:text-gray-700'
+                                    ? 'text-blue-600' 
+                                    : 'text-slate-500 hover:text-slate-800'
                                 }`}
                             >
                                 {tab}
                                 {activeTab === tab && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#4169E1] rounded-t-full"></div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full shadow-[0_-2px_6px_rgba(37,99,235,0.4)]"></div>
                                 )}
                             </button>
                         ))}
@@ -602,44 +604,53 @@ const CompanyProfile = () => {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+            <div className="max-w-7xl mx-auto px-6 mt-10">
                 {activeTab === 'overview' && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Main Content */}
                         <div className="lg:col-span-2 space-y-8">
                             {/* About Section */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                    <MessageSquare className="w-5 h-5 text-[#4169E1]" />
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 md:p-10">
+                                <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-3 font-display">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                        <MessageSquare className="w-5 h-5 text-blue-600" />
+                                    </div>
                                     About {company.companyName || company.name}
                                 </h3>
-                                <div className="prose prose-blue max-w-none">
-                                    <p className="text-gray-600 leading-relaxed whitespace-pre-wrap text-lg">
+                                <div className="prose prose-slate prose-lg max-w-none force-normal-break">
+                                    <p className="text-slate-600 leading-relaxed whitespace-pre-wrap font-book">
                                         {company.about || 'No description available for this company yet. Check back soon!'}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Custom Review Section */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 md:p-10">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 mb-10">
+                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-3 font-display">
+                                        <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
+                                            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                                        </div>
                                         Company Reviews
                                     </h3>
                                     <div className="flex items-center gap-3 w-full md:w-auto">
-                                        <select 
-                                            value={reviewSort}
-                                            onChange={(e) => setReviewSort(e.target.value)}
-                                            className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            <option value="newest">Newest First</option>
-                                            <option value="highest">Highest Rated</option>
-                                            <option value="lowest">Lowest Rated</option>
-                                        </select>
+                                        <div className="relative">
+                                            <select 
+                                                value={reviewSort}
+                                                onChange={(e) => setReviewSort(e.target.value)}
+                                                className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                            >
+                                                <option value="newest">Newest First</option>
+                                                <option value="highest">Highest Rated</option>
+                                                <option value="lowest">Lowest Rated</option>
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                            </div>
+                                        </div>
                                         <button 
                                             onClick={() => setShowReviewModal(true)}
-                                            className="flex-grow md:flex-none px-6 py-2 bg-[#4169E1] text-white font-bold rounded-xl hover:bg-blue-700 transition-all active:scale-95 text-sm"
+                                            className="flex-grow md:flex-none px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all active:scale-95 text-sm shadow-lg shadow-blue-200"
                                         >
                                             Write a Review
                                         </button>
@@ -647,18 +658,18 @@ const CompanyProfile = () => {
                                 </div>
 
                                 {/* Review Stats */}
-                                <div className="flex flex-col md:flex-row gap-8 items-center bg-gray-50/50 rounded-2xl p-8 mb-8">
-                                    <div className="text-center md:border-r border-gray-200 pr-8 py-2">
-                                        <div className="text-6xl font-extrabold text-gray-900">{averageRating}</div>
+                                <div className="flex flex-col md:flex-row gap-8 items-center bg-slate-50 rounded-2xl p-8 mb-10 border border-slate-100">
+                                    <div className="text-center md:border-r border-slate-200 pr-0 md:pr-10 py-2 w-full md:w-auto">
+                                        <div className="text-7xl font-extrabold text-slate-900 tracking-tighter">{averageRating}</div>
                                         <div className="flex justify-center gap-1 my-3">
                                             {[1,2,3,4,5].map(i => (
                                                 <Star 
                                                     key={i} 
-                                                    className={`w-6 h-6 ${i <= Math.round(Number(averageRating)) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} 
+                                                    className={`w-5 h-5 ${i <= Math.round(Number(averageRating)) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`} 
                                                 />
                                             ))}
                                         </div>
-                                        <div className="text-sm font-bold text-gray-500 uppercase tracking-widest">{reviews.length} Verified Reviews</div>
+                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">{reviews.length} Verified Reviews</div>
                                     </div>
                                     
                                     <div className="flex-grow w-full space-y-3">
@@ -667,14 +678,14 @@ const CompanyProfile = () => {
                                             const percent = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
                                             return (
                                                 <div key={star} className="flex items-center gap-4">
-                                                    <span className="text-sm font-bold text-gray-500 w-4">{star}</span>
-                                                    <div className="flex-grow h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <span className="text-sm font-bold text-slate-500 w-4 flex shrink-0 justify-end">{star}</span>
+                                                    <div className="flex-grow h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                                         <div 
-                                                            className="h-full bg-yellow-400 rounded-full transition-all duration-500"
+                                                            className="h-full bg-yellow-400 rounded-full transition-all duration-700 ease-out"
                                                             style={{ width: `${percent}%` }}
                                                         ></div>
                                                     </div>
-                                                    <span className="text-sm font-bold text-gray-400 w-8">{percent.toFixed(0)}%</span>
+                                                    <span className="text-sm font-bold text-slate-400 w-10 text-right">{percent.toFixed(0)}%</span>
                                                 </div>
                                             );
                                         })}
@@ -686,14 +697,16 @@ const CompanyProfile = () => {
                                     {reviewsLoading ? (
                                         <div className="space-y-4">
                                             {[1,2,3].map(i => (
-                                                <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse"></div>
+                                                <div key={i} className="h-40 bg-gray-50 rounded-2xl animate-pulse"></div>
                                             ))}
                                         </div>
                                     ) : reviews.length === 0 ? (
-                                        <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                                            <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                            <h4 className="text-lg font-bold text-gray-900">No reviews yet</h4>
-                                            <p className="text-gray-500 mt-2 font-medium px-4">Be the first to share your experience with {company.companyName || company.name}.</p>
+                                        <div className="text-center py-16 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                                                <MessageSquare className="w-8 h-8 text-slate-300" />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-slate-900">No reviews yet</h4>
+                                            <p className="text-slate-500 mt-2 font-medium px-4">Be the first to share your experience with {company.companyName || company.name}.</p>
                                         </div>
                                     ) : (
                                         reviews.map((review) => (
@@ -706,58 +719,62 @@ const CompanyProfile = () => {
 
                         {/* Sidebar */}
                         <div className="space-y-6">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 divide-y divide-gray-100">
-                                <div className="pb-6">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-6">Company Highlights</h3>
-                                    <div className="space-y-5">
+                            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 divide-y divide-gray-100">
+                                <div className="pb-8">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-6 font-display">Company Highlights</h3>
+                                    <div className="space-y-6">
                                         <div className="flex items-start gap-4">
-                                            <div className="p-2 bg-blue-50 rounded-lg">
+                                            <div className="p-3 bg-blue-50 rounded-xl shrink-0">
                                                 <Calendar className="w-5 h-5 text-blue-600" />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Founded</p>
-                                                <p className="text-sm font-bold text-gray-900">{company.foundedYear || 'Not Specified'}</p>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Founded</p>
+                                                <p className="text-base font-bold text-slate-900">{company.foundedYear || 'Not Specified'}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-4">
-                                            <div className="p-2 bg-orange-50 rounded-lg">
+                                            <div className="p-3 bg-orange-50 rounded-xl shrink-0">
                                                 <MapPin className="w-5 h-5 text-orange-600" />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Headquarters</p>
-                                                <p className="text-sm font-bold text-gray-900">{company.companyLocation || company.location || 'Global'}</p>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Headquarters</p>
+                                                <p className="text-base font-bold text-slate-900">{company.companyLocation || company.location || 'Global'}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-4">
-                                            <div className="p-2 bg-green-50 rounded-lg">
-                                                <Users className="w-5 h-5 text-green-600" />
+                                            <div className="p-3 bg-emerald-50 rounded-xl shrink-0">
+                                                <Users className="w-5 h-5 text-emerald-600" />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Company Size</p>
-                                                <p className="text-sm font-bold text-gray-900">{company.employeeCount ? `${company.employeeCount} Employees` : 'N/A'}</p>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Company Size</p>
+                                                <p className="text-base font-bold text-slate-900">{company.employeeCount ? `${company.employeeCount} Employees` : 'N/A'}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="py-6 space-y-4">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contact Information</h4>
+                                <div className="py-8 space-y-5">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Information</h4>
                                     {company.website && (
-                                        <div className="flex items-center gap-3">
-                                            <Globe className="w-5 h-5 text-gray-400" />
+                                        <div className="flex items-center gap-3 group">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                                                <Globe className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                            </div>
                                             <a 
                                                 href={company.website.startsWith('http') ? company.website : `https://${company.website}`} 
                                                 target="_blank" 
                                                 rel="noopener noreferrer" 
-                                                className="text-sm font-bold text-[#4169E1] hover:underline truncate"
+                                                className="text-sm font-bold text-slate-700 hover:text-blue-600 hover:underline truncate transition-colors"
                                             >
                                                 {company.website.replace(/^https?:\/\//, '')}
                                             </a>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-3">
-                                        <Mail className="w-5 h-5 text-gray-400" />
-                                        <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-gray-700 hover:text-[#4169E1]">
+                                    <div className="flex items-center gap-3 group">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                                            <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                        </div>
+                                        <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors">
                                             {company.companyEmail || company.email || 'Email not visible'}
                                         </a>
                                     </div>
@@ -766,13 +783,15 @@ const CompanyProfile = () => {
 
                             {/* Verification Badge card */}
                             {(company.employerVerification?.status === 'Verified' || (company.employerVerification?.level || 0) >= 1) && (
-                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg overflow-hidden relative">
-                                    <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                                    <h4 className="flex items-center gap-2 font-bold text-lg mb-2">
-                                        <CheckCircle className="w-6 h-6 fill-white text-blue-600" />
+                                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white shadow-xl shadow-blue-900/10 overflow-hidden relative group">
+                                    <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+                                    <h4 className="flex items-center gap-3 font-bold text-lg mb-3 relative z-10">
+                                        <div className="p-1.5 bg-white/20 rounded-full backdrop-blur-sm">
+                                            <CheckCircle className="w-5 h-5 fill-white text-blue-600" />
+                                        </div>
                                         Managed by employer
                                     </h4>
-                                    <p className="text-sm text-blue-50 font-medium">This profile is built and controlled by the employer team.</p>
+                                    <p className="text-sm text-blue-50/90 font-medium leading-relaxed relative z-10">This profile is built and controlled by the employer team.</p>
                                 </div>
                             )}
                         </div>
@@ -782,22 +801,22 @@ const CompanyProfile = () => {
                 {activeTab === 'jobs' && (
                     <div className="space-y-6">
                         {/* Search and Filters */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-4 sticky top-6 z-10">
+                        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-4 sticky top-6 z-10">
                             <div className="relative flex-grow">
-                                <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                                <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
                                 <input 
                                     type="text" 
                                     placeholder="Search jobs by title or keyword..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium transition-all"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium transition-all text-slate-800 placeholder-slate-400"
                                 />
                             </div>
                             <div className="flex gap-3 overflow-x-auto p-1 no-scrollbar">
                                 <select 
                                     value={selectedDept}
                                     onChange={(e) => setSelectedDept(e.target.value)}
-                                    className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="px-4 py-3 bg-slate-50 border border-gray-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                 >
                                     <option value="">All Departments</option>
                                     {departments.map(d => <option key={d} value={d}>{d}</option>)}
