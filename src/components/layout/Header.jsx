@@ -108,7 +108,7 @@ const Header = () => {
                   navigate('/employer/my-jobs');
                   break;
               case 'JOB_ALERT':
-                  navigate(`/jobs/${notification.relatedId}`); // Assuming relatedId is jobId
+                  navigate(`/job/${notification.relatedId}`); // Assuming relatedId is jobId
                   break;
               default:
                   // Default navigation if needed
@@ -295,7 +295,7 @@ const Header = () => {
                     </button>
                     {/* Mobile Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-14 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
+                        <div className="absolute right-0 top-14 w-[85vw] sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
                             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
                                 {unreadCount > 0 && (

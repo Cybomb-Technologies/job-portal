@@ -8,6 +8,7 @@ const CandidateDetailsPage = () => {
     const [candidate, setCandidate] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showResumeModal, setShowResumeModal] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
@@ -30,6 +31,29 @@ const CandidateDetailsPage = () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    const handleContactOption = (type) => {
+        const email = candidate?.email;
+        if (!email) return;
+
+        let url = '';
+        switch (type) {
+            case 'gmail':
+                url = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}`;
+                window.open(url, '_blank', 'noreferrer');
+                break;
+            case 'outlook':
+                url = `https://outlook.office.com/mail/deeplink/compose?to=${email}`;
+                window.open(url, '_blank', 'noreferrer');
+                break;
+            case 'default':
+                window.location.href = `mailto:${email}`;
+                break;
+            default:
+                break;
+        }
+        setShowContactModal(false);
     };
 
     if (loading) {
@@ -60,9 +84,20 @@ const CandidateDetailsPage = () => {
 
                 {/* Header Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-                    <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-700"></div>
-                    <div className="px-8 pb-8">
-                        <div className="relative flex justify-between items-end -mt-12 mb-6">
+                    {candidate.bannerPicture ? (
+                        <div className="h-48 w-full relative">
+                            <img 
+                                src={candidate.bannerPicture.startsWith('http') ? candidate.bannerPicture : `${import.meta.env.VITE_SERVER_URL}${candidate.bannerPicture}`} 
+                                alt="Banner" 
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/20"></div>
+                        </div>
+                    ) : (
+                        <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-700"></div>
+                    )}
+                    <div className="px-4 md:px-8 pb-8">
+                        <div className="relative flex flex-wrap justify-between items-end -mt-12 mb-6 gap-y-4">
                              <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
                                 <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
                                      {candidate.profilePicture ? (
@@ -77,14 +112,12 @@ const CandidateDetailsPage = () => {
                                 </div>
                              </div>
                              <div className="flex gap-3">
-                                <a 
-                                    href={`mailto:${candidate.email}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    onClick={() => setShowContactModal(true)}
                                     className="flex items-center gap-2 px-4 py-2 bg-[#4169E1] text-white rounded-lg font-medium hover:bg-[#3A5FCD] transition shadow-md"
                                 >
                                     <Mail className="w-4 h-4" /> Contact
-                                </a>
+                                </button>
                                 {candidate.resume && (
                                     <>
                                         <button 
@@ -93,7 +126,6 @@ const CandidateDetailsPage = () => {
                                         >
                                             <Eye className="w-4 h-4" /> View Resume
                                         </button>
-                                        {/* Fallback download link if modal fails or just as extra option */}
                                     </>
                                 )}
                              </div>
@@ -250,6 +282,65 @@ const CandidateDetailsPage = () => {
                     </div>
                 )}
 
+                {/* Contact Options Modal */}
+                {showContactModal && (
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+                        onClick={() => setShowContactModal(false)}
+                    >
+                        <div 
+                            className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <h3 className="font-bold text-gray-900 text-lg">Contact Candidate</h3>
+                                <button onClick={() => setShowContactModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <button
+                                    onClick={() => handleContactOption('gmail')}
+                                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-red-50 hover:border-red-100 hover:text-red-600 transition-all group"
+                                >
+                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl border border-gray-100 group-hover:border-red-100">
+                                        M
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-bold text-gray-900 group-hover:text-red-700">Gmail</div>
+                                        <div className="text-xs text-gray-500">Open in Gmail web</div>
+                                    </div>
+                                </button>
+                                
+                                <button
+                                    onClick={() => handleContactOption('outlook')}
+                                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all group"
+                                >
+                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl border border-gray-100 group-hover:border-blue-100">
+                                        O
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-bold text-gray-900 group-hover:text-blue-700">Outlook</div>
+                                        <div className="text-xs text-gray-500">Open in Outlook web</div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleContactOption('default')}
+                                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 hover:border-gray-200 transition-all group"
+                                >
+                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-xl border border-gray-100">
+                                        <Mail className="w-5 h-5 text-gray-600" />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="font-bold text-gray-900">Default Mail App</div>
+                                        <div className="text-xs text-gray-500">Open system mail app</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

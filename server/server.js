@@ -64,7 +64,7 @@ app.use(express.json());
 
 // Rate Limiting
 const limiter = require('./middleware/limiter');
-app.use(limiter);
+app.use('/api', limiter);
 
 // Attach io to req
 app.use((req, res, next) => {

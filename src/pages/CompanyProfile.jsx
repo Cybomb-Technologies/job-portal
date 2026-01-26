@@ -124,15 +124,15 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-                    <h3 className="text-xl font-bold text-gray-900">Write a Review for {companyName}</h3>
+            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar">
+                <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
+                    <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 min-w-0 break-words">Write a Review for {companyName}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
 
-                <div className="p-8">
+                <div className="p-4 md:p-8">
                     {submitted ? (
                         <div className="text-center py-10">
                             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -153,8 +153,8 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                         </div>
                     ) : step === 1 ? (
                         <div className="space-y-6">
-                            <div className="text-center mb-8">
-                                <p className="text-gray-500 font-medium">How would you like to review this company?</p>
+                            <div className="text-center mb-6">
+                                <p className="text-gray-500 font-medium text-sm sm:text-base">How would you like to review this company?</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <button 
@@ -166,7 +166,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                             setReviewType('Public'); 
                                             setStep(2); 
                                         }}
-                                        className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
+                                        className="p-4 sm:p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
                                     >
                                         <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                             <Users className="w-6 h-6 text-[#4169E1]" />
@@ -176,7 +176,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                     </button>
                                 <button 
                                     onClick={() => { setReviewType('Employee'); setStep(2); }}
-                                    className="p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
+                                    className="p-4 sm:p-6 border-2 border-gray-100 rounded-2xl hover:border-[#4169E1] hover:bg-blue-50/30 transition-all text-left group"
                                 >
                                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                         <ShieldCheck className="w-6 h-6 text-indigo-600" />
@@ -205,7 +205,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                             </div>
 
                             {reviewType === 'Employee' && (
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Your Role</label>
                                         <input 
@@ -228,7 +228,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-sm"
                                         />
                                     </div>
-                                    <div className="col-span-2 space-y-2">
+                                    <div className="sm:col-span-2 space-y-2">
                                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Workplace Email (for verification)</label>
                                         <div className="relative">
                                             <Mail className="absolute left-4 top-3.5 w-4 h-4 text-gray-400" />

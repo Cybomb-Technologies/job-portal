@@ -120,13 +120,6 @@ const TeamManagement = () => {
                             <tr key={member.user._id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 overflow-hidden font-semibold">
-                                            {member.user.profilePicture ? (
-                                                <img src={member.user.profilePicture} alt={member.user.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <span>{member.user.name.charAt(0).toUpperCase()}</span>
-                                            )}
-                                        </div>
                                         <div>
                                             <div className="font-medium text-gray-900">{member.user.name}</div>
                                             <div className="text-sm text-gray-500">{member.user.email}</div>

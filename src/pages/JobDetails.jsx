@@ -262,7 +262,7 @@ const JobDetails = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-y-4 gap-x-8 mb-8 relative z-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-8 relative z-10">
                 <div className="flex items-center text-slate-600">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mr-3 shrink-0">
                     <MapPin className="w-4 h-4 text-blue-600" />
@@ -482,7 +482,7 @@ const JobDetails = () => {
                     onClick={(e) => e.stopPropagation()}
                 >
                      {/* Modal Header */}
-                    <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div className="px-5 md:px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 font-display">Apply for {job.title}</h2>
                             <p className="text-sm text-slate-500 mt-1 font-medium">Step {currentStep} of {hasScreening ? 3 : 2}: {steps.find(s=>s.num===currentStep)?.label}</p>
@@ -507,7 +507,7 @@ const JobDetails = () => {
                     ) : (
                         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                             {/* Stepper */}
-                            <div className="px-8 py-4 bg-white shrink-0 border-b border-gray-50">
+                            <div className="px-5 md:px-8 py-4 bg-white shrink-0 border-b border-gray-50">
                                 <div className="flex items-center justify-between relative max-w-md mx-auto">
                                     <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-0 rounded-full"></div>
                                     <div className="absolute left-0 top-1/2 h-1 bg-blue-600 -z-0 rounded-full transition-all duration-500 ease-out" 
@@ -528,7 +528,7 @@ const JobDetails = () => {
                             </div>
 
                             {/* Content */}
-                            <div className="px-8 py-6 overflow-y-auto flex-grow min-h-0">
+                            <div className="px-5 md:px-8 py-6 overflow-y-auto flex-grow min-h-0">
                                 {applyError && (
                                     <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm flex items-start animate-fadeIn border border-red-100 font-medium">
                                         <div className="mr-3 text-lg">⚠️</div>
