@@ -43,21 +43,143 @@ const registerUser = async (req, res) => {
     return res.status(400).json({ message: 'User already exists' });
   }
 
-  const user = await User.create({ name, email, password, role });
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  const user = await User.create({ 
+      name, 
+      email, 
+      password, 
+      role,
+      otp,
+      otpExpire,
+      isEmailVerified: false
+  });
 
   if (user) {
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      companyId: user.companyId,
-      companyRole: user.companyRole,
-      token: generateToken(user._id),
-    });
+      // Send OTP Email
+      const message = `
+        <h1>Email Verification</h1>
+        <p>Your OTP for verification is: <b>${otp}</b></p>
+        <p>This OTP is valid for 10 minutes.</p>
+      `;
+
+      try {
+          await sendEmail({
+              email: user.email,
+              subject: 'Verify your email',
+              message: `Your OTP is ${otp}`,
+              html: message
+          });
+          
+          res.status(201).json({
+              message: 'OTP sent to email',
+              email: user.email,
+              userId: user._id
+          });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'User created, but failed to send OTP. Please try resending.' });
+      }
+
   } else {
     res.status(400).json({ message: 'Invalid user data' });
   }
+};
+
+// @desc    Verify OTP
+const verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+        return res.status(201).json({ // Already verified
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            companyId: user.companyId,
+            companyRole: user.companyRole,
+            token: generateToken(user._id),
+        });
+    }
+
+    if (!user.otp || !user.otpExpire) {
+        return res.status(400).json({ message: 'No OTP generated' });
+    }
+
+    if (user.otp !== otp) {
+        return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    if (user.otpExpire < new Date()) {
+        return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Verify Success
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.otpExpire = undefined;
+    await user.save();
+
+    res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        companyRole: user.companyRole,
+        token: generateToken(user._id),
+    });
+};
+
+// @desc    Resend OTP
+const resendOtp = async (req, res) => {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+        return res.status(400).json({ message: 'Email already verified. Please login.' });
+    }
+
+    // Generate New OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.otp = otp;
+    user.otpExpire = otpExpire;
+    await user.save();
+
+     const message = `
+        <h1>Email Verification</h1>
+        <p>Your new OTP for verification is: <b>${otp}</b></p>
+        <p>This OTP is valid for 10 minutes.</p>
+      `;
+
+      try {
+          await sendEmail({
+              email: user.email,
+              subject: 'Resend: Verify your email',
+              message: `Your OTP is ${otp}`,
+              html: message
+          });
+          
+          res.json({ message: 'OTP resent successfully' });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'Failed to send OTP' });
+      }
 };
 
 // @desc    Google Login
@@ -726,5 +848,7 @@ module.exports = {
   getPublicUserProfile,
   getCompanies,
   followCompany,
-  unfollowCompany
+  unfollowCompany,
+  verifyOtp,
+  resendOtp
 };

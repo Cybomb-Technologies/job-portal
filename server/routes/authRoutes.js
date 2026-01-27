@@ -14,7 +14,9 @@ const {
     getPublicUserProfile,
     getCompanies,
     followCompany,
-    unfollowCompany
+    unfollowCompany,
+    verifyOtp,
+    resendOtp
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -54,6 +56,8 @@ function checkFileType(file, cb) {
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/signup', registerUser);
+router.post('/verify-otp', verifyOtp);
+router.post('/resend-otp', resendOtp);
 router.post('/login', authUser);
 router.post('/google-login', googleLogin);
 router.post('/forgot-password', forgotPassword);
