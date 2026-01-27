@@ -65,7 +65,7 @@ const Footer = () => {
                   <li key={link.name}>
                     <Link
                       to={link.path}
-                      className="text-slate-400 hover:text-white hover:translate-x-1 transition-all duration-200 block text-xs font-medium"
+                      className="text-slate-400 hover:text-white hover:translate-x-1 transition-all duration-200 block text-sm font-medium"
                     >
                       {link.name}
                     </Link>

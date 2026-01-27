@@ -141,6 +141,16 @@ const userSchema = mongoose.Schema(
         verificationOTP: String,
         verificationOTPExpire: Date
     },
+    otp: {
+        type: String
+    },
+    otpExpire: {
+        type: Date
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
+    },
     whyJoinUs: {
         videos: [{
             url: String, // YouTube URL
