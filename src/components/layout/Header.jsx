@@ -18,14 +18,26 @@ const Header = () => {
   const [showNotifications, setShowNotifications] = React.useState(false);
   const desktopNotificationRef = useRef(null);
   const mobileNotificationRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
         const isDesktopOutside = desktopNotificationRef.current && !desktopNotificationRef.current.contains(event.target);
         const isMobileOutside = mobileNotificationRef.current && !mobileNotificationRef.current.contains(event.target);
-
+        
+        // Close Notifications
         if (isDesktopOutside && isMobileOutside) {
             setShowNotifications(false);
+        }
+
+        // Close Mobile Menu
+        if (isMenuOpen && 
+            mobileMenuRef.current && 
+            !mobileMenuRef.current.contains(event.target) && 
+            menuButtonRef.current && 
+            !menuButtonRef.current.contains(event.target)) {
+            setIsMenuOpen(false);
         }
     };
 
@@ -33,7 +45,7 @@ const Header = () => {
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isMenuOpen]);
 
   const fetchNotifications = async () => {
     if (user) {
@@ -173,7 +185,7 @@ const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-1">
             {currentNavItems.map((item) => (
               <NavLink
                 key={item.name}
@@ -194,7 +206,7 @@ const Header = () => {
 {/* Search Bar Removed */}
 
           {/* User Actions */}
-          <div className="hidden md:flex items-center space-x-5">
+          <div className="hidden lg:flex items-center space-x-5">
             {user ? (
               <>
                  {/* Notification Bell */}
@@ -281,7 +293,7 @@ const Header = () => {
           </div>
 
           {/* Mobile Actions */}
-          <div className="flex md:hidden items-center space-x-4">
+          <div className="flex lg:hidden items-center gap-4">
             {user && (
                  <div className="relative" ref={mobileNotificationRef}>
                     <button 
@@ -295,7 +307,7 @@ const Header = () => {
                     </button>
                     {/* Mobile Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-14 w-[85vw] sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
+                        <div className="fixed top-24 left-4 right-4 md:absolute md:top-14 md:left-auto md:right-0 md:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in slide-in-from-top-2">
                             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
                                 {unreadCount > 0 && (
@@ -332,6 +344,7 @@ const Header = () => {
                  </div>
             )}
             <button
+              ref={menuButtonRef}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-800 hover:text-blue-600 transition-colors"
             >
@@ -344,7 +357,7 @@ const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-6 border-t border-gray-100 animate-slide-up">
+          <div ref={mobileMenuRef} className="lg:hidden py-6 border-t border-gray-100 animate-slide-up">
             <div className="flex flex-col space-y-2">
               {currentNavItems.map((item) => (
                 <NavLink

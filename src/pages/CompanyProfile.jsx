@@ -124,7 +124,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar">
+            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar flex flex-col">
                 <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
                     <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 min-w-0 break-words">Write a Review for {companyName}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm">
@@ -393,7 +393,8 @@ const CompanyProfile = () => {
                 // we might need to fetch user profile or check against a list.
                 // For now, let's fetch the user profile again to get fresh 'following' list
                 api.get('/auth/profile').then(res => {
-                    const isFollowed = res.data.following?.some(f => f._id === id || f === id);
+                    const isFollowed = res.data.following?.some(f => f._id === id || f === id) || 
+                                     res.data.followingCompanies?.some(fc => fc._id === id || fc === id);
                     setIsFollowing(!!isFollowed);
                 }).catch(err => console.error(err));
             }
@@ -437,7 +438,7 @@ const CompanyProfile = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans overflow-x-hidden">
             {/* Header Section */}
             <div className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-6 pt-6">
@@ -473,7 +474,7 @@ const CompanyProfile = () => {
                     </div>
 
                     {/* Branding Bar */}
-                    <div className="absolute -bottom-64 md:-bottom-20 left-6 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-8 w-[calc(100%-3rem)] md:w-[calc(100%-6rem)]">
+                    <div className="absolute -bottom-64 md:-bottom-20 left-6 right-6 md:left-12 md:right-auto md:w-[calc(100%-6rem)] flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
                         <div className="w-36 h-36 md:w-48 md:h-48 bg-white rounded-[2rem] p-3 shadow-2xl shadow-slate-900/10 border-4 border-white flex items-center justify-center overflow-hidden shrink-0 relative z-10">
                             {company.profilePicture ? (
                                 <img 
@@ -583,7 +584,7 @@ const CompanyProfile = () => {
 
                 {/* Tabs Navigation */}
                 <div className="max-w-7xl mx-auto px-6 mt-8">
-                    <div className="flex items-center gap-10 border-b border-gray-200">
+                    <div className="flex items-center gap-10 border-b border-gray-200 overflow-x-auto no-scrollbar">
                         {['overview', 'jobs', 'why join us'].map((tab) => (
                             <button
                                 key={tab}

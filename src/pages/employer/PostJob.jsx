@@ -434,13 +434,11 @@ const PostJob = () => {
         ];
 
         const handleStepClick = (targetStep) => {
-            // Allow going back always
             if (targetStep < currentStep) {
                 setCurrentStep(targetStep);
                 return;
             }
 
-            // Validate all steps up to the target
             for (let i = 1; i < targetStep; i++) {
                 if (!validateStep(i)) {
                     Swal.fire({
@@ -449,7 +447,7 @@ const PostJob = () => {
                         text: `Please complete Step ${i} (${steps[i-1].label}) before proceeding.`,
                         confirmButtonColor: '#4169E1'
                     });
-                    setCurrentStep(i); // Go to the first invalid step
+                    setCurrentStep(i);
                     return;
                 }
             }
@@ -457,32 +455,34 @@ const PostJob = () => {
         };
 
         return (
-            <div className="flex items-center justify-between mb-8 px-4">
-                {steps.map((step, index) => (
-                    <div 
-                        key={step.num} 
-                        className="flex flex-col items-center relative z-10 w-full group"
-                        onClick={() => handleStepClick(step.num)}
-                    >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 cursor-pointer ${
-                            currentStep >= step.num 
-                                ? 'bg-[#4169E1] border-[#4169E1] text-white shadow-lg shadow-blue-500/30' 
-                                : 'bg-white border-gray-200 text-gray-400 group-hover:border-[#4169E1] group-hover:text-[#4169E1]'
-                        }`}>
-                            {currentStep > step.num ? <Check className="w-5 h-5" /> : step.num}
+            <div className="mb-8 overflow-x-auto no-scrollbar -mx-4 md:mx-0 pb-2">
+                <div className="flex items-center justify-between min-w-[350px] md:min-w-0 px-4 md:px-0">
+                    {steps.map((step, index) => (
+                        <div 
+                            key={step.num} 
+                            className="flex flex-col items-center relative z-10 w-full group min-w-[60px]"
+                            onClick={() => handleStepClick(step.num)}
+                        >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 cursor-pointer ${
+                                currentStep >= step.num 
+                                    ? 'bg-[#4169E1] border-[#4169E1] text-white shadow-lg shadow-blue-500/30' 
+                                    : 'bg-white border-gray-200 text-gray-400 group-hover:border-[#4169E1] group-hover:text-[#4169E1]'
+                            }`}>
+                                {currentStep > step.num ? <Check className="w-5 h-5" /> : step.num}
+                            </div>
+                            <span className={`text-xs font-medium mt-2 uppercase tracking-wide cursor-pointer transition-colors ${
+                                currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400 group-hover:text-[#4169E1]'
+                            }`}>
+                                {step.label}
+                            </span>
+                            {index !== steps.length - 1 && (
+                                <div className={`hidden md:block absolute top-5 left-1/2 w-full h-[2px] transition-all duration-500 ${
+                                    currentStep > step.num ? 'bg-[#4169E1]' : 'bg-gray-200'
+                                }`} style={{ width: 'calc(100% - 2.5rem)', transform: 'translateX(1.25rem)' }}></div>
+                            )}
                         </div>
-                        <span className={`text-xs font-medium mt-2 uppercase tracking-wide cursor-pointer transition-colors ${
-                            currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400 group-hover:text-[#4169E1]'
-                        }`}>
-                            {step.label}
-                        </span>
-                        {index !== steps.length - 1 && (
-                             <div className={`hidden md:block absolute top-5 left-1/2 w-full h-[2px] transition-all duration-500 ${
-                                 currentStep > step.num ? 'bg-[#4169E1]' : 'bg-gray-200'
-                             }`} style={{ width: 'calc(100% - 2.5rem)', transform: 'translateX(1.25rem)' }}></div>
-                        )}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
         );
     };
@@ -524,7 +524,7 @@ const PostJob = () => {
                 </button>
 
                 <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                    <div className="p-8 md:p-10">
+                    <div className="p-5 md:p-10">
                         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Post a New Job</h1>
                         <p className="text-gray-500 mb-10">Create a compelling job post to attract top talent.</p>
 
@@ -616,6 +616,7 @@ const PostJob = () => {
                                                 name="openings" 
                                                 value={formData.openings} 
                                                 onChange={handleInputChange} 
+                                                onWheel={(e) => e.target.blur()}
                                                 className="input-field" 
                                                 placeholder="e.g. 20" 
                                             />
@@ -708,13 +709,13 @@ const PostJob = () => {
                                             
                                             <div>
                                                 <label className="label">{formData.salaryType === 'Range' ? 'Min Salary' : 'Amount'} (₹) <span className="text-red-500">*</span></label>
-                                                <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} className="input-field" placeholder="e.g. 500000" />
+                                                <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 500000" />
                                             </div>
 
                                             {formData.salaryType === 'Range' && (
                                                 <div>
                                                     <label className="label">Max Salary (₹) <span className="text-red-500">*</span></label>
-                                                    <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} className="input-field" placeholder="e.g. 1500000" />
+                                                    <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 1500000" />
                                                 </div>
                                             )}
                                         </div>
@@ -723,11 +724,11 @@ const PostJob = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div>
                                              <label className="label">Min Experience (Years) <span className="text-red-500">*</span></label>
-                                             <input type="number" name="experienceMin" value={formData.experienceMin} onChange={handleInputChange} className="input-field" placeholder="e.g. 2" />
+                                             <input type="number" name="experienceMin" value={formData.experienceMin} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 2" />
                                         </div>
                                          <div>
                                              <label className="label">Max Experience (Years) <span className="text-red-500">*</span></label>
-                                             <input type="number" name="experienceMax" value={formData.experienceMax} onChange={handleInputChange} className="input-field" placeholder="e.g. 5" />
+                                             <input type="number" name="experienceMax" value={formData.experienceMax} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 5" />
                                         </div>
                                     </div>
                                 </div>

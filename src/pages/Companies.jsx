@@ -28,10 +28,14 @@ const Companies = () => {
           employerVerification: company.employerVerification
         }));
         setCompanies(formattedCompanies);
-        setLoading(false);
       } catch (err) {
-        console.error('Error fetching companies:', err);
-        setError('Failed to load companies.');
+        if (err.response && err.response.status === 404) {
+            setCompanies([]);
+        } else {
+            console.error('Error fetching companies:', err);
+            setError('Failed to load companies.');
+        }
+      } finally {
         setLoading(false);
       }
     };

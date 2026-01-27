@@ -2,11 +2,10 @@ const express = require('express');
 const dotenv = require('dotenv');
 
 // Load env vars immediately
+dotenv.config();
+
 const cron = require('node-cron');
 const { sendDailyEmails } = require('./services/recommendationService');
-
-// Load env vars immediately
-dotenv.config();
 
 // Schedule Daily Email at 9:00 AM
 cron.schedule('0 9 * * *', () => {

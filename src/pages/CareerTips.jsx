@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, MessageSquare, BookOpen, User as UserIcon, AlertCircle, Sparkles, Coffee } from 'lucide-react';
+import { Send, Bot, MessageSquare, BookOpen, User as UserIcon, AlertCircle, Sparkles, Coffee, Lightbulb, X } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import ReactMarkdown from 'react-markdown';
@@ -13,6 +13,7 @@ const CareerTips = () => {
     const [loading, setLoading] = useState(false);
     const [remainingChats, setRemainingChats] = useState(10);
     const [error, setError] = useState(null);
+    const [showTipsModal, setShowTipsModal] = useState(false);
     const chatContainerRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -140,8 +141,8 @@ const CareerTips = () => {
             <div className="container mx-auto px-4 relative z-10 max-w-7xl">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-8rem)]">
                     
-                    {/* Left Column: Tips (Scrollable) */}
-                    <div className="lg:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                    {/* Left Column: Tips (Desktop Only) */}
+                    <div className="hidden lg:block lg:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="bg-gradient-to-r from-[#4169E1] to-[#3A5FCD] p-6 rounded-2xl text-white shadow-lg">
                             <h1 className="text-2xl font-bold mb-2 flex items-center">
                                 Career Tips
@@ -168,8 +169,8 @@ const CareerTips = () => {
                         </div>
                     </div>
 
-                    {/* Right Column: Chat (Fixed Height) */}
-                    <div className="lg:col-span-2 flex flex-col bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden relative">
+                    {/* Right Column: Chat (Full width on mobile) */}
+                    <div className="col-span-1 lg:col-span-2 flex flex-col bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden relative h-full">
                         {/* Chat Header */}
                         <div className="bg-white border-b border-gray-100 p-4 flex justify-between items-center sticky top-0 z-10">
                             <div className="flex items-center">
@@ -279,6 +280,70 @@ const CareerTips = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Floating Action Button (Mobile Only) */}
+            <button
+                onClick={() => setShowTipsModal(true)}
+                className="lg:hidden fixed bottom-6 right-6 z-40 p-4 bg-gradient-to-r from-[#4169E1] to-[#3A5FCD] text-white rounded-full shadow-xl hover:scale-105 transition-transform active:scale-95 flex items-center justify-center"
+                aria-label="View Career Tips"
+            >
+                <Lightbulb className="w-6 h-6" />
+            </button>
+
+            {/* Career Tips Modal (Mobile Only) */}
+            {showTipsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm lg:hidden animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-3xl">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 rounded-lg text-[#4169E1]">
+                                    <Lightbulb className="w-5 h-5" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Career Tips</h3>
+                            </div>
+                            <button 
+                                onClick={() => setShowTipsModal(false)}
+                                className="p-2 hover:bg-white rounded-full transition-colors shadow-sm text-gray-500"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto custom-scrollbar space-y-4">
+                            <div className="bg-blue-50 p-4 rounded-xl text-blue-700 text-sm font-medium mb-2">
+                                expert advice to help you land your dream job
+                            </div>
+                            
+                            {tips.map((tip, index) => (
+                                <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-4 items-start">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tip.color} shrink-0`}>
+                                        <tip.icon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 mb-1">{tip.title}</h3>
+                                        <p className="text-gray-600 text-sm leading-relaxed">{tip.content}</p>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="bg-yellow-50 p-5 rounded-2xl border border-yellow-100 text-center mt-6">
+                                <Coffee className="w-8 h-8 mx-auto text-yellow-500 mb-3" />
+                                <h3 className="font-bold text-gray-800 mb-1">Need a break?</h3>
+                                <p className="text-gray-500 text-sm">Take 5 minutes to relax.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="p-4 border-t border-gray-100 bg-gray-50/30 rounded-b-3xl">
+                            <button 
+                                onClick={() => setShowTipsModal(false)}
+                                className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Close Tips
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

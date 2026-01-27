@@ -1,5 +1,7 @@
 const Application = require('../models/Application');
 const Job = require('../models/Job');
+const sendEmail = require('../utils/sendEmail');
+const { getApplicationSuccessEmail, getApplicationStatusChangeEmail } = require('../utils/emailTemplates');
 
 // @desc    Apply to a job
 // @route   POST /api/applications
@@ -78,6 +80,19 @@ const applyToJob = async (req, res) => {
     }
 
     res.status(201).json(application);
+
+    // Send confirmation email to candidate
+    try {
+        const emailContent = getApplicationSuccessEmail(req.user, job);
+        await sendEmail({
+            email: req.user.email,
+            subject: `Application Received: ${job.title}`,
+            html: emailContent
+        });
+    } catch (emailError) {
+        console.error('Error sending application success email:', emailError);
+        // We don't fail the request if email fails, just log it
+    }
   } catch (error) {
     res.status(400).json({ message: 'Application failed: ' + error.message });
   }
@@ -202,6 +217,45 @@ const updateApplicationStatus = async (req, res) => {
 
     application.status = status;
     const updatedApplication = await application.save();
+
+    // Send status update email to candidate
+    try {
+        // We need to populate applicant to get email/name if not already populated
+        // typically finding by ID doesn't populate unless we ask
+        const appWithUser = await Application.findById(application._id).populate('applicant', 'name email');
+        
+        if (appWithUser && appWithUser.applicant) {
+            const emailContent = getApplicationStatusChangeEmail(appWithUser.applicant, {
+                title: application.job ? (await Job.findById(application.job)).title : 'Job',
+                company: application.companyId ? (await require('../models/Company').findById(application.companyId))?.name : 'Company' 
+                // Note: Ideally job and company details should be populated or fetched more efficiently.
+                // Let's optimize by populating job in the initial find or here.
+            }, status);
+
+            // Re-fetching robustly for email details
+            const robustApp = await Application.findById(application._id)
+                .populate('applicant', 'name email')
+                .populate('job', 'title company')
+                .populate('companyId', 'name'); // Assuming companyId ref exists or we get it from job
+            
+            // Fallback for company name if companyId populate fails or isn't set
+            const companyName = robustApp.companyId?.name || robustApp.job?.company || 'The Company';
+
+            const robustEmailContent = getApplicationStatusChangeEmail(robustApp.applicant, {
+                 title: robustApp.job?.title || 'Job Position',
+                 company: companyName
+            }, status);
+
+
+            await sendEmail({
+                email: robustApp.applicant.email,
+                subject: `Application Status Update: ${robustApp.job?.title}`,
+                html: robustEmailContent
+            });
+        }
+    } catch (emailError) {
+        console.error('Error sending status update email:', emailError);
+    }
 
     res.json(updatedApplication);
   } catch (error) {
