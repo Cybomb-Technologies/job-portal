@@ -215,6 +215,7 @@ const getUserProfile = async (req, res) => {
       companyRole: user.companyRole,
       totalExperience: user.totalExperience,
       following: user.following,
+      followingCompanies: user.followingCompanies,
       followers: user.followers
     };
 
@@ -408,6 +409,7 @@ const updateUserProfile = async (req, res) => {
         companyRole: updatedUser.companyRole,
         token: generateToken(updatedUser._id),
         following: updatedUser.following,
+        followingCompanies: updatedUser.followingCompanies,
         followers: updatedUser.followers
     };
 
@@ -571,29 +573,85 @@ const getCompanies = async (req, res) => {
 // @desc    Follow a company
 // @route   POST /api/auth/follow/:id
 // @access  Private (Job Seeker)
+// @desc    Follow a company
+// @route   POST /api/auth/follow/:id
+// @access  Private (Job Seeker)
 const followCompany = async (req, res) => {
     try {
-        const companyId = req.params.id;
+        const targetId = req.params.id;
         const jobSeekerId = req.user._id;
 
-        const company = await User.findById(companyId);
-        if (!company || company.role !== 'Employer') {
+        // Check if target is a Company
+        const company = await Company.findById(targetId);
+        
+        if (company) {
+            // It is a Company Entity
+            await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+                $addToSet: { followingCompanies: targetId }
+            });
+
+            await Company.findByIdAndUpdate(targetId, {
+                $addToSet: { followers: jobSeekerId }
+            });
+
+             // Notify Company Admins/Recruiters
+             // We can find the company owner or team members
+             // For now, let's notify the owner if linked or company email via notification log? 
+             // Existing notif logic relied on recipient being a User.
+             // We need to find the User(s) who manage this company.
+             if (company.companyEmail) {
+                 // Maybe future: send email to company
+             }
+             
+             // Create in-app notification for the company account owner?
+             // Assuming Company doesn't receive notifs directly, but the User managing it does.
+             // We find users with this companyId
+             const companyUsers = await require('../models/User').find({ companyId: targetId });
+             if (companyUsers.length > 0) {
+                 const Notification = require('../models/Notification');
+                 const notifications = companyUsers.map(u => ({
+                    recipient: u._id,
+                    sender: jobSeekerId,
+                    type: 'FOLLOW',
+                    message: `${req.user.name} started following your company ${company.name}`,
+                    relatedId: jobSeekerId,
+                    relatedModel: 'User'
+                 }));
+                 await Notification.insertMany(notifications);
+                 
+                  // Real-time Push Notification
+                 if (req.io) {
+                     notifications.forEach(n => {
+                        req.io.to(n.recipient.toString()).emit('notification', {
+                            message: n.message,
+                            type: 'FOLLOW'
+                        });
+                     });
+                 }
+             }
+
+            return res.json({ message: 'Followed company successfully' });
+        }
+
+        // Fallback: Check if target is a User (Legacy Employer)
+        const userTarget = await require('../models/User').findById(targetId);
+        if (!userTarget || userTarget.role !== 'Employer') {
              return res.status(404).json({ message: 'Company not found' });
         }
 
-        // Add to Job Seeker's following list
-        await User.findByIdAndUpdate(jobSeekerId, {
-            $addToSet: { following: companyId }
+        // Add to Job Seeker's following list (User ref)
+        await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+            $addToSet: { following: targetId }
         });
 
-        // Add to Company's followers list
-        await User.findByIdAndUpdate(companyId, {
+        // Add to Company's followers list (User ref)
+        await require('../models/User').findByIdAndUpdate(targetId, {
             $addToSet: { followers: jobSeekerId }
         });
 
         const Notification = require('../models/Notification');
         await Notification.create({
-            recipient: companyId,
+            recipient: targetId,
             sender: jobSeekerId,
             type: 'FOLLOW',
             message: `${req.user.name} started following your company`,
@@ -603,7 +661,7 @@ const followCompany = async (req, res) => {
 
         // Real-time Push Notification
         if (req.io) {
-            req.io.to(companyId).emit('notification', {
+            req.io.to(targetId).emit('notification', {
                 message: `${req.user.name} started following your company`,
                 type: 'FOLLOW'
             });
@@ -622,16 +680,28 @@ const followCompany = async (req, res) => {
 // @access  Private (Job Seeker)
 const unfollowCompany = async (req, res) => {
     try {
-        const companyId = req.params.id;
+        const targetId = req.params.id;
         const jobSeekerId = req.user._id;
 
-        // Remove from Job Seeker's following list
-        await User.findByIdAndUpdate(jobSeekerId, {
-            $pull: { following: companyId }
+        // Check if Company
+        const company = await Company.findById(targetId);
+        if (company) {
+             await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+                $pull: { followingCompanies: targetId }
+            });
+
+            await Company.findByIdAndUpdate(targetId, {
+                $pull: { followers: jobSeekerId }
+            });
+            return res.json({ message: 'Unfollowed company successfully' });
+        }
+
+        // Fallback: User
+        await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+            $pull: { following: targetId }
         });
 
-        // Remove from Company's followers list
-        await User.findByIdAndUpdate(companyId, {
+        await require('../models/User').findByIdAndUpdate(targetId, {
             $pull: { followers: jobSeekerId }
         });
 

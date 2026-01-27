@@ -171,6 +171,10 @@ const userSchema = mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User' // For Job Seekers: Companies they follow
     }],
+    followingCompanies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company'
+    }],
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User' // For Companies: Job Seekers following them

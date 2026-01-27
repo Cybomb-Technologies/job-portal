@@ -78,6 +78,10 @@ const companySchema = mongoose.Schema(
             default: Date.now
         }
     }],
+    followers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
     companyId: {
         type: String,
         unique: true

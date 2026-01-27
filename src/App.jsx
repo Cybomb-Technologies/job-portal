@@ -41,6 +41,7 @@ import AdminContacts from './pages/admin/AdminContacts';
 import ProfileLayout from './pages/profile/ProfileLayout';
 import ProfileDetails from './pages/profile/ProfileDetails';
 import AppliedJobs from './pages/profile/AppliedJobs';
+import MyTickets from './pages/profile/MyTickets';
 import ChangePassword from './pages/profile/ChangePassword';
 
 // Info Pages
@@ -51,6 +52,9 @@ import TermsOfService from './pages/TermsOfService';
 import SalaryCalculator from './pages/SalaryCalculator';
 import ReportIssue from './pages/ReportIssue';
 import Pricing from './pages/Pricing';
+import Cookies from './pages/Cookies';
+import FraudAlert from './pages/FraudAlert';
+import TrustSafety from './pages/TrustSafety';
 
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -81,6 +85,9 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/salary-calculator" element={<SalaryCalculator />} />
           <Route path="/report-issue" element={<ReportIssue />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/fraud-alert" element={<FraudAlert />} />
+          <Route path="/trust-safety" element={<TrustSafety />} />
           
           {/* Enhanced Profile Routes */}
           <Route 
@@ -93,6 +100,7 @@ function App() {
           >
             <Route index element={<ProfileDetails />} />
             <Route path="applications" element={<AppliedJobs />} />
+            <Route path="tickets" element={<MyTickets />} />
             <Route path="password" element={<ChangePassword />} />
           </Route>
 

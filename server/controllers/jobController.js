@@ -1,5 +1,7 @@
 const Job = require('../models/Job');
 const Application = require('../models/Application');
+const sendEmail = require('../utils/sendEmail');
+const { getNewJobNotificationEmail } = require('../utils/emailTemplates');
 
 // @desc    Create a new job
 // @route   POST /api/jobs
@@ -30,24 +32,27 @@ const createJob = async (req, res) => {
     });
 
     // Notify all followers
-    // Note: 'user' here is the recruiter/admin posting the job.
-    // If 'user' has followers (which are users following this company), we notify them.
-    // Ensure we fetch followers if they aren't populated (authMiddleware usually doesn't populate arrays deeply)
-    // We already fetched 'user' in line 10 but check if followers are there
-    const companyUser = await require('../models/User').findById(req.user._id).populate('followers');
-    if (companyUser && companyUser.followers && companyUser.followers.length > 0) {
+    // Note: We now track followers in the Company model (schema updated)
+    // and also in User model (legacy/redundancy). 
+    // Best to use Company.followers for robustness.
+    
+    // Fetch Company with followers populated
+    const companyWithFollowers = await require('../models/Company').findById(user.companyId).populate('followers', 'name email');
+    
+    if (companyWithFollowers && companyWithFollowers.followers && companyWithFollowers.followers.length > 0) {
+        // 1. In-App Notifications
         const Notification = require('../models/Notification');
-        const notifications = companyUser.followers.map(follower => ({
+        const notifications = companyWithFollowers.followers.map(follower => ({
             recipient: follower._id,
-            sender: companyUser._id,
+            sender: req.user._id, // Recruiter/Admin who posted
             type: 'JOB_ALERT',
-            message: `${companyUser.companyName || companyUser.name} posted a new job: ${job.title}`,
+            message: `${companyWithFollowers.name} posted a new job: ${job.title}`,
             relatedId: job._id,
             relatedModel: 'Job'
         }));
         await Notification.insertMany(notifications);
 
-        // Real-time Push Notification
+        // 2. Real-time Push Notifications
         notifications.forEach(notif => {
             if (req.io) {
                 req.io.to(notif.recipient.toString()).emit('notification', {
@@ -56,6 +61,22 @@ const createJob = async (req, res) => {
                 });
             }
         });
+
+        // 3. Email Notifications
+        const emailPromises = companyWithFollowers.followers.map(follower => {
+            if (!follower.email) return Promise.resolve();
+            const emailContent = getNewJobNotificationEmail(follower, job, companyWithFollowers);
+            return sendEmail({
+                email: follower.email,
+                subject: `New Job Opening at ${companyWithFollowers.name}: ${job.title}`,
+                html: emailContent
+            }).catch(err => console.error(`Failed to send email to ${follower.email}:`, err));
+        });
+
+        // Send emails in background (awaiting all might be slow for many followers, but okay for MVP)
+        // Ideally offload to a queue. For now, we don't await to not block response? 
+        // Or await `Promise.all` but catch errors so it doesn't fail job creation.
+        Promise.all(emailPromises).then(() => console.log('Job alert emails sent')).catch(err => console.error('Error sending job alert emails', err));
     }
 
     res.status(201).json(job);
