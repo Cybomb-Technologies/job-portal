@@ -47,12 +47,21 @@ const sendVerificationOTP = async (req, res) => {
         }
 
         // Check 2: Is this domain already verified by someone else?
-        const existingVerifiedUser = await User.findOne({
+        /* 
+        // DISABLED: To allow multiple company profiles for the same domain if needed, and prevent blocking legitimate employees who are in a different company profile.
+        const query = {
             _id: { $ne: user._id },
             role: 'Employer',
             'employerVerification.emailVerified': true,
             email: { $regex: new RegExp(`@${emailDomain}$`, 'i') }
-        });
+        };
+
+        // If the user belongs to a company, don't count colleagues as conflicts
+        if (user.companyId) {
+            query.companyId = { $ne: user.companyId };
+        }
+
+        const existingVerifiedUser = await User.findOne(query);
 
         if (existingVerifiedUser) {
             // If the current user also claims the same website/company name, it's definitely a duplicate
@@ -62,6 +71,7 @@ const sendVerificationOTP = async (req, res) => {
                 message: `The domain "${emailDomain}" is already verified by another official representative of this company. If you are from the same organization, please coordinate with your team or contact support.`
             });
         }
+        */
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
