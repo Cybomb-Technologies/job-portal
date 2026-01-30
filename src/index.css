@@ -137,11 +137,19 @@ textarea {
   white-space: normal !important;
 }
 
-.job-description-text {
-  word-break: normal; /* Prevents breaking words in the middle */
-  overflow-wrap: break-word; /* Breaks long words if they overflow */
-  white-space: pre-wrap; /* Preserves newlines but wraps text */
-  hyphens: auto; /* Optional: Adds hyphens if browser supports it */
+.job-description-text,
+.job-description-text * {
+  word-break: normal !important; /* Prevents breaking words in the middle */
+  overflow-wrap: break-word !important; /* Only breaks words if truly too long to fit */
+  word-wrap: break-word !important; /* Legacy support */
+  white-space: normal !important; /* Collapses whitespace, ignoring source code newlines */
+  -webkit-hyphens: none !important;
+  -ms-hyphens: none !important;
+  hyphens: none !important; /* Disable auto hyphenation */
+  text-align: justify !important; /* Justify text for cleaner look */
+  letter-spacing: normal !important; /* Reset any letter spacing */
+  word-spacing: normal !important; /* Reset any word spacing */
+  text-justify: auto !important; /* Prevent inter-character spacing */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

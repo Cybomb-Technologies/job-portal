@@ -500,11 +500,47 @@ const updateUserProfile = async (req, res) => {
             }
         }
     } else if (user.role === 'Employer' && !user.companyId) {
-        // Fallback for legacy employers not yet migrated
-        user.companyName = req.body.companyName || user.companyName;
-        user.website = req.body.website ? req.body.website.toLowerCase() : user.website;
-        // ... other fields as fallback
-        if (req.files?.profilePicture) user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+        // Create new Company Document
+        company = await Company.create({
+            name: req.body.companyName || user.companyName || 'My Company',
+            website: req.body.website ? req.body.website.toLowerCase() : user.website,
+            companyEmail: req.body.companyEmail || user.companyEmail || user.email,
+            companyLocation: req.body.companyLocation || user.companyLocation,
+            companyCategory: req.body.companyCategory || user.companyCategory,
+            companyType: req.body.companyType || user.companyType,
+            foundedYear: req.body.foundedYear || user.foundedYear,
+            employeeCount: req.body.employeeCount || user.employeeCount,
+            about: req.body.about || user.about, // Company bio
+            members: [{
+                user: user._id,
+                role: 'Admin'
+            }]
+        });
+
+        if (req.body.whyJoinUs) {
+            try {
+                company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+            } catch (e) {
+                 console.error("Error parsing whyJoinUs", e);
+            }
+        }
+
+        // Handle Company Picture Uploads during Creation
+        if (req.files) {
+            if (req.files.profilePicture) {
+                company.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+            }
+             if (req.files.bannerPicture) {
+                company.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
+            }
+        }
+        
+        await company.save();
+
+        // Update User with Company ID
+        user.companyId = company._id;
+        user.companyRole = 'Admin';
+        user.companyName = undefined; // Clear legacy fields if desired, or keep for backup
     }
 
     const updatedUser = await user.save();

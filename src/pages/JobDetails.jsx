@@ -35,6 +35,81 @@ const formatApplicants = (count) => {
     return `${rounded}+`;
 };
 
+// Helper function to clean HTML content and fix word-breaking issues
+const cleanHtmlContent = (html) => {
+    if (!html) return '';
+    
+    let cleaned = html
+        // Remove class and style attributes
+        .replace(/\s*class=['"][^'"]*['"]/gi, '')
+        .replace(/\s*style=['"][^'"]*['"]/gi, '')
+        // Remove <wbr> tags (word break opportunity)
+        .replace(/<wbr\s*\/?>/gi, '')
+        // Remove soft hyphens
+        .replace(/&shy;/gi, '')
+        .replace(/\u00AD/g, '')
+        // Remove zero-width characters
+        .replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, '')
+        // Normalize non-breaking spaces to regular spaces
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\u00A0/g, ' ')
+        // Convert all types of line breaks to a single space
+        .replace(/\r\n/g, ' ')
+        .replace(/\r/g, ' ')
+        .replace(/\n/g, ' ')
+        // Replace </p><p> with proper paragraph break marker
+        .replace(/<\/p>\s*<p[^>]*>/gi, '</p><PARA_BREAK><p>')
+        // Replace <br> tags with space
+        .replace(/<br\s*\/?>/gi, ' ')
+        // Strip all HTML tags temporarily to work with plain text
+        // but preserve paragraph breaks
+        .replace(/<[^>]+>/g, ' ')
+        // Restore paragraph breaks as double newlines
+        .replace(/<PARA_BREAK>/g, '\n\n')
+        // Collapse multiple spaces (but not newlines) to single space
+        .replace(/[^\S\n]+/g, ' ')
+        // Trim spaces at start and end of lines
+        .replace(/^ +| +$/gm, '')
+        // Now fix split words - run multiple passes for thoroughness
+        // Pass 1: Fix single letter + short suffix patterns (like "t o" -> "to")
+        .replace(/\b([a-zA-Z]) ([a-zA-Z]{1,4})\b/g, (match, p1, p2) => {
+            const combined = p1 + p2;
+            const commonWords = ['to', 'in', 'on', 'of', 'at', 'by', 'or', 'an', 'as', 'is', 'it', 'be', 'he', 'we', 'me', 'do', 'go', 'so', 'no', 'up', 'if', 'my', 'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out'];
+            if (commonWords.includes(combined.toLowerCase())) {
+                return combined;
+            }
+            return match;
+        })
+        // Pass 2: Fix word + common suffix patterns
+        .replace(/([a-zA-Z]{2,}) (gies|tion|tions|ment|ments|ness|ing|ings|ed|er|ers|ly|es|ies|ity|gy|ty|ble|able|ible|ful|less|ous|ive|ward|wards)(?=[^a-zA-Z]|$)/gi, '$1$2')
+        // Pass 3: Fix any word ending with space + single letter before punctuation or end
+        .replace(/([a-zA-Z]{2,}) ([a-zA-Z])(?=[.,!?;:\s]|$)/g, '$1$2')
+        // Pass 4: Fix word + 2 letter suffix
+        .replace(/([a-zA-Z]{3,}) ([a-zA-Z]{2})(?=[^a-zA-Z]|$)/g, (match, p1, p2) => {
+            // Common 2-letter suffixes
+            const suffixes2 = ['ed', 'er', 'ly', 'es', 'ty', 'ry', 'al', 'ic', 'le', 'gy', 'ny', 'fy'];
+            if (suffixes2.includes(p2.toLowerCase())) {
+                return p1 + p2;
+            }
+            return match;
+        })
+        // Pass 5: Fix remaining single trailing letters aggressively (like "forwar d")
+        .replace(/([a-zA-Z]{3,}) ([a-zA-Z])(?=\s|[.,!?;:]|$)/g, '$1$2')
+        // Clean up any remaining multiple spaces
+        .replace(/ {2,}/g, ' ')
+        // Convert paragraph breaks back to proper HTML
+        .replace(/\n\n+/g, '</p><p>')
+        // Wrap in paragraph tags if needed
+        .replace(/^(?!<p>)/, '<p>')
+        .replace(/(?<!<\/p>)$/, '</p>')
+        // Clean up empty paragraphs
+        .replace(/<p>\s*<\/p>/g, '')
+        // Trim final result
+        .trim();
+    
+    return cleaned;
+};
+
 const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -361,12 +436,13 @@ const JobDetails = () => {
             <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 md:p-10">
               <h2 className="text-2xl font-bold text-slate-900 mb-6 font-display">Job Description</h2>
 
+              {/* Debug: Log content to console */}
+              {console.log('Original description:', job.description)}
+              {console.log('Cleaned description:', cleanHtmlContent(job.description))}
               <div 
                 className="job-description-text text-slate-700 mb-8 text-lg leading-relaxed font-sans w-full"
                 dangerouslySetInnerHTML={{ 
-                  __html: job.description
-                    .replace(/class=['"][^'"]*['"]/g, '')
-                    .replace(/style=['"][^'"]*['"]/g, '')
+                  __html: cleanHtmlContent(job.description)
                 }}
               />
               
