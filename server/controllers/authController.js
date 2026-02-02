@@ -9,6 +9,10 @@ const { OAuth2Client } = require('google-auth-library');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const { logActivity } = require('./activityLogController');
+
+// ... (existing imports)
+
 // @desc    Auth user & get token (Login)
 const authUser = async (req, res) => {
   const { email, password, role } = req.body;
@@ -20,6 +24,12 @@ const authUser = async (req, res) => {
         message: `Please login as a ${user.role}. You cannot login as ${role}.` 
       });
     }
+
+    // Log Activity
+    if (user.role === 'Employer') {
+        await logActivity(user, 'LOGIN', 'User logged in');
+    }
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -33,6 +43,8 @@ const authUser = async (req, res) => {
     res.status(401).json({ message: 'Invalid email or password' });
   }
 };
+
+
 
 // @desc    Register a new user
 const registerUser = async (req, res) => {
@@ -338,7 +350,8 @@ const getUserProfile = async (req, res) => {
       totalExperience: user.totalExperience,
       following: user.following,
       followingCompanies: user.followingCompanies,
-      followers: user.followers
+      followers: user.followers,
+      mobileNumber: user.mobileNumber
     };
 
     if (user.companyId) {
@@ -396,6 +409,7 @@ const updateUserProfile = async (req, res) => {
     user.title = req.body.title || user.title;
     user.about = req.body.about || user.about; // Personal bio
     user.currentLocation = req.body.currentLocation || user.currentLocation;
+    user.mobileNumber = req.body.mobileNumber || user.mobileNumber;
     
     if (req.body.totalExperience !== undefined) {
         user.totalExperience = Number(req.body.totalExperience);
@@ -483,6 +497,7 @@ const updateUserProfile = async (req, res) => {
                 if (req.body.whyJoinUs) {
                     try {
                         company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+                        await logActivity(user, 'WHY_JOIN_US_UPDATE', 'Updated "Why Join Us" section');
                     } catch (e) { console.error("Error parsing whyJoinUs", e); }
                 }
 
@@ -520,6 +535,7 @@ const updateUserProfile = async (req, res) => {
         if (req.body.whyJoinUs) {
             try {
                 company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+                await logActivity(user, 'WHY_JOIN_US_UPDATE', 'Updated "Why Join Us" section');
             } catch (e) {
                  console.error("Error parsing whyJoinUs", e);
             }
@@ -568,7 +584,8 @@ const updateUserProfile = async (req, res) => {
         token: generateToken(updatedUser._id),
         following: updatedUser.following,
         followingCompanies: updatedUser.followingCompanies,
-        followers: updatedUser.followers
+        followers: updatedUser.followers,
+        mobileNumber: updatedUser.mobileNumber
     };
 
     if (company) {
@@ -625,6 +642,29 @@ const getPublicUserProfile = async (req, res) => {
     let company = await Company.findById(req.params.id);
     
     if (company) {
+      // Find a contact person (Company Admin) to allow messaging
+      let contactUser = null;
+      console.log(`Debug: Fetching contact for company ${company.name} (${company._id})`);
+      
+      if (company.members && company.members.length > 0) {
+          console.log(`Debug: Found members array with length ${company.members.length}`);
+           const User = require('../models/User'); 
+           contactUser = await User.findById(company.members[0].user).select('name email profilePicture role companyName');
+      } 
+      
+      // Fallback: If no members listed, find any user who has this companyId
+      if (!contactUser) {
+           console.log('Debug: No contact found in members, trying fallback search by companyId');
+           const User = require('../models/User');
+           const users = await User.find({ companyId: company._id }).select('name email profilePicture role companyName').limit(1);
+           if (users.length > 0) {
+               contactUser = users[0];
+               console.log('Debug: Found contact via fallback');
+           }
+      }
+      
+      console.log('Debug: Final contactUser:', contactUser);
+
       return res.json({
         _id: company._id,
         companyName: company.name,
@@ -641,7 +681,8 @@ const getPublicUserProfile = async (req, res) => {
         bannerPicture: company.bannerPicture,
         employerVerification: company.employerVerification,
         whyJoinUs: company.whyJoinUs,
-        isCompanyEntity: true
+        isCompanyEntity: true,
+        contactUser // Return the contact user for messaging
       });
     }
 
@@ -667,6 +708,8 @@ const getPublicUserProfile = async (req, res) => {
         role: user.role,
         employerVerification: user.employerVerification,
         whyJoinUs: user.whyJoinUs,
+        totalExperience: user.totalExperience,
+        mobileNumber: user.mobileNumber
       });
     } else {
       res.status(404).json({ message: 'Profile not found' });
@@ -695,28 +738,34 @@ const deleteAccount = async (req, res) => {
 
 // @route   GET /api/auth/companies
 // @access  Public
+// @desc    Get all companies
+// @route   GET /api/auth/companies
+// @access  Public
 const getCompanies = async (req, res) => {
     try {
         const { search, location } = req.query;
-        let query = { role: 'Employer', isActive: true };
+        let query = {};
 
         if (search) {
-            query.companyName = { $regex: search, $options: 'i' };
+            query.name = { $regex: search, $options: 'i' };
         }
         if (location) {
             query.companyLocation = { $regex: location, $options: 'i' };
         }
 
-        const companies = await User.find(query).select('-password');
+        const companies = await Company.find(query);
 
         // Add Job Count
         const companiesWithJobs = await Promise.all(companies.map(async (company) => {
             const jobCount = await Job.countDocuments({ 
-                postedBy: company._id, 
+                companyId: company._id, 
                 status: 'Active' 
             });
+            
+            const companyObj = company.toObject();
             return {
-                ...company.toObject(),
+                ...companyObj,
+                companyName: companyObj.name, // Frontend expects companyName
                 jobCount
             };
         }));

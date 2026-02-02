@@ -87,8 +87,10 @@ app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/team', require('./routes/teamRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/activity-logs', require('./routes/activityLogRoutes'));
 app.use('/api/issues', require('./routes/issueRoutes'));
 app.use('/api/contact', contactRoutes);
+app.use('/api/messages', require('./routes/messageRoutes'));
 // app.use('/api/scrape', require('./routes/scrapingRoutes')); // Removed in favor of custom reviews
 
 // Make uploads folder static

@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
+const { logActivity } = require('./activityLogController');
 
 /**
  * @desc    Submit a new review
@@ -272,6 +273,8 @@ const toggleReviewVisibility = async (req, res) => {
 
         review.isHidden = !review.isHidden;
         await review.save();
+
+        await logActivity(req.user, 'REVIEW_HIDE', `Review ${review.isHidden ? 'Hidden' : 'Visible'}`, review._id, 'Review');
 
         res.json({ message: `Review is now ${review.isHidden ? 'hidden' : 'visible'}`, isHidden: review.isHidden });
     } catch (error) {

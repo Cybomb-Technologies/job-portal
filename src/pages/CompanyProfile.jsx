@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
     Building2, MapPin, Mail, Globe, ArrowLeft, Briefcase, 
     CheckCircle, Users, Calendar, Search, Filter, 
     Star, MessageSquare, ChevronRight, Share2, Plus, Sparkles, ExternalLink,
-    PlayCircle, Video, FileText, CheckCheck
+    PlayCircle, Video, FileText, CheckCheck, Copy, Check
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { X, Send, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 const ReviewCard = ({ review, isOwner, onUpdate }) => {
@@ -291,6 +292,8 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 
 const CompanyProfile = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
+    const { initiateChat } = useChat();
     const [company, setCompany] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -313,6 +316,16 @@ const CompanyProfile = () => {
     const [reviewSort, setReviewSort] = useState('newest');
     const { user: currentUser } = useAuth();
     const isOwner = currentUser?._id === id;
+    const [copiedMap, setCopiedMap] = useState({});
+
+    const handleCopy = (text, key) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopiedMap(prev => ({ ...prev, [key]: true }));
+            setTimeout(() => {
+                setCopiedMap(prev => ({ ...prev, [key]: false }));
+            }, 2000);
+        });
+    };
 
     const handleShare = async () => {
         const shareData = {
@@ -337,6 +350,36 @@ const CompanyProfile = () => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const handleMessage = () => {
+        if (!currentUser) {
+            // alert("Please login to message the recruiter."); // Optional: use more UI friendly way?
+            navigate('/login');
+            return;
+        }
+
+        if (company.isCompanyEntity) {
+            if (company.contactUser) {
+                // We need to ensure we are not chatting with ourselves if we are the admin
+                if (company.contactUser._id === currentUser._id) {
+                    alert("You cannot message your own company.");
+                    return;
+                }
+                initiateChat(company.contactUser);
+                navigate('/messages');
+            } else {
+                alert("Messaging unavailable: No contact person found for this company.");
+            }
+        } else {
+            // Legacy user profile
+             if (company._id === currentUser._id) {
+                 alert("You cannot message yourself.");
+                 return;
+             }
+            initiateChat(company);
+            navigate('/messages');
+        }
     };
 
     const fetchReviews = async () => {
@@ -368,7 +411,7 @@ const CompanyProfile = () => {
             try {
                 const [companyRes, jobsRes] = await Promise.all([
                     api.get(`/auth/user/${id}`),
-                    api.get(`/jobs?postedBy=${id}`)
+                    api.get(`/jobs?companyId=${id}`) // Fetch by Company ID
                 ]);
 
                 setCompany(companyRes.data);
@@ -568,6 +611,13 @@ const CompanyProfile = () => {
                                                     Follow
                                                 </>
                                             )}
+                                        </button>
+                                        <button 
+                                            onClick={handleMessage}
+                                            className="px-6 py-3 bg-white text-blue-600 border border-blue-200 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-sm flex items-center gap-2"
+                                        >
+                                            <MessageSquare className="w-5 h-5" />
+                                            Message
                                         </button>
                                         <button 
                                             onClick={handleShare}
@@ -775,10 +825,48 @@ const CompanyProfile = () => {
                                         <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
                                             <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
                                         </div>
-                                        <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors">
-                                            {company.companyEmail || company.email || 'Email not visible'}
-                                        </a>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Company Email</p>
+                                            <div className="flex items-center gap-2">
+                                                <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors truncate">
+                                                    {company.companyEmail || company.email || 'Email not visible'}
+                                                </a>
+                                                {(company.companyEmail || company.email) && (
+                                                    <button 
+                                                        onClick={() => handleCopy(company.companyEmail || company.email, 'companyEmail')}
+                                                        className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-400 hover:text-blue-600"
+                                                        title="Copy Email"
+                                                    >
+                                                        {copiedMap['companyEmail'] ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    {/* Recruiter / Contact Person Email */}
+                                    {company.contactUser && company.contactUser.email && (
+                                        <div className="flex items-center gap-3 group">
+                                             <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
+                                                <Users className="w-5 h-5 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Recruiter Contact</p>
+                                                <div className="flex items-center gap-2">
+                                                    <a href={`mailto:${company.contactUser.email}`} className="text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors truncate">
+                                                        {company.contactUser.email}
+                                                    </a>
+                                                    <button 
+                                                        onClick={() => handleCopy(company.contactUser.email, 'recruiterEmail')}
+                                                        className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-400 hover:text-indigo-600"
+                                                        title="Copy Recruiter Email"
+                                                    >
+                                                        {copiedMap['recruiterEmail'] ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

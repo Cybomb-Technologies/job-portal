@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['JOB_ALERT', 'NEW_APPLICATION', 'FOLLOW', 'NEW_ISSUE', 'ISSUE_UPDATE', 'CONTACT_FORM', 'SYSTEM'],
+        enum: ['JOB_ALERT', 'NEW_APPLICATION', 'FOLLOW', 'NEW_ISSUE', 'ISSUE_UPDATE', 'CONTACT_FORM', 'SYSTEM', 'NEW_MESSAGE'],
         required: true
     },
     message: {
@@ -26,7 +26,7 @@ const notificationSchema = new mongoose.Schema({
     },
     relatedModel: {
         type: String,
-        enum: ['Job', 'Application', 'User', 'Issue', 'Contact'],
+        enum: ['Job', 'Application', 'User', 'Issue', 'Contact', 'Message'],
         required: true
     },
     isRead: {

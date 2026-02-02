@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { parseSlug } = require('../utils/slugify');
 
 // @desc    Get all candidates with filters
 // @route   GET /api/candidates
@@ -78,4 +79,55 @@ const getCandidateById = async (req, res) => {
     }
 };
 
-module.exports = { getCandidates, getCandidateById };
+// @desc    Get candidate by slug (public profile)
+// @route   GET /api/candidates/public/:slug
+// @access  Public
+const getCandidateBySlug = async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const idSuffix = parseSlug(slug);
+        
+        // Find candidate whose ID ends with the suffix
+        const candidates = await User.find({ role: 'Job Seeker' })
+            .select('-password -resetPasswordToken -resetPasswordExpire -mobileNumber');
+        
+        const candidate = candidates.find(c => c._id.toString().endsWith(idSuffix));
+        
+        if (candidate) {
+            res.json(candidate);
+        } else {
+            res.status(404).json({ message: 'Candidate not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get candidate by slug (authenticated - for employers)
+// @route   GET /api/candidates/slug/:slug
+// @access  Private (Employer only)
+const getCandidateBySlugAuth = async (req, res) => {
+    try {
+        const slug = req.params.slug;
+        const idSuffix = parseSlug(slug);
+        
+        // Find candidate whose ID ends with the suffix
+        const candidates = await User.find({ role: 'Job Seeker' })
+            .select('-password -resetPasswordToken -resetPasswordExpire');
+        
+        const candidate = candidates.find(c => c._id.toString().endsWith(idSuffix));
+        
+        if (candidate) {
+            res.json(candidate);
+        } else {
+            res.status(404).json({ message: 'Candidate not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+module.exports = { getCandidates, getCandidateById, getCandidateBySlug, getCandidateBySlugAuth };
+

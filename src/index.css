@@ -162,3 +162,28 @@ textarea {
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Safe area insets for mobile devices with notches */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Chat UI specific responsive styles */
+@media (max-width: 639px) {
+  .chat-input-mobile {
+    font-size: 16px; /* Prevents iOS zoom on input focus */
+  }
+}
+
+/* Overscroll behavior for smooth scrolling */
+.overscroll-contain {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Extra small breakpoint for company name visibility */
+@media (min-width: 480px) {
+  .xs\:inline {
+    display: inline !important;
+  }
+}

@@ -372,7 +372,7 @@ const PostJob = () => {
         window.scrollTo(0, 0);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (status = 'Active') => {
         setLoading(true);
         try {
             // Formatting payload to match backend schema
@@ -386,15 +386,16 @@ const PostJob = () => {
                 // Ensure arrays are arrays
                 benefits: formData.benefits,
                 skills: formData.skills,
-                preScreeningQuestions: formData.preScreeningQuestions
+                preScreeningQuestions: formData.preScreeningQuestions,
+                status: status // 'Active' or 'Closed'
             };
 
             if (id) {
                 await api.put(`/jobs/${id}`, payload);
                  Swal.fire({
                     icon: 'success',
-                    title: 'Job Updated!',
-                    text: 'Your job listing has been updated successfully.',
+                    title: status === 'Active' ? 'Job Updated!' : 'Draft Saved!',
+                    text: status === 'Active' ? 'Your job listing has been updated successfully.' : 'Your job has been saved as a draft.',
                     confirmButtonColor: '#4169E1'
                 }).then(() => {
                     navigate('/employer/my-jobs');
@@ -403,8 +404,8 @@ const PostJob = () => {
                 await api.post('/jobs', payload);
                  Swal.fire({
                     icon: 'success',
-                    title: 'Job Posted Successfully!',
-                    text: 'Your job listing is now live.',
+                    title: status === 'Active' ? 'Job Posted Successfully!' : 'Draft Saved!',
+                    text: status === 'Active' ? 'Your job listing is now live.' : 'Your job has been saved as a draft.',
                     confirmButtonColor: '#4169E1'
                 }).then(() => {
                     navigate('/employer/my-jobs');
@@ -413,11 +414,28 @@ const PostJob = () => {
 
         } catch (err) {
             console.error(err);
-            Swal.fire({
-                icon: 'error',
-                title: id ? 'Update Failed' : 'Post Failed',
-                text: err.response?.data?.message || 'Something went wrong. Please try again.'
-            });
+             // Specific error for unverified users trying to post active jobs
+            if (err.response?.status === 403 && status === 'Active') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Verification Required',
+                    text: 'Unverified companies can only save Drafts. Please verify your company to publish active jobs, or save as Draft for now.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save as Draft',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#4169E1'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        handleSubmit('Closed');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: id ? 'Update Failed' : 'Post Failed',
+                    text: err.response?.data?.message || 'Something went wrong. Please try again.'
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -1024,17 +1042,28 @@ const PostJob = () => {
                             <ChevronLeft className="w-5 h-5 mr-1" /> Back
                         </button>
 
-                        <button
-                            onClick={currentStep === 5 ? handleSubmit : handleNext}
-                            disabled={loading}
-                            className={`bg-[#4169E1] text-white font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-blue-500/30 flex items-center space-x-2 hover:bg-[#3A5FCD] ${loading ? 'opacity-70 cursor-wait' : ''}`}
-                        >
-                            {currentStep === 5 ? (
-                                loading ? (id ? 'Updating...' : 'Publishing...') : <><span>{id ? 'Update Job' : 'Publish Job'}</span> <Save className="w-5 h-5 ml-2" /></>
-                            ) : (
-                                <><span>Next Step</span> <ChevronRight className="w-5 h-5 ml-1" /></>
+                        <div className="flex space-x-4">
+                            {currentStep === 5 && (
+                                <button
+                                    onClick={() => handleSubmit('Closed')}
+                                    disabled={loading}
+                                    className="bg-gray-100 text-gray-700 font-bold px-6 py-3 rounded-xl transition hover:bg-gray-200 flex items-center"
+                                >
+                                    Save as Draft
+                                </button>
                             )}
-                        </button>
+                            <button
+                                onClick={currentStep === 5 ? () => handleSubmit('Active') : handleNext}
+                                disabled={loading}
+                                className={`bg-[#4169E1] text-white font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-blue-500/30 flex items-center space-x-2 hover:bg-[#3A5FCD] ${loading ? 'opacity-70 cursor-wait' : ''}`}
+                            >
+                                {currentStep === 5 ? (
+                                    loading ? (id ? 'Updating...' : 'Publishing...') : <><span>{id ? 'Update Job' : 'Publish Job'}</span> <Save className="w-5 h-5 ml-2" /></>
+                                ) : (
+                                    <><span>Next Step</span> <ChevronRight className="w-5 h-5 ml-1" /></>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

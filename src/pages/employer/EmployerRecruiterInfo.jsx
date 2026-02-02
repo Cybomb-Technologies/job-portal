@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Save } from 'lucide-react';
+import { User, Mail, Save, Phone } from 'lucide-react';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,14 +11,16 @@ const EmployerRecruiterInfo = () => {
     
     const [formData, setFormData] = useState({
         name: '',
-        email: ''
+        email: '',
+        mobileNumber: ''
     });
 
     useEffect(() => {
         if (user) {
             setFormData({
                 name: user.name || '',
-                email: user.email || ''
+                email: user.email || '',
+                mobileNumber: user.mobileNumber || ''
             });
         }
     }, [user]);
@@ -34,7 +36,10 @@ const EmployerRecruiterInfo = () => {
         setError('');
 
         try {
-            const res = await api.put('/auth/profile', { name: formData.name });
+            const res = await api.put('/auth/profile', { 
+                name: formData.name,
+                mobileNumber: formData.mobileNumber 
+            });
             login(res.data); // Update context
             setMessage('Recruiter info updated successfully!');
         } catch (err) {
@@ -87,6 +92,21 @@ const EmployerRecruiterInfo = () => {
                         />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">Email address cannot be changed.</p>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                        <input
+                            type="tel"
+                            name="mobileNumber"
+                            value={formData.mobileNumber}
+                            onChange={handleChange}
+                            placeholder="Enter your mobile number"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
+                    </div>
                 </div>
 
                 <div className="flex justify-end pt-4">

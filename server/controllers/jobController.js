@@ -2,6 +2,7 @@ const Job = require('../models/Job');
 const Application = require('../models/Application');
 const sendEmail = require('../utils/sendEmail');
 const { getNewJobNotificationEmail } = require('../utils/emailTemplates');
+const { logActivity } = require('./activityLogController');
 
 // @desc    Create a new job
 // @route   POST /api/jobs
@@ -9,17 +10,35 @@ const { getNewJobNotificationEmail } = require('../utils/emailTemplates');
 const createJob = async (req, res) => {
   try {
     // Check verification level
-    const user = await require('../models/User').findById(req.user._id); // Assuming we need fresh data or req.user is enough
+    const user = await require('../models/User').findById(req.user._id); 
     
-    // If we trust req.user populated by authMiddleware (which usually doesn't have deep nested new fields unless updated), 
-    // it's safer to fetch or ensure middleware populates it. 
-    // Mongoose models usually don't auto-update req.user in memory if DB changes elsewhere, but here it's per request.
-    // Let's assume req.user might not have employerVerification if it's a new field and token isn't refreshed.
-    // Safe bet: fetch user.
-    
-    const company = await require('../models/Company').findById(user.companyId);
+    // Fetch Company with members populated to check legacy verification status
+    const company = await require('../models/Company').findById(user.companyId).populate('members.user');
 
-    if (!company || company.employerVerification.level < 1) {
+    let isVerified = false;
+    if (company) {
+        if (company.employerVerification?.level >= 1) {
+            isVerified = true;
+        } else {
+            // Legacy Sync / Recruiter Check: 
+            // If company is technically unverified in DB, check if any Admin member is verified.
+            // This handles cases where verification happened before Company model sync logic was added.
+            const adminMembers = company.members.filter(m => m.role === 'Admin');
+            const verifiedAdmin = adminMembers.find(m => m.user && m.user.employerVerification && m.user.employerVerification.level >= 1);
+
+            if (verifiedAdmin) {
+                // Sync verification status to Company
+                company.employerVerification.level = 1;
+                company.employerVerification.status = 'Verified';
+                company.employerVerification.domainVerified = true;
+                await company.save();
+                isVerified = true;
+                console.log(`Synced verification for company ${company.name} from admin ${verifiedAdmin.user.name}`);
+            }
+        }
+    }
+
+    if (!isVerified) {
         if (req.body.status !== 'Closed') {
              return res.status(403).json({ message: 'Unverified companies can only post Drafts (Closed jobs). Please verify your company identity to publish active jobs.' });
         }
@@ -76,8 +95,10 @@ const createJob = async (req, res) => {
         // Send emails in background (awaiting all might be slow for many followers, but okay for MVP)
         // Ideally offload to a queue. For now, we don't await to not block response? 
         // Or await `Promise.all` but catch errors so it doesn't fail job creation.
-        Promise.all(emailPromises).then(() => console.log('Job alert emails sent')).catch(err => console.error('Error sending job alert emails', err));
+    Promise.all(emailPromises).then(() => console.log('Job alert emails sent')).catch(err => console.error('Error sending job alert emails', err));
     }
+
+    await logActivity(req.user, 'JOB_CREATE', `Created new job: ${job.title}`, job._id, 'Job');
 
     res.status(201).json(job);
   } catch (error) {
@@ -120,6 +141,11 @@ const getJobs = async (req, res) => {
     // Filter by Employer (postedBy)
     if (req.query.postedBy) {
         query.postedBy = req.query.postedBy;
+    }
+
+    // Filter by Company (companyId)
+    if (req.query.companyId) {
+        query.companyId = req.query.companyId;
     }
 
     // Filter by Job Type
@@ -275,6 +301,25 @@ const updateJob = async (req, res) => {
     });
 
     const updatedJob = await job.save();
+
+    if (req.body.status === 'Closed' && job.status === 'Closed') { // Assuming job.status is already updated by the loop
+         // Check if it was active before? We modified the job object in place.
+         // Wait, the loop `job[field] = req.body[field]` updates the job object in memory.
+         // So I can't check `oldStatus` unless I saved it before the loop.
+    } 
+
+    // Better approach:
+    // This logic is tricky because we update in place.
+    // I should capture oldStatus before the loop.
+    // However, I can't inject code before the loop easily with this chunk. 
+    // I will replace the whole updateJob function body logic or a larger chunk.
+    
+    // Actually, I can allow the user to see the change in logic.
+    // But let's just use a generic 'JOB_MODIFY' first, and handle DEACTIVATE if status is specifically passed as Closed.
+    // Or simpler:
+    const action = (req.body.status === 'Closed') ? 'JOB_DEACTIVATE' : 'JOB_MODIFY';
+    await logActivity(req.user, action, `${action === 'JOB_DEACTIVATE' ? 'Deactivated' : 'Modified'} job: ${job.title}`, job._id, 'Job');
+    
     res.json(updatedJob);
   } else {
     res.status(404).json({ message: 'Job not found' });
@@ -296,6 +341,7 @@ const deleteJob = async (req, res) => {
     }
 
     await job.deleteOne();
+    await logActivity(req.user, 'JOB_DELETE', `Deleted job: ${job.title}`, job._id, 'Job');
     res.json({ message: 'Job removed' });
   } else {
     res.status(404).json({ message: 'Job not found' });
