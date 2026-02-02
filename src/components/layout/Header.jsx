@@ -5,12 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
 import { io } from 'socket.io-client';
 import Swal from 'sweetalert2';
+import { useChat } from '../../context/ChatContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { unreadCount: chatUnreadCount } = useChat();
 
   // Notifications State
   const [notifications, setNotifications] = React.useState([]);
@@ -73,10 +74,6 @@ const Header = () => {
     }
 
     socket.on('notification', (data) => {
-        // Play notification sound
-        // const audio = new Audio('/notification.mp3');
-        // audio.play().catch(e => console.log('Audio play failed', e));
-
         // Show Toast
         Swal.fire({
             icon: 'info',
@@ -122,6 +119,9 @@ const Header = () => {
               case 'JOB_ALERT':
                   navigate(`/job/${notification.relatedId}`); // Assuming relatedId is jobId
                   break;
+              case 'NEW_MESSAGE':
+                  navigate('/messages', { state: { userId: notification.sender } });
+                  break;
               default:
                   // Default navigation if needed
                   break;
@@ -155,6 +155,7 @@ const Header = () => {
     { name: 'Home', path: '/' },
     { name: 'Find Jobs', path: '/jobs' },
     { name: 'Companies', path: '/companies' },
+    { name: 'Messages', path: '/messages' },
     { name: 'Career Tips', path: '/career-tips' },
     { name: 'Pricing', path: '/pricing' },
   ];
@@ -164,6 +165,7 @@ const Header = () => {
     { name: 'Post Job', path: '/employer/post-job' },
     { name: 'My Jobs', path: '/employer/my-jobs' },
     { name: 'Find Candidates', path: '/employer/candidates' },
+    { name: 'Messages', path: '/messages' },
     { name: 'Pricing', path: '/pricing' },
     { name: 'Verification', path: '/employer/verification' },
   ];
@@ -185,13 +187,13 @@ const Header = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden xl:flex items-center space-x-1">
             {currentNavItems.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  `px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 relative ${
                     isActive 
                     ? 'bg-blue-50 text-blue-600 shadow-sm' 
                     : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
@@ -199,14 +201,17 @@ const Header = () => {
                 }
               >
                 {item.name}
+                {item.name === 'Messages' && chatUnreadCount > 0 && (
+                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse">
+                         {chatUnreadCount}
+                     </span>
+                )}
               </NavLink>
             ))}
           </nav>
 
-{/* Search Bar Removed */}
-
           {/* User Actions */}
-          <div className="hidden lg:flex items-center space-x-5">
+          <div className="hidden xl:flex items-center space-x-5">
             {user ? (
               <>
                  {/* Notification Bell */}
@@ -293,7 +298,7 @@ const Header = () => {
           </div>
 
           {/* Mobile Actions */}
-          <div className="flex lg:hidden items-center gap-4">
+          <div className="flex xl:hidden items-center gap-4">
             {user && (
                  <div className="relative" ref={mobileNotificationRef}>
                     <button 
@@ -353,11 +358,9 @@ const Header = () => {
           </div>
         </div>
 
-{/* Mobile Search Content Removed */}
-
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div ref={mobileMenuRef} className="lg:hidden py-6 border-t border-gray-100 animate-slide-up">
+          <div ref={mobileMenuRef} className="xl:hidden py-6 border-t border-gray-100 animate-slide-up">
             <div className="flex flex-col space-y-2">
               {currentNavItems.map((item) => (
                 <NavLink

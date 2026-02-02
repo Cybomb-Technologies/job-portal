@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle } from 'lucide-react';
+import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2 } from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
 
@@ -20,6 +20,7 @@ const ProfileDetails = () => {
     // Basic Info
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [mobileNumber, setMobileNumber] = useState('');
     const [title, setTitle] = useState('');
     const [about, setAbout] = useState('');
     const [skills, setSkills] = useState('');
@@ -56,6 +57,8 @@ const ProfileDetails = () => {
     const [bannerPicture, setBannerPicture] = useState(null);
     const [bannerPreview, setBannerPreview] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [copiedMobile, setCopiedMobile] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
     // --- Validation Logic ---
     const handleBlur = (field) => {
@@ -142,6 +145,7 @@ const ProfileDetails = () => {
 
             setName(data.name || '');
             setEmail(data.email || '');
+            setMobileNumber(data.mobileNumber || '');
             setTitle(data.title || '');
             setAbout(data.about || '');
             setSkills(data.skills ? data.skills.join(', ') : '');
@@ -218,6 +222,35 @@ const ProfileDetails = () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    const handleCopyMobile = () => {
+        if (mobileNumber) {
+            navigator.clipboard.writeText(mobileNumber);
+            setCopiedMobile(true);
+            setTimeout(() => setCopiedMobile(false), 2000);
+        }
+    };
+
+    const handleShareProfile = () => {
+        const slug = name
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-') + '-' + user._id.slice(-4);
+        
+        const profileUrl = `${window.location.origin}/profile/${slug}`;
+        navigator.clipboard.writeText(profileUrl);
+        setCopiedLink(true);
+        Swal.fire({
+            icon: 'success',
+            title: 'Link Copied!',
+            text: 'Your public profile link has been copied to clipboard.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        setTimeout(() => setCopiedLink(false), 2000);
     };
     
     const handleResumeChange = async (e) => {
@@ -548,6 +581,7 @@ const ProfileDetails = () => {
 
         const formData = new FormData();
         formData.append('name', name);
+        formData.append('mobileNumber', mobileNumber);
         formData.append('title', title);
         formData.append('about', about);
         formData.append('skills', skills);
@@ -625,6 +659,12 @@ const ProfileDetails = () => {
                             </div>
                         )}
                         <button 
+                             onClick={handleShareProfile}
+                             className="absolute top-6 right-40 bg-white/90 hover:bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-2 z-10"
+                        >
+                            {copiedLink ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />} Share Profile
+                        </button>
+                        <button 
                              onClick={() => setIsEditing(true)}
                              className="absolute top-6 right-6 bg-white/90 hover:bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-2 z-10"
                         >
@@ -684,6 +724,19 @@ const ProfileDetails = () => {
                                             title="Copy Email"
                                         >
                                             {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
+                                )}
+                                {mobileNumber && (
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-gray-400" />
+                                        <span>{mobileNumber}</span>
+                                        <button 
+                                            onClick={handleCopyMobile}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#4169E1]"
+                                            title="Copy Mobile Number"
+                                        >
+                                            {copiedMobile ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                                         </button>
                                     </div>
                                 )}
@@ -955,6 +1008,20 @@ const ProfileDetails = () => {
                                                         value={email}
                                                         disabled
                                                         className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50/50 text-gray-500 cursor-not-allowed font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Mobile Number</label>
+                                                <div className="relative">
+                                                    <Phone className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                                                    <input 
+                                                        type="tel" 
+                                                        value={mobileNumber}
+                                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                                        placeholder="Enter your mobile number"
+                                                        className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all border-gray-200 focus:border-[#4169E1]"
                                                     />
                                                 </div>
                                             </div>

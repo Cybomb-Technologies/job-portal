@@ -12,10 +12,12 @@ import {
   X,
   CheckCircle,
   FileText,
+  MessageCircle,
   Hourglass
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 
 const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -35,78 +37,54 @@ const formatApplicants = (count) => {
     return `${rounded}+`;
 };
 
-// Helper function to clean HTML content and fix word-breaking issues
+// Helper function to clean HTML content
 const cleanHtmlContent = (html) => {
     if (!html) return '';
     
+    // 1. First cleanup basic artifacts
     let cleaned = html
-        // Remove class and style attributes
-        .replace(/\s*class=['"][^'"]*['"]/gi, '')
-        .replace(/\s*style=['"][^'"]*['"]/gi, '')
-        // Remove <wbr> tags (word break opportunity)
         .replace(/<wbr\s*\/?>/gi, '')
-        // Remove soft hyphens
         .replace(/&shy;/gi, '')
         .replace(/\u00AD/g, '')
-        // Remove zero-width characters
         .replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, '')
-        // Normalize non-breaking spaces to regular spaces
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/\u00A0/g, ' ')
-        // Convert all types of line breaks to a single space
-        .replace(/\r\n/g, ' ')
-        .replace(/\r/g, ' ')
-        .replace(/\n/g, ' ')
-        // Replace </p><p> with proper paragraph break marker
-        .replace(/<\/p>\s*<p[^>]*>/gi, '</p><PARA_BREAK><p>')
-        // Replace <br> tags with space
-        .replace(/<br\s*\/?>/gi, ' ')
-        // Strip all HTML tags temporarily to work with plain text
-        // but preserve paragraph breaks
-        .replace(/<[^>]+>/g, ' ')
-        // Restore paragraph breaks as double newlines
-        .replace(/<PARA_BREAK>/g, '\n\n')
-        // Collapse multiple spaces (but not newlines) to single space
-        .replace(/[^\S\n]+/g, ' ')
-        // Trim spaces at start and end of lines
-        .replace(/^ +| +$/gm, '')
-        // Now fix split words - run multiple passes for thoroughness
-        // Pass 1: Fix single letter + short suffix patterns (like "t o" -> "to")
-        .replace(/\b([a-zA-Z]) ([a-zA-Z]{1,4})\b/g, (match, p1, p2) => {
-            const combined = p1 + p2;
-            const commonWords = ['to', 'in', 'on', 'of', 'at', 'by', 'or', 'an', 'as', 'is', 'it', 'be', 'he', 'we', 'me', 'do', 'go', 'so', 'no', 'up', 'if', 'my', 'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out'];
-            if (commonWords.includes(combined.toLowerCase())) {
-                return combined;
-            }
-            return match;
-        })
-        // Pass 2: Fix word + common suffix patterns
-        .replace(/([a-zA-Z]{2,}) (gies|tion|tions|ment|ments|ness|ing|ings|ed|er|ers|ly|es|ies|ity|gy|ty|ble|able|ible|ful|less|ous|ive|ward|wards)(?=[^a-zA-Z]|$)/gi, '$1$2')
-        // Pass 3: Fix any word ending with space + single letter before punctuation or end
-        .replace(/([a-zA-Z]{2,}) ([a-zA-Z])(?=[.,!?;:\s]|$)/g, '$1$2')
-        // Pass 4: Fix word + 2 letter suffix
-        .replace(/([a-zA-Z]{3,}) ([a-zA-Z]{2})(?=[^a-zA-Z]|$)/g, (match, p1, p2) => {
-            // Common 2-letter suffixes
-            const suffixes2 = ['ed', 'er', 'ly', 'es', 'ty', 'ry', 'al', 'ic', 'le', 'gy', 'ny', 'fy'];
-            if (suffixes2.includes(p2.toLowerCase())) {
-                return p1 + p2;
-            }
-            return match;
-        })
-        // Pass 5: Fix remaining single trailing letters aggressively (like "forwar d")
-        .replace(/([a-zA-Z]{3,}) ([a-zA-Z])(?=\s|[.,!?;:]|$)/g, '$1$2')
-        // Clean up any remaining multiple spaces
-        .replace(/ {2,}/g, ' ')
-        // Convert paragraph breaks back to proper HTML
-        .replace(/\n\n+/g, '</p><p>')
-        // Wrap in paragraph tags if needed
-        .replace(/^(?!<p>)/, '<p>')
-        .replace(/(?<!<\/p>)$/, '</p>')
-        // Clean up empty paragraphs
-        .replace(/<p>\s*<\/p>/g, '')
-        // Trim final result
+        .replace(/<p>\s*<\/p>/g, '') 
         .trim();
-    
+
+    // 2. Protect HTML tags from regex replacements
+    const tags = [];
+    const tagPlaceholder = '___HTML_TAG___';
+    cleaned = cleaned.replace(/<[^>]+>/g, (match) => {
+        tags.push(match);
+        return tagPlaceholder;
+    });
+
+    // 3. Apply word text fixes
+    // Normalize whitespace (including &nbsp; and newlines) to single space
+    cleaned = cleaned.replace(/(&nbsp;|\s)+/g, ' ');
+
+    cleaned = cleaned
+        // Pass 1: Fix isolated single Consonant + word (e.g., "p ractical" -> "practical")
+        // Safe because we exclude vowels (avoid "a lot", "I am")
+        .replace(/\b([b-df-hj-np-tv-zB-DF-HJ-NP-TV-Z]) ([a-zA-Z]{2,})\b/g, '$1$2')
+        
+        // Pass 2: Fix Word + Specific Floating Fragments (e.g., "diag nostics", "al gorithms")
+        // STRICT MATCH on the fragment part to avoid merging full words (e.g. "machine learning")
+        .replace(/([a-zA-Z]{2,}) (tion|sion|ment|ance|ence|nostics|tics|tive|sive|lize|yse|yze|tical|rch|ghts|nsights|lts|ning|ding|ming|ting|ger|ler|est|ies|edge|gorithms|opment|uction|ysis|nologies|telligence|ers)\b/g, '$1$2')
+        
+        // Pass 3: Fix Word + Single Lowercase Letter Suffix (e.g., "analyz e" -> "analyze")
+        // Restricting to lowercase avoids merging "Plan A", "part B"
+        .replace(/([a-zA-Z]{2,}) ([a-z])(?=[.,!?;:\s]|$)/g, '$1$2')
+        
+        // Clean up multiple spaces
+        .replace(/ {2,}/g, ' ');
+
+    // 4. Restore HTML tags
+    let tagIndex = 0;
+    while (cleaned.includes(tagPlaceholder) && tagIndex < tags.length) {
+        cleaned = cleaned.replace(tagPlaceholder, tags[tagIndex]);
+        tagIndex++;
+    }
+
     return cleaned;
 };
 
@@ -114,6 +92,7 @@ const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { initiateChat } = useChat();
   
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -145,6 +124,17 @@ const JobDetails = () => {
   useEffect(() => {
     if (!showApplyModal) setCurrentStep(1);
   }, [showApplyModal]);
+
+  const handleMessageEmployer = () => {
+      if (!user) {
+          navigate('/login');
+          return;
+      }
+      if (job && job.postedBy) {
+          initiateChat(job.postedBy);
+          navigate('/messages');
+      }
+  };
 
   const handleNext = () => {
     if (currentStep === 1 && !resume) {
@@ -191,9 +181,13 @@ const JobDetails = () => {
   const steps = [
       { num: 1, label: 'Resume' },
       { num: 2, label: 'Cover Letter' },
-      ...(hasScreening ? [{ num: 3, label: 'Screening' }] : []),
-      { num: 4, label: 'Review' }
+      ...(hasScreening 
+        ? [{ num: 3, label: 'Screening' }, { num: 4, label: 'Review' }] 
+        : [{ num: 3, label: 'Review' }]
+      )
   ];
+
+  const displayStep = (!hasScreening && currentStep === 4) ? 3 : currentStep;
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -413,18 +407,27 @@ const JobDetails = () => {
                         Preview Mode (Employer View)
                      </div>
                   ) : (
-                    <button 
-                      onClick={() => {
-                        if (job.applyMethod === 'website' && job.applyUrl) {
-                            window.open(job.applyUrl, '_blank');
-                        } else {
-                            setShowApplyModal(true);
-                        }
-                      }}
-                      className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
-                    >
-                      {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
-                    </button>
+                    <div className="flex flex-col gap-3">
+                        <button 
+                          onClick={() => {
+                            if (job.applyMethod === 'website' && job.applyUrl) {
+                                window.open(job.applyUrl, '_blank');
+                            } else {
+                                setShowApplyModal(true);
+                            }
+                          }}
+                          className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
+                        >
+                          {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
+                        </button>
+                        <button 
+                            onClick={handleMessageEmployer}
+                            className="w-full py-3 bg-white text-blue-600 text-lg font-bold rounded-xl border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2"
+                        >
+                            <MessageCircle className="w-5 h-5" />
+                            Message Employer
+                        </button>
+                    </div>
                   )}
               </div>
               
@@ -561,7 +564,7 @@ const JobDetails = () => {
                     <div className="px-5 md:px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 font-display">Apply for {job.title}</h2>
-                            <p className="text-sm text-slate-500 mt-1 font-medium">Step {currentStep} of {hasScreening ? 3 : 2}: {steps.find(s=>s.num===currentStep)?.label}</p>
+                            <p className="text-sm text-slate-500 mt-1 font-medium">Step {displayStep} of {steps.length}: {steps.find(s=>s.num===displayStep)?.label}</p>
                         </div>
                         <button 
                             onClick={() => setShowApplyModal(false)}
@@ -587,16 +590,16 @@ const JobDetails = () => {
                                 <div className="flex items-center justify-between relative max-w-md mx-auto">
                                     <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-0 rounded-full"></div>
                                     <div className="absolute left-0 top-1/2 h-1 bg-blue-600 -z-0 rounded-full transition-all duration-500 ease-out" 
-                                        style={{ width: `${((currentStep - 1) / (hasScreening ? 3 : 2)) * 100}%` }}></div>
+                                        style={{ width: `${((displayStep - 1) / (steps.length - 1)) * 100}%` }}></div>
                                     
                                     {steps.map((step) => (
                                         <div key={step.num} className="flex flex-col items-center z-10 bg-white px-2">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${
-                                                currentStep >= step.num 
+                                                displayStep >= step.num 
                                                 ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' 
                                                 : 'bg-white border-gray-200 text-gray-300'
                                             }`}>
-                                                {currentStep > step.num ? <CheckCircle className="w-5 h-5" /> : step.num}
+                                                {displayStep > step.num ? <CheckCircle className="w-5 h-5" /> : step.num}
                                             </div>
                                         </div>
                                     ))}

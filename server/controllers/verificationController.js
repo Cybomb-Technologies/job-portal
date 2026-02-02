@@ -1,7 +1,9 @@
 const User = require('../models/User');
+const Company = require('../models/Company');
 const Notification = require('../models/Notification');
 const dns = require('dns');
 const util = require('util');
+const sendEmail = require('../utils/sendEmail');
 
 // Promisify DNS methods
 const resolveMx = util.promisify(dns.resolveMx);
@@ -11,13 +13,6 @@ const GENERIC_DOMAINS = [
     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
     'live.com', 'icloud.com', 'aol.com', 'protonmail.com'
 ];
-
-/**
- * @desc    Level 1: Verify Employer Email Domain
- * @route   POST /api/verification/verify-domain
- * @access  Private (Employer only)
- */
-const sendEmail = require('../utils/sendEmail');
 
 /**
  * @desc    Level 1: Send OTP for Email Verification
@@ -45,33 +40,6 @@ const sendVerificationOTP = async (req, res) => {
                 message: 'Please use an official company email address (e.g., name@company.com). Generic emails like Gmail cannot be verified for Level 1.' 
             });
         }
-
-        // Check 2: Is this domain already verified by someone else?
-        /* 
-        // DISABLED: To allow multiple company profiles for the same domain if needed, and prevent blocking legitimate employees who are in a different company profile.
-        const query = {
-            _id: { $ne: user._id },
-            role: 'Employer',
-            'employerVerification.emailVerified': true,
-            email: { $regex: new RegExp(`@${emailDomain}$`, 'i') }
-        };
-
-        // If the user belongs to a company, don't count colleagues as conflicts
-        if (user.companyId) {
-            query.companyId = { $ne: user.companyId };
-        }
-
-        const existingVerifiedUser = await User.findOne(query);
-
-        if (existingVerifiedUser) {
-            // If the current user also claims the same website/company name, it's definitely a duplicate
-            // Even if names differ, same domain usually means same organization
-            return res.status(403).json({
-                success: false,
-                message: `The domain "${emailDomain}" is already verified by another official representative of this company. If you are from the same organization, please coordinate with your team or contact support.`
-            });
-        }
-        */
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -139,21 +107,34 @@ const verifyEmailOTP = async (req, res) => {
              return res.status(400).json({ message: 'OTP Expired' });
         }
 
-        // Pass Level 1
+        // Pass Level 1 (User)
         user.employerVerification.emailVerified = true;
-        user.employerVerification.domainVerified = true; // Implicitly verified by ability to receive mail on that domain
-        
-        // Clear OTP
+        user.employerVerification.domainVerified = true; 
         user.employerVerification.verificationOTP = undefined;
         user.employerVerification.verificationOTPExpire = undefined;
 
-        // Setup for Level 1 completion
         if (user.employerVerification.level < 1) {
             user.employerVerification.level = 1;
             user.employerVerification.status = 'Verified';
         }
         
         await user.save();
+
+        // Sync with Company (Critical Fix)
+        if (user.companyId) {
+            const company = await Company.findById(user.companyId);
+            if (company) {
+                 company.employerVerification.emailVerified = true;
+                 company.employerVerification.domainVerified = true;
+                 
+                 // If User is verified, Company uses that domain verification
+                 if (company.employerVerification.level < 1) {
+                     company.employerVerification.level = 1;
+                     company.employerVerification.status = 'Verified';
+                 }
+                 await company.save();
+            }
+        }
 
         res.status(200).json({
             success: true,
@@ -189,15 +170,24 @@ const uploadDocuments = async (req, res) => {
         // Add document to array
         const newDoc = {
             type: docType,
-            fileUrl: `/uploads/verification/${req.file.filename}`, // Assuming local storage for now
+            fileUrl: `/uploads/verification/${req.file.filename}`, 
             status: 'Pending',
             uploadedAt: new Date()
         };
 
         user.employerVerification.documents.push(newDoc);
-        user.employerVerification.status = 'Pending'; // Set mainly to pending waiting for admin
-        
+        user.employerVerification.status = 'Pending'; 
         await user.save();
+
+        // Sync with Company
+        if (user.companyId) {
+            const company = await Company.findById(user.companyId);
+            if (company) {
+                company.employerVerification.documents.push(newDoc);
+                company.employerVerification.status = 'Pending';
+                await company.save();
+            }
+        }
 
         // Notify Admins
         try {

@@ -2,6 +2,7 @@ const Application = require('../models/Application');
 const Job = require('../models/Job');
 const sendEmail = require('../utils/sendEmail');
 const { getApplicationSuccessEmail, getApplicationStatusChangeEmail } = require('../utils/emailTemplates');
+const { logActivity } = require('./activityLogController');
 
 // @desc    Apply to a job
 // @route   POST /api/applications
@@ -217,6 +218,8 @@ const updateApplicationStatus = async (req, res) => {
 
     application.status = status;
     const updatedApplication = await application.save();
+
+    await logActivity(req.user, 'APPLICANT_STATUS_CHANGE', `Application status changed to ${status}`, application._id, 'Application');
 
     // Send status update email to candidate
     try {

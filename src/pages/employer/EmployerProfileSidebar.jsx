@@ -1,8 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Building2, Lock, PlayCircle, Users } from 'lucide-react';
+import { User, Building2, Lock, PlayCircle, Users, Activity } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const EmployerProfileSidebar = () => {
+    const { user } = useAuth();
+    const isRecruiter = user?.companyRole === 'Recruiter';
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100">
@@ -79,6 +83,22 @@ const EmployerProfileSidebar = () => {
                     <Users className="w-5 h-5" />
                     <span>Team Management</span>
                 </NavLink>
+
+                {!isRecruiter && (
+                    <NavLink 
+                        to="/employer/profile/activity-logs" 
+                        className={({ isActive }) => 
+                            `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                                isActive 
+                                ? 'bg-blue-50 text-[#4169E1]' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }`
+                        }
+                    >
+                        <Activity className="w-5 h-5" />
+                        <span>Activity Logs</span>
+                    </NavLink>
+                )}
 
                 <NavLink 
                     to="/employer/profile/password" 

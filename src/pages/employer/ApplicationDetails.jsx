@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle, Copy, Check, MessageSquare } from 'lucide-react';
 import api from '../../api';
+import { useChat } from '../../context/ChatContext';
 
 const ApplicationDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { initiateChat } = useChat();
     const [application, setApplication] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -83,6 +85,13 @@ const ApplicationDetails = () => {
         }
     };
 
+    const handleMessage = () => {
+        if (application?.applicant) {
+            initiateChat(application.applicant);
+            navigate('/messages');
+        }
+    };
+
     if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
     if (error) return <div className="text-center p-10 text-red-500">{error}</div>;
     if (!application) return <div className="text-center p-10">Application not found</div>;
@@ -118,11 +127,17 @@ const ApplicationDetails = () => {
                                 <div className="flex items-center gap-4 mb-2">
                                     <h1 className="text-3xl font-bold text-gray-900">{application.applicant.name}</h1>
                                     <Link 
-                                        to={`/employer/candidates/${application.applicant._id}`}
+                                        to={`/employer/candidates/${application.applicant.name.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')}-${application.applicant._id.slice(-4)}`}
                                         className="text-xs font-semibold text-[#4169E1] hover:underline bg-blue-50 px-3 py-1 rounded-full border border-blue-100 transition-colors"
                                     >
                                         View Public Profile
                                     </Link>
+                                    <button
+                                        onClick={handleMessage}
+                                        className="text-xs font-semibold text-white hover:opacity-90 bg-blue-600 px-3 py-1 rounded-full border border-blue-600 transition-colors flex items-center gap-1"
+                                    >
+                                        <MessageSquare className="w-3 h-3" /> Message
+                                    </button>
                                 </div>
                                 <p className="text-gray-600 mb-3">Applied for <span className="font-semibold text-[#4169E1]">{application.job.title}</span></p>
                                 <div className="flex flex-wrap gap-4 text-sm text-gray-500">
