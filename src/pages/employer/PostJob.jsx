@@ -250,6 +250,13 @@ const PostJob = () => {
         }
     };
 
+    const handleKeyDown = (e, field) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setShowSuggestions(prev => ({ ...prev, [field]: false }));
+        }
+    };
+
     const selectSuggestion = (field, value) => {
         setFormData({ ...formData, [field]: value });
         setShowSuggestions({ ...showSuggestions, [field]: false });
@@ -508,7 +515,7 @@ const PostJob = () => {
     const SuggestionList = ({ items, field, onSelect }) => {
         if (!showSuggestions[field] || items.length === 0) return null;
         return (
-            <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
+            <ul className="absolute top-full left-0 z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
                 {items.map((item, i) => {
                      const val = field === 'location' ? `${item.name}, ${item.admin1 || ''}, ${item.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '') : item;
                      return (
@@ -566,6 +573,7 @@ const PostJob = () => {
                                                 value={formData.title} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('title')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'title')}
                                                 className="input-field" 
                                                 placeholder="e.g. Senior Frontend Developer" 
                                                 autoFocus 
@@ -581,6 +589,7 @@ const PostJob = () => {
                                                 value={formData.jobRole} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('jobRole')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'jobRole')}
                                                 className="input-field" 
                                                 placeholder="e.g. Software Engineer" 
                                             />
@@ -595,6 +604,7 @@ const PostJob = () => {
                                                 value={formData.functionalArea} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('functionalArea')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'functionalArea')}
                                                 className="input-field" 
                                                 placeholder="e.g. IT Software" 
                                             />
@@ -623,6 +633,7 @@ const PostJob = () => {
                                                 className="input-field" 
                                                 placeholder="e.g. Immediate, 1 Month" 
                                                 onFocus={() => handleFocus('recruitmentDuration')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'recruitmentDuration')}
                                             />
                                             <SuggestionList items={suggestions.recruitmentDuration} field="recruitmentDuration" onSelect={selectSuggestion} />
                                         </div>
@@ -650,6 +661,7 @@ const PostJob = () => {
                                                     value={formData.location} 
                                                     onChange={handleInputChange} 
                                                     onFocus={() => handleFocus('location')}
+                                                    onKeyDown={(e) => handleKeyDown(e, 'location')}
                                                     className="input-field pl-15" 
                                                     placeholder="Search city..." 
                                                 />
@@ -774,7 +786,7 @@ const PostJob = () => {
 
                                     <div>
                                         <label className="label">Skills <span className="text-red-500">*</span> <span className="text-xs font-normal text-gray-500">(Type and press Enter)</span></label>
-                                        <div className="p-2 border border-gray-200 rounded-xl flex flex-wrap gap-2 focus-within:border-[#4169E1] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all bg-white">
+                                        <div className="relative p-2 border border-gray-200 rounded-xl flex flex-wrap gap-2 focus-within:border-[#4169E1] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all bg-white">
                                             {formData.skills.map((skill, index) => (
                                                 <span key={index} className="bg-gray-100 text-gray-800 px-3 py-1 rounded-lg text-sm font-medium flex items-center">
                                                     {skill}

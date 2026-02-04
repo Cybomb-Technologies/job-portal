@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
+import Swal from 'sweetalert2';
 import { FiSearch, FiMail, FiMapPin, FiCalendar, FiUserX, FiUserCheck } from 'react-icons/fi';
 import './AdminTable.css';
 
@@ -26,13 +27,33 @@ const AdminUsers = () => {
 
     const handleToggleStatus = async (userId, currentStatus) => {
         const action = currentStatus ? 'block' : 'unblock';
-        if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
+        
+        const result = await Swal.fire({
+            title: `Are you sure?`,
+            text: `You want to ${action} this user?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: `Yes, ${action} them!`
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
             const { data } = await api.put(`/admin/user/${userId}/toggle-status`);
             setUsers(users.map(u => u._id === userId ? { ...u, isActive: data.isActive } : u));
+            Swal.fire(
+                'Updated!',
+                `User has been ${action}ed.`,
+                'success'
+            );
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to update user status');
+            Swal.fire(
+                'Error',
+                err.response?.data?.message || 'Failed to update user status',
+                'error'
+            );
         }
     };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import api from '../../api';
+import Swal from 'sweetalert2';
 
 const EmployerReviews = () => {
     const [reviews, setReviews] = useState([]);
@@ -31,7 +32,11 @@ const EmployerReviews = () => {
             ));
         } catch (err) {
             console.error(err);
-            alert('Failed to update review visibility');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to update review visibility'
+            });
         }
     };
 

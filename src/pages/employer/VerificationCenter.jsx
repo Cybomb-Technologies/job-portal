@@ -17,21 +17,22 @@ const VerificationCenter = () => {
 
     useEffect(() => {
         fetchStatus();
+        
+        // Auto-refresh status every 5 seconds to catch admin updates
+        const interval = setInterval(() => {
+            fetchStatus(true); // pass true to suppress loading spinner
+        }, 5000);
+
+        return () => clearInterval(interval);
     }, []);
 
-    const fetchStatus = async () => {
+    const fetchStatus = async (silent = false) => {
         try {
+            if (!silent) setLoading(true);
             const storedUser = localStorage.getItem('user');
             const token = storedUser ? JSON.parse(storedUser).token : null;
             
             if (!token) {
-                // Handle no token case (e.g. redirect or show error)
-                setLoading(false);
-                return; 
-            }
-
-            if (!token) {
-                // Handle no token case (e.g. redirect or show error)
                 setLoading(false);
                 return; 
             }

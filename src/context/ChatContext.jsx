@@ -208,6 +208,39 @@ export const ChatProvider = ({ children }) => {
       }
   };
 
+  const deleteChat = async (userId) => {
+      try {
+          await api.delete(`/messages/${userId}`);
+          setConversations(prev => prev.filter(c => c.user._id !== userId));
+          if (currentChat && currentChat.user._id === userId) {
+              setMessages([]);
+          }
+      } catch (error) {
+          console.error("Error deleting chat", error);
+          throw error;
+      }
+  };
+
+  const fetchTeamMemberConversations = async (memberId) => {
+      try {
+          const res = await api.get(`/messages/team/${memberId}/conversations`);
+          return res.data;
+      } catch (error) {
+          console.error("Error fetching team member conversations", error);
+          return [];
+      }
+  };
+
+  const fetchTeamMemberMessages = async (memberId, otherUserId) => {
+      try {
+          const res = await api.get(`/messages/team/${memberId}/${otherUserId}`);
+          return res.data;
+      } catch (error) {
+          console.error("Error fetching team member messages", error);
+          return [];
+      }
+  };
+
   const value = {
     socket,
     conversations,
@@ -219,7 +252,11 @@ export const ChatProvider = ({ children }) => {
     sendMessage,
     initiateChat,
     fetchConversations,
-    markAsRead
+    fetchConversations,
+    markAsRead,
+    deleteChat,
+    fetchTeamMemberConversations,
+    fetchTeamMemberMessages
   };
 
   return (

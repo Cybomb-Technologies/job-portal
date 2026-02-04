@@ -219,48 +219,74 @@ const updateApplicationStatus = async (req, res) => {
     application.status = status;
     const updatedApplication = await application.save();
 
-    await logActivity(req.user, 'APPLICANT_STATUS_CHANGE', `Application status changed to ${status}`, application._id, 'Application');
-
-    // Send status update email to candidate
-    try {
-        // We need to populate applicant to get email/name if not already populated
-        // typically finding by ID doesn't populate unless we ask
-        const appWithUser = await Application.findById(application._id).populate('applicant', 'name email');
-        
-        if (appWithUser && appWithUser.applicant) {
-            const emailContent = getApplicationStatusChangeEmail(appWithUser.applicant, {
-                title: application.job ? (await Job.findById(application.job)).title : 'Job',
-                company: application.companyId ? (await require('../models/Company').findById(application.companyId))?.name : 'Company' 
-                // Note: Ideally job and company details should be populated or fetched more efficiently.
-                // Let's optimize by populating job in the initial find or here.
-            }, status);
-
-            // Re-fetching robustly for email details
-            const robustApp = await Application.findById(application._id)
-                .populate('applicant', 'name email')
-                .populate('job', 'title company')
-                .populate('companyId', 'name'); // Assuming companyId ref exists or we get it from job
-            
-            // Fallback for company name if companyId populate fails or isn't set
-            const companyName = robustApp.companyId?.name || robustApp.job?.company || 'The Company';
-
-            const robustEmailContent = getApplicationStatusChangeEmail(robustApp.applicant, {
-                 title: robustApp.job?.title || 'Job Position',
-                 company: companyName
-            }, status);
-
-
-            await sendEmail({
-                email: robustApp.applicant.email,
-                subject: `Application Status Update: ${robustApp.job?.title}`,
-                html: robustEmailContent
-            });
-        }
-    } catch (emailError) {
-        console.error('Error sending status update email:', emailError);
-    }
-
+    // Send response immediately to unblock UI
     res.json(updatedApplication);
+
+    // Perform background tasks (Email & Notifications) asynchronously
+    (async () => {
+        try {
+            await logActivity(req.user, 'APPLICANT_STATUS_CHANGE', `Application status changed to ${status}`, application._id, 'Application');
+
+            // Notify Applicant
+            const Notification = require('../models/Notification');
+            await Notification.create({
+                recipient: application.applicant,
+                sender: req.user._id,
+                type: 'APPLICATION_STATUS_UPDATE',
+                message: `Your application for ${application.job ? (await Job.findById(application.job)).title : 'Job'} at ${application.companyId ? (await require('../models/Company').findById(application.companyId))?.name : 'Company'} has been ${status}`,
+                relatedId: application.job, // Linking to Job ID for redirection
+                relatedModel: 'Job'
+            });
+
+            // Real-time Push Notification
+            if (req.io) {
+                req.io.to(application.applicant.toString()).emit('notification', {
+                    message: `Your application status has been updated to ${status}`,
+                    type: 'APPLICATION_STATUS_UPDATE',
+                    relatedId: application.job
+                });
+            }
+
+            // Send status update email to candidate
+            // We need to populate applicant to get email/name if not already populated
+            // typically finding by ID doesn't populate unless we ask
+            const appWithUser = await Application.findById(application._id).populate('applicant', 'name email');
+            
+            if (appWithUser && appWithUser.applicant) {
+                const emailContent = getApplicationStatusChangeEmail(appWithUser.applicant, {
+                    title: application.job ? (await Job.findById(application.job)).title : 'Job',
+                    company: application.companyId ? (await require('../models/Company').findById(application.companyId))?.name : 'Company' 
+                    // Note: Ideally job and company details should be populated or fetched more efficiently.
+                    // Let's optimize by populating job in the initial find or here.
+                }, status);
+
+                // Re-fetching robustly for email details
+                const robustApp = await Application.findById(application._id)
+                    .populate('applicant', 'name email')
+                    .populate('job', 'title company')
+                    .populate('companyId', 'name'); // Assuming companyId ref exists or we get it from job
+                
+                // Fallback for company name if companyId populate fails or isn't set
+                const companyName = robustApp.companyId?.name || robustApp.job?.company || 'The Company';
+
+                const robustEmailContent = getApplicationStatusChangeEmail(robustApp.applicant, {
+                        title: robustApp.job?.title || 'Job Position',
+                        company: companyName
+                }, status);
+
+
+                await sendEmail({
+                    email: robustApp.applicant.email,
+                    subject: `Application Status Update: ${robustApp.job?.title}`,
+                    html: robustEmailContent
+                });
+            }
+        } catch (backgroundError) {
+            console.error('Error in background status update tasks:', backgroundError);
+            // Check if headers are sent (should be, given res.json above)
+            // We just log because client already got success response
+        }
+    })();
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
