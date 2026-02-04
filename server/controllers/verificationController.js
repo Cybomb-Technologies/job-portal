@@ -107,28 +107,29 @@ const verifyEmailOTP = async (req, res) => {
              return res.status(400).json({ message: 'OTP Expired' });
         }
 
-        // Pass Level 1 (User)
+        // Pass Email Verification
         user.employerVerification.emailVerified = true;
-        user.employerVerification.domainVerified = true; 
         user.employerVerification.verificationOTP = undefined;
         user.employerVerification.verificationOTPExpire = undefined;
 
-        if (user.employerVerification.level < 1) {
-            user.employerVerification.level = 1;
-            user.employerVerification.status = 'Verified';
+        // Level 1 logic: Requires BOTH Email Verification AND ID Card Approval
+        if (user.employerVerification.idCard && user.employerVerification.idCard.status === 'Approved') {
+            if (user.employerVerification.level < 1) {
+                user.employerVerification.level = 1;
+                user.employerVerification.status = 'Verified';
+            }
         }
         
         await user.save();
 
-        // Sync with Company (Critical Fix)
+        // Sync with Company
         if (user.companyId) {
             const company = await Company.findById(user.companyId);
             if (company) {
                  company.employerVerification.emailVerified = true;
-                 company.employerVerification.domainVerified = true;
                  
-                 // If User is verified, Company uses that domain verification
-                 if (company.employerVerification.level < 1) {
+                 // Only upgrade company level if the user meets all criteria
+                 if (user.employerVerification.level >= 1 && company.employerVerification.level < 1) {
                      company.employerVerification.level = 1;
                      company.employerVerification.status = 'Verified';
                  }
@@ -138,13 +139,69 @@ const verifyEmailOTP = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Email verified successfully! You are now Level 1 Verified.',
+            message: 'Email verified successfully! Please complete ID Card verification to reach Level 1.',
             level: user.employerVerification.level
         });
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error verification' });
+    }
+};
+
+/**
+ * @desc    Level 1: Upload ID Card
+ * @route   POST /api/verification/upload-id-card
+ * @access  Private (Employer only)
+ */
+const uploadIdCard = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        // Update ID Card Info
+        user.employerVerification.idCard = {
+            fileUrl: `/uploads/verification/${req.file.filename}`,
+            status: 'Pending',
+            uploadedAt: new Date()
+        };
+
+        // If rejection reason existed, clear it
+        if (user.employerVerification.idCard.rejectionReason) {
+             user.employerVerification.idCard.rejectionReason = undefined;
+        }
+
+        await user.save();
+
+        // Notify Admins
+        try {
+            const admins = await User.find({ role: 'Admin' });
+            for (const admin of admins) {
+                await Notification.create({
+                    recipient: admin._id,
+                    sender: user._id,
+                    type: 'SYSTEM',
+                    message: `New ID Card uploaded by ${user.companyName || user.name}`,
+                    relatedId: user._id,
+                    relatedModel: 'User'
+                });
+            }
+        } catch (error) {
+            console.error('Error sending admin notification:', error);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'ID Card uploaded successfully. Verification is pending approval.',
+            idCard: user.employerVerification.idCard
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error during upload' });
     }
 };
 
@@ -225,9 +282,53 @@ const uploadDocuments = async (req, res) => {
  */
 const getVerificationStatus = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select('employerVerification');
-        res.status(200).json(user.employerVerification);
+        const user = await User.findById(req.user._id).select('employerVerification companyId');
+        let status = user.employerVerification.toObject();
+
+        if (user.companyId) {
+            let company;
+            // Handle both ObjectId and custom String ID
+            if (user.companyId.toString().startsWith('COMP-')) {
+                 company = await Company.findOne({ companyId: user.companyId }).select('employerVerification');
+            } else {
+                 company = await Company.findById(user.companyId).select('employerVerification');
+            }
+            
+            if (company) {
+                // Check if Company is Level 2 Verified (Legal Business Verification)
+                const companyIsLevel2 = 
+                    (company.employerVerification?.level >= 2) || 
+                    (company.employerVerification?.status === 'Verified') ||
+                    (company.employerVerification?.documents?.some(doc => doc.status === 'Approved' && ['GST', 'CIN', 'MSME'].includes(doc.type)));
+
+                    if (companyIsLevel2) {
+                     status.inheritedFromCompany = true; 
+                     // ONLY upgrade to Level 2 if the user has completed Level 1 (Personal Identity)
+                     // Recruiters must verify themselves (Level 0 -> 1) before inheriting Company Level 2.
+                     if (status.level === 1) {
+                         status.level = 2;
+                     }
+                }
+
+                // Self-Healing: If User is Admin & Verified (Level 2), but Company is NOT, upgrade Company.
+                // This fixes data inconsistency where Admin was verified but sync failed.
+                if (status.level >= 2 && !companyIsLevel2 && user.companyRole === 'Admin') {
+                    console.log(`Self-healing: Upgrading Company ${company._id} to Level 2 based on User ${user._id} status`);
+                    
+                    // Re-fetch company to save (since we only selected employerVerification earlier)
+                    const companyToUpdate = await Company.findById(company._id);
+                    if (companyToUpdate) {
+                        companyToUpdate.employerVerification.level = 2;
+                        companyToUpdate.employerVerification.status = 'Verified';
+                        await companyToUpdate.save();
+                    }
+                }
+            }
+        }
+        
+        res.status(200).json(status);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -235,6 +336,7 @@ const getVerificationStatus = async (req, res) => {
 module.exports = {
     sendVerificationOTP,
     verifyEmailOTP,
+    uploadIdCard,
     uploadDocuments,
     getVerificationStatus
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendVerificationOTP, verifyEmailOTP, uploadDocuments, getVerificationStatus } = require('../controllers/verificationController');
+const { sendVerificationOTP, verifyEmailOTP, uploadDocuments, getVerificationStatus, uploadIdCard } = require('../controllers/verificationController');
 const { protect } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
@@ -33,6 +33,7 @@ const upload = multer({
 // Routes
 router.post('/send-otp', protect, sendVerificationOTP);
 router.post('/verify-otp', protect, verifyEmailOTP);
+router.post('/upload-id-card', protect, upload.single('idCard'), uploadIdCard);
 router.post('/upload-docs', protect, upload.single('document'), uploadDocuments);
 router.get('/status', protect, getVerificationStatus);
 
