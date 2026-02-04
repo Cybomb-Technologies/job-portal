@@ -468,6 +468,14 @@ const updateUserProfile = async (req, res) => {
         }
     }
 
+    // Handle Deletion Flags
+    if (req.body.deleteProfilePicture === 'true') {
+        user.profilePicture = undefined;
+    }
+    if (req.body.deleteBanner === 'true') {
+        user.bannerPicture = undefined;
+    }
+
     // Handle Resumes (Delete/Set Active)
     if (req.body.activeResumeId) {
         const target = user.resumes.id(req.body.activeResumeId);
@@ -515,6 +523,14 @@ const updateUserProfile = async (req, res) => {
                     if (req.files.bannerPicture) {
                         company.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
                     }
+                }
+
+                // Handle Company Image Deletion
+                if (req.body.deleteLogo === 'true' || req.body.deleteProfilePicture === 'true') {
+                    company.profilePicture = undefined;
+                }
+                if (req.body.deleteBanner === 'true') {
+                    company.bannerPicture = undefined;
                 }
 
                 await company.save();

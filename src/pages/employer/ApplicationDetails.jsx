@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, Calendar, Download, FileText, CheckCircle, XCircle, Copy, Check, MessageSquare } from 'lucide-react';
 import api from '../../api';
+import Swal from 'sweetalert2';
 import { useChat } from '../../context/ChatContext';
 
 const ApplicationDetails = () => {
@@ -70,10 +71,21 @@ const ApplicationDetails = () => {
 
     const updateStatus = async (newStatus) => {
         try {
-            await api.put(`/applications/${id}/status`, { status: newStatus });
+            // Optimistic UI Update
             setApplication(prev => ({ ...prev, status: newStatus }));
+            await api.put(`/applications/${id}/status`, { status: newStatus });
         } catch (e) {
-            alert('Failed to update status');
+            // Revert on error
+            setApplication(prev => ({ ...prev, status: application.status })); // Reset to old status if available or need to track it
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to update status',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         }
     };
 

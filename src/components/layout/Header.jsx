@@ -122,6 +122,9 @@ const Header = () => {
               case 'NEW_MESSAGE':
                   navigate('/messages', { state: { userId: notification.sender } });
                   break;
+              case 'APPLICATION_STATUS_UPDATE':
+                  navigate('/profile/applications');
+                  break;
               default:
                   // Default navigation if needed
                   break;

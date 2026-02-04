@@ -18,6 +18,9 @@ const AdminVerifications = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [processingId, setProcessingId] = useState(null);
+    const [processingAction, setProcessingAction] = useState(null);
+
     useEffect(() => {
         fetchData();
     }, [activeTab]);
@@ -40,6 +43,8 @@ const AdminVerifications = () => {
     };
 
     const handleApprove = async (userId, documentId) => {
+        setProcessingId(`${userId}-${documentId}`);
+        setProcessingAction('approve');
         try {
              await api.put(`/admin/verification/${userId}/document/${documentId}`, {
                  status: 'Approved'
@@ -57,6 +62,9 @@ const AdminVerifications = () => {
              fetchData();
         } catch (error) {
             Swal.fire('Error', error.response?.data?.message || 'Failed to approve', 'error');
+        } finally {
+             setProcessingId(null);
+             setProcessingAction(null);
         }
     };
 
@@ -75,6 +83,8 @@ const AdminVerifications = () => {
         });
 
         if (reason) {
+            setProcessingId(`${userId}-${documentId}`);
+            setProcessingAction('reject');
             try {
                 await api.put(`/admin/verification/${userId}/document/${documentId}`, {
                     status: 'Rejected',
@@ -93,6 +103,9 @@ const AdminVerifications = () => {
                 fetchData();
             } catch (error) {
                 Swal.fire('Error', error.response?.data?.message || 'Failed to reject', 'error');
+            } finally {
+                 setProcessingId(null);
+                 setProcessingAction(null);
             }
         }
     };
@@ -114,6 +127,8 @@ const AdminVerifications = () => {
             reason = value;
         }
 
+        setProcessingId(userId);
+        setProcessingAction(status === 'Approved' ? 'approve' : 'reject');
         try {
             await api.put(`/admin/verification/${userId}/id-card`, {
                 status,
@@ -132,6 +147,9 @@ const AdminVerifications = () => {
             fetchData();
         } catch (error) {
             Swal.fire('Error', error.response?.data?.message || `Failed to ${status}`, 'error');
+        } finally {
+             setProcessingId(null);
+             setProcessingAction(null);
         }
     };
 
@@ -240,17 +258,27 @@ const AdminVerifications = () => {
                                                     <div className="flex items-center gap-3 w-full md:w-auto">
                                                         <button 
                                                             onClick={() => handleReject(user._id, doc._id)}
-                                                            className="flex-1 md:flex-none px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm flex items-center justify-center"
+                                                            disabled={processingId === `${user._id}-${doc._id}`}
+                                                            className="flex-1 md:flex-none px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm flex items-center justify-center disabled:opacity-50"
                                                         >
-                                                            <XCircle className="w-4 h-4 mr-2" />
-                                                            Reject
+                                                            {processingId === `${user._id}-${doc._id}` && processingAction === 'reject' ? 'Rejecting...' : (
+                                                                <>
+                                                                    <XCircle className="w-4 h-4 mr-2" />
+                                                                    Reject
+                                                                </>
+                                                            )}
                                                         </button>
                                                         <button 
                                                             onClick={() => handleApprove(user._id, doc._id)}
-                                                            className="flex-1 md:flex-none px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm flex items-center justify-center shadow-sm"
+                                                            disabled={processingId === `${user._id}-${doc._id}`}
+                                                            className="flex-1 md:flex-none px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
                                                         >
-                                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                                            Approve
+                                                            {processingId === `${user._id}-${doc._id}` && processingAction === 'approve' ? 'Approving...' : (
+                                                                <>
+                                                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                                                    Approve
+                                                                </>
+                                                            )}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -282,17 +310,27 @@ const AdminVerifications = () => {
                                             <div className="flex items-center gap-3 w-full md:w-auto">
                                                 <button 
                                                     onClick={() => handleIdVerify(user._id, 'Rejected')}
-                                                    className="flex-1 md:flex-none px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm flex items-center justify-center"
+                                                    disabled={processingId === user._id}
+                                                    className="flex-1 md:flex-none px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50 transition-colors text-sm flex items-center justify-center disabled:opacity-50"
                                                 >
-                                                    <XCircle className="w-4 h-4 mr-2" />
-                                                    Reject
+                                                    {processingId === user._id && processingAction === 'reject' ? 'Rejecting...' : (
+                                                        <>
+                                                            <XCircle className="w-4 h-4 mr-2" />
+                                                            Reject
+                                                        </>
+                                                    )}
                                                 </button>
                                                 <button 
                                                     onClick={() => handleIdVerify(user._id, 'Approved')}
-                                                    className="flex-1 md:flex-none px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm flex items-center justify-center shadow-sm"
+                                                    disabled={processingId === user._id}
+                                                    className="flex-1 md:flex-none px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm flex items-center justify-center shadow-sm disabled:opacity-50"
                                                 >
-                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                    Approve
+                                                    {processingId === user._id && processingAction === 'approve' ? 'Approving...' : (
+                                                        <>
+                                                            <CheckCircle className="w-4 h-4 mr-2" />
+                                                            Approve
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>
