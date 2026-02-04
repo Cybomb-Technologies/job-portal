@@ -83,6 +83,7 @@ const ReviewCard = ({ review, isOwner, onUpdate }) => {
 };
 
 const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => {
+    const { user: currentUser } = useAuth();
     const [step, setStep] = useState(1); // 1: Choose type, 2: Form
     const [reviewType, setReviewType] = useState('Public');
     const [rating, setRating] = useState(5);

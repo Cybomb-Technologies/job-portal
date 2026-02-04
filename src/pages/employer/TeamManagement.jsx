@@ -116,7 +116,7 @@ const TeamManagement = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {members.map((member) => (
+                        {members.filter(m => m.user).map((member) => (
                             <tr key={member.user._id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">

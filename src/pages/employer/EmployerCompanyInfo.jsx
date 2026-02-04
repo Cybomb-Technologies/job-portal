@@ -9,6 +9,7 @@ const EmployerCompanyInfo = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [isUpdateMode, setIsUpdateMode] = useState(false); // If true, we need to request approval
     
     const [formData, setFormData] = useState({
         companyName: '',
@@ -62,6 +63,11 @@ const EmployerCompanyInfo = () => {
                     foundedYear: data.foundedYear || '',
                     employeeCount: data.employeeCount || '',
                 });
+                
+                // If company name exists, we interpret this as an established profile requiring approval for updates
+                if (data.companyName && data.companyName.trim() !== '') {
+                    setIsUpdateMode(true);
+                }
                 if (data.profilePicture) {
                     setPreview(data.profilePicture.startsWith('http') ? data.profilePicture : `${import.meta.env.VITE_SERVER_URL}${data.profilePicture}`);
                 }
@@ -242,11 +248,20 @@ const EmployerCompanyInfo = () => {
         }
 
         try {
-            const res = await api.put('/auth/profile', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            login(res.data); // Update context
-            setMessage('Company info updated successfully!');
+            if (isUpdateMode) {
+                 const res = await api.post('/auth/company/update-request', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setMessage('Update request submitted for approval. You will be notified once reviewed.');
+            } else {
+                const res = await api.put('/auth/profile', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                login(res.data); // Update context
+                setMessage('Company info updated successfully!');
+                // Switch to update mode after successful first save
+                setIsUpdateMode(true);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update company info');
         } finally {
@@ -594,12 +609,12 @@ const EmployerCompanyInfo = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-6 py-2 bg-[#4169E1] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            className={`px-6 py-2 text-white font-medium rounded-lg transition-colors flex items-center gap-2 ${isUpdateMode ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#4169E1] hover:bg-blue-700'}`}
                         >
-                            {loading ? 'Saving...' : (
+                            {loading ? 'Processing...' : (
                                 <>
-                                    <Save className="w-5 h-5" />
-                                    Save Changes
+                                    {isUpdateMode ? <Shield className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                                    {isUpdateMode ? 'Request Update' : 'Save Changes'}
                                 </>
                             )}
                         </button>

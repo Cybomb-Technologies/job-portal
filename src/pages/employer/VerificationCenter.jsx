@@ -11,6 +11,8 @@ const VerificationCenter = () => {
     const [otp, setOtp] = useState('');
     const [otpSent, setOtpSent] = useState(false);
     const [loadingOTP, setLoadingOTP] = useState(false);
+    const [idCardFile, setIdCardFile] = useState(null);
+    const [uploadingId, setUploadingId] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
 
     useEffect(() => {
@@ -79,6 +81,41 @@ const VerificationCenter = () => {
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
+    };
+
+    const handleIdFileChange = (e) => {
+        setIdCardFile(e.target.files[0]);
+    };
+
+    const handleIdUpload = async (e) => {
+        e.preventDefault();
+        if (!idCardFile) {
+            setMessage({ type: 'error', text: 'Please select an ID card file' });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('idCard', idCardFile);
+
+        try {
+            setUploadingId(true);
+            const storedUser = localStorage.getItem('user');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+
+            await api.post('/verification/upload-id-card', formData, {
+                headers: { 
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            fetchStatus(); // Refresh status
+            setMessage({ type: 'success', text: 'ID Card uploaded successfully! Pending Admin Approval.' });
+            setIdCardFile(null);
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'ID Upload failed' });
+        } finally {
+            setUploadingId(false);
+        }
     };
 
     const handleUpload = async (e) => {
@@ -166,53 +203,89 @@ const VerificationCenter = () => {
                                 {status?.emailVerified ? <CheckCircle className="text-green-500" size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
                                 <span className={status?.emailVerified ? 'text-gray-900 font-medium' : 'text-gray-500'}>Official Work Email</span>
                             </div>
+                            
+                            {/* ID Card Verification Status Item */}
                             <div className="flex items-center gap-3">
-                                {status?.domainVerified ? <CheckCircle className="text-green-500" size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
-                                <span className={status?.domainVerified ? 'text-gray-900 font-medium' : 'text-gray-500'}>Domain Ownership (DNS)</span>
+                                {status?.idCard?.status === 'Approved' ? <CheckCircle className="text-green-500" size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300" />}
+                                
+                                <div className="flex flex-col">
+                                    <span className={status?.idCard?.status === 'Approved' ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                                        Identity Verification (ID Card)
+                                    </span>
+                                    {status?.idCard?.status === 'Pending' && <span className="text-xs text-yellow-600 font-medium">Verification Pending</span>}
+                                    {status?.idCard?.status === 'Rejected' && <span className="text-xs text-red-600 font-medium">Rejected: {status?.idCard?.rejectionReason}</span>}
+                                </div>
                             </div>
                         </div>
 
-                        {status?.level < 1 && (
-                            <div className="flex flex-col gap-3 w-full max-w-sm">
-                                {!otpSent ? (
-                                    <button 
-                                        onClick={handleSendOTP}
-                                        disabled={loadingOTP}
-                                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                                    >
-                                        {loadingOTP ? 'Sending...' : 'Send Verification OTP'}
-                                    </button>
-                                ) : (
+                        <div className="flex flex-col gap-6 w-full max-w-sm">
+                            {/* OTP Section */}
+                            {!status?.emailVerified && (
+                                <div className="flex flex-col gap-3 w-full">
+                                    {!otpSent ? (
+                                        <button 
+                                            onClick={handleSendOTP}
+                                            disabled={loadingOTP}
+                                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                                        >
+                                            {loadingOTP ? 'Sending...' : 'Verify Email (OTP)'}
+                                        </button>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Enter 6-digit OTP"
+                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value)}
+                                                maxLength={6}
+                                            />
+                                            <button 
+                                                onClick={handleVerifyOTP}
+                                                disabled={loadingOTP}
+                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-70"
+                                            >
+                                                {loadingOTP ? 'Verifying...' : 'Submit'}
+                                            </button>
+                                        </div>
+                                    )}
+                                    {otpSent && <p className="text-xs text-gray-500">Check your email for the code.</p>}
+                                </div>
+                            )}
+
+                            {/* ID Card Upload Section - Show if Email Verified or independent? Usually generic requirement. */}
+                            {/* Requirement: Level 1 = Email + ID Card. Show ID upload even if email not verified yet? Yes. */}
+                            {status?.idCard?.status !== 'Approved' && status?.idCard?.status !== 'Pending' && (
+                                <div className="flex flex-col gap-2 w-full">
+                                    <p className="text-sm font-medium text-gray-700">Upload Government/Work ID Card</p>
                                     <div className="flex gap-2">
                                         <input 
-                                            type="text" 
-                                            placeholder="Enter 6-digit OTP"
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={otp}
-                                            onChange={(e) => setOtp(e.target.value)}
-                                            maxLength={6}
+                                            type="file" 
+                                            onChange={handleIdFileChange} 
+                                            className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                            accept=".jpg,.jpeg,.png,.pdf"
                                         />
                                         <button 
-                                            onClick={handleVerifyOTP}
-                                            disabled={loadingOTP}
-                                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-70"
+                                            onClick={handleIdUpload}
+                                            disabled={uploadingId || !idCardFile}
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-70 whitespace-nowrap"
                                         >
-                                            {loadingOTP ? 'Verifying...' : 'Verify'}
+                                            {uploadingId ? '...' : 'Upload ID'}
                                         </button>
                                     </div>
-                                )}
-                                {otpSent && <p className="text-xs text-gray-500">Check your email for the code. It expires in 10 minutes.</p>}
-                            </div>
-                        )}
+                                    <p className="text-xs text-gray-500">Required for Level 1 completion.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Level 2: Legal Verification */}
-            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 2 ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
+            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 2 || status?.inheritedFromCompany ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
                 <div className="p-6 border-b border-gray-100 flex justify-between items-start">
                     <div className="flex gap-4">
-                        <div className={`p-3 rounded-lg ${status?.level >= 2 ? 'bg-green-100 text-green-600' : 'bg-purple-50 text-purple-600'}`}>
+                        <div className={`p-3 rounded-lg ${status?.level >= 2 || status?.inheritedFromCompany ? 'bg-green-100 text-green-600' : 'bg-purple-50 text-purple-600'}`}>
                             <Building2 size={24} />
                         </div>
                         <div>
@@ -224,8 +297,14 @@ const VerificationCenter = () => {
                          <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
                             <CheckCircle size={14} /> Verified
                         </span>
-                    ) : (status?.documents?.some(d => d.status === 'Pending') && status.level < 2) ? (
+                    ) : status?.inheritedFromCompany ? (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                           <CheckCircle size={14} /> Business Verified
+                       </span>
+                   ) : (status?.documents?.some(d => d.status === 'Pending') && status.level < 2) ? (
                         <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">Under Review</span>
+                    ) : (status?.level >= 1) ? (
+                         <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Action Required</span>
                     ) : (
                         <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Locked</span>
                     )}
@@ -233,14 +312,29 @@ const VerificationCenter = () => {
 
                 <div className="p-6">
                     {status?.level < 1 ? (
-                        <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                            <ShieldCheck className="mx-auto text-gray-300 mb-2" size={32} />
-                            Complete Level 1 verification to unlock this step.
+                        <div>
+                             {status?.inheritedFromCompany && (
+                                <div className="mb-6 text-green-700 bg-green-50 p-4 rounded-lg border border-green-100">
+                                    <p className="font-medium">Business Verified by Admin</p>
+                                    <p className="text-sm mt-1 opacity-90">
+                                        Your company is already verified. Complete your <strong>Level 1 (Identity)</strong> verification to achieve full Level 2 status.
+                                    </p>
+                                </div>
+                            )}
+                            <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                <ShieldCheck className="mx-auto text-gray-300 mb-2" size={32} />
+                                Complete Level 1 verification to unlock this step.
+                            </div>
                         </div>
-                    ) : status?.level >= 2 ? (
+                    ) : status?.level >= 2 || status?.inheritedFromCompany ? (
                         <div className="text-green-700 bg-green-50 p-4 rounded-lg border border-green-100">
-                            <p className="font-medium">Business Identity Verified</p>
-                            <p className="text-sm mt-1 opacity-90">Your business has been legally verified. You now have the "Registered Business" badge on all job posts.</p>
+                            <p className="font-medium">{status.inheritedFromCompany ? 'Business Verified by Admin' : 'Business Identity Verified'}</p>
+                            <p className="text-sm mt-1 opacity-90">
+                                {status.inheritedFromCompany 
+                                    ? 'Your company administrator has already verified the business documents. You inherit this verification status.' 
+                                    : 'Your business has been legally verified. You now have the "Registered Business" badge on all job posts.'
+                                }
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-6">

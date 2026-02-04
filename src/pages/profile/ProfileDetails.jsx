@@ -887,27 +887,39 @@ const ProfileDetails = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden min-h-[600px]">
                 
                 {/* Horizontal Tab Navigation */}
-                <div className="border-b border-gray-100 overflow-x-auto scrollbar-hide">
-                    <div className="flex px-4 md:px-8 space-x-8 min-w-max">
-                        {tabs.map((tab) => {
-                             const Icon = tab.icon;
-                             return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                        ? 'border-[#4169E1] text-[#4169E1]' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
-                                    }`}
-                                >
-                                    <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
-                                    <span>{tab.label}</span>
-                                    {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
-                                </button>
-                             );
-                        })}
+                {/* Horizontal Tab Navigation */}
+                <div className="flex items-center justify-between border-b border-gray-100 pr-4 md:pr-8">
+                    <div className="overflow-x-auto scrollbar-hide">
+                        <div className="flex px-4 md:px-8 space-x-8 min-w-max">
+                            {tabs.map((tab) => {
+                                 const Icon = tab.icon;
+                                 return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
+                                            activeTab === tab.id 
+                                            ? 'border-[#4169E1] text-[#4169E1]' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
+                                        <span>{tab.label}</span>
+                                        {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
+                                    </button>
+                                 );
+                            })}
+                        </div>
                     </div>
+                     <button 
+                         type="button"
+                         onClick={() => setIsEditing(false)}
+                         className="flex-shrink-0 text-gray-500 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold ml-2"
+                         title="Cancel Editing"
+                     >
+                         <X className="w-5 h-5" />
+                         <span className="hidden sm:inline">Cancel</span>
+                     </button>
                 </div>
 
                 {/* Form Content */}
@@ -943,15 +955,7 @@ const ProfileDetails = () => {
                                             onChange={handleBannerChange}
                                         />
                                     </div>
-                                    {/* Close/Cancel Edit Mode Button Floating */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setIsEditing(false)}
-                                        className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md z-10"
-                                        title="Cancel Edit"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
+
                                 </div>
 
                                 <div className="flex flex-col md:flex-row gap-8 items-start px-4 relative z-10">

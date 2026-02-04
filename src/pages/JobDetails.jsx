@@ -130,6 +130,13 @@ const JobDetails = () => {
           navigate('/login');
           return;
       }
+      
+      // Enforce application requirement
+      if (!job.hasApplied) {
+          alert('You must apply to this job before you can message the employer.');
+          return;
+      }
+
       if (job && job.postedBy) {
           initiateChat(job.postedBy);
           navigate('/messages');

@@ -229,7 +229,19 @@ const getJobById = async (req, res) => {
 
   if (job) {
     const applicantCount = await Application.countDocuments({ job: job._id });
-    res.json({ ...job._doc, applicantCount });
+    
+    let hasApplied = false;
+    if (req.user) {
+        const application = await Application.findOne({ 
+            job: job._id, 
+            applicant: req.user._id 
+        });
+        if (application) {
+            hasApplied = true;
+        }
+    }
+
+    res.json({ ...job._doc, applicantCount, hasApplied });
   } else {
     res.status(404).json({ message: 'Job not found' });
   }
