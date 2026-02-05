@@ -10,6 +10,8 @@ const { OAuth2Client } = require('google-auth-library');
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const { logActivity } = require('./activityLogController');
+const CompanyUpdateRequest = require('../models/CompanyUpdateRequest');
+const Notification = require('../models/Notification');
 
 // ... (existing imports)
 
@@ -37,6 +39,7 @@ const authUser = async (req, res) => {
       role: user.role,
       companyId: user.companyId,
       companyRole: user.companyRole,
+      mobileNumber: user.mobileNumber,
       token: generateToken(user._id),
     });
   } else {
@@ -147,6 +150,7 @@ const verifyOtp = async (req, res) => {
         role: user.role,
         companyId: user.companyId,
         companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
         token: generateToken(user._id),
     });
 };
@@ -217,6 +221,7 @@ const googleLogin = async (req, res) => {
         role: user.role,
         companyId: user.companyId,
         companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
         token: generateToken(user._id),
       });
     } else {
@@ -237,6 +242,7 @@ const googleLogin = async (req, res) => {
         role: user.role,
         companyId: user.companyId,
         companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
         token: generateToken(user._id),
       });
     }
@@ -462,6 +468,14 @@ const updateUserProfile = async (req, res) => {
         }
     }
 
+    // Handle Deletion Flags
+    if (req.body.deleteProfilePicture === 'true') {
+        user.profilePicture = undefined;
+    }
+    if (req.body.deleteBanner === 'true') {
+        user.bannerPicture = undefined;
+    }
+
     // Handle Resumes (Delete/Set Active)
     if (req.body.activeResumeId) {
         const target = user.resumes.id(req.body.activeResumeId);
@@ -509,6 +523,14 @@ const updateUserProfile = async (req, res) => {
                     if (req.files.bannerPicture) {
                         company.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
                     }
+                }
+
+                // Handle Company Image Deletion
+                if (req.body.deleteLogo === 'true' || req.body.deleteProfilePicture === 'true') {
+                    company.profilePicture = undefined;
+                }
+                if (req.body.deleteBanner === 'true') {
+                    company.bannerPicture = undefined;
                 }
 
                 await company.save();
@@ -920,6 +942,98 @@ const unfollowCompany = async (req, res) => {
     }
 };
 
+// @desc    Request company profile update
+// @route   POST /api/auth/company/update-request
+// @access  Private (Employer Admin)
+const requestCompanyUpdate = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user || user.role !== 'Employer' || user.companyRole !== 'Admin') {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const company = await Company.findById(user.companyId);
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        // Check for existing pending request
+        const existingRequest = await CompanyUpdateRequest.findOne({
+            companyId: company._id,
+            status: 'Pending'
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({ message: 'A pending update request already exists.' });
+        }
+
+        // Prepare requested changes
+        // Only include fields that are allowed to be updated
+        const allowedFields = [
+            'companyName', 'website', 'companyEmail', 'companyLocation',
+            'companyCategory', 'companyType', 'foundedYear', 'employeeCount',
+            'about', 'whyJoinUs'
+        ];
+
+        const requestedChanges = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                requestedChanges[field] = req.body[field];
+            }
+        }
+        
+        // Handle Files for Request
+        // Since we can't easily store files in a JSON request object without uploading them first,
+        // we'll upload them to a temporary location or just normal uploads and store the path.
+        // The middleware `upload` handles the saving to disk.
+        if (req.files) {
+             if (req.files.profilePicture) {
+                requestedChanges.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+            }
+            if (req.files.bannerPicture) {
+                requestedChanges.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
+            }
+        }
+
+        const updateRequest = await CompanyUpdateRequest.create({
+            companyId: company._id,
+            requesterId: user._id,
+            requestedChanges
+        });
+
+        // Notify Admins
+        const admins = await User.find({ role: 'Admin' });
+        console.log(`[CompanyUpdate] Found ${admins.length} admins to notify.`);
+        
+        const notifications = admins.map(admin => ({
+            recipient: admin._id,
+            sender: user._id,
+            type: 'COMPANY_UPDATE',
+            message: `New update request from ${company.name}`,
+            relatedId: updateRequest._id,
+            relatedModel: 'CompanyUpdateRequest'
+        }));
+        
+        const savedNotifs = await Notification.insertMany(notifications);
+        console.log(`[CompanyUpdate] Created ${savedNotifs.length} notifications.`);
+
+        // Emit Socket Event to Admin Room
+        if (req.io) {
+            req.io.to('admin-room').emit('notification', {
+                message: `New update request from ${company.name}`,
+                type: 'COMPANY_UPDATE',
+                relatedId: updateRequest._id
+            });
+        }
+
+        res.status(201).json({ message: 'Update request submitted for approval', requestId: updateRequest._id });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = { 
   authUser, 
   registerUser, 
@@ -933,6 +1047,7 @@ module.exports = {
   getPublicUserProfile,
   getCompanies,
   followCompany,
+  requestCompanyUpdate,
   unfollowCompany,
   verifyOtp,
   resendOtp

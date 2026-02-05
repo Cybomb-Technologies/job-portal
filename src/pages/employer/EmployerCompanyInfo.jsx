@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Camera, Save, Globe, Mail, Briefcase, Calendar, Users, Search, MapPin, Shield } from 'lucide-react';
+import { Building2, Camera, Save, Globe, Mail, Briefcase, Calendar, Users, Search, MapPin, Shield, Trash2 } from 'lucide-react';
 import api from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { commonCompanyCategories, commonCompanyTypes } from '../../utils/profileData';
+import ImageUrlCropper from '../../components/ImageUrlCropper';
+import Swal from 'sweetalert2';
 
 const EmployerCompanyInfo = () => {
     const { user, login } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [isUpdateMode, setIsUpdateMode] = useState(false); // If true, we need to request approval
     
     const [formData, setFormData] = useState({
         companyName: '',
@@ -30,6 +33,11 @@ const EmployerCompanyInfo = () => {
     const [preview, setPreview] = useState(null);
     const [bannerPic, setBannerPic] = useState(null);
     const [bannerPreview, setBannerPreview] = useState(null);
+
+    // Cropper State
+    const [showCropper, setShowCropper] = useState(false);
+    const [cropperImage, setCropperImage] = useState(null);
+    const [cropType, setCropType] = useState(null); // 'logo' or 'banner'
 
     // Autocomplete State
     const [suggestions, setSuggestions] = useState([]);
@@ -62,6 +70,11 @@ const EmployerCompanyInfo = () => {
                     foundedYear: data.foundedYear || '',
                     employeeCount: data.employeeCount || '',
                 });
+                
+                // If company name exists, we interpret this as an established profile requiring approval for updates
+                if (data.companyName && data.companyName.trim() !== '') {
+                    setIsUpdateMode(true);
+                }
                 if (data.profilePicture) {
                     setPreview(data.profilePicture.startsWith('http') ? data.profilePicture : `${import.meta.env.VITE_SERVER_URL}${data.profilePicture}`);
                 }
@@ -201,19 +214,71 @@ const EmployerCompanyInfo = () => {
         setShowSuggestions(false);
     };
 
-    const handleFileChange = (e) => {
+    const handleFileSelect = (e, type) => {
         const file = e.target.files[0];
         if (file) {
-            setProfilePic(file);
-            setPreview(URL.createObjectURL(file));
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                setCropperImage(reader.result);
+                setCropType(type);
+                setShowCropper(true);
+                e.target.value = ''; // Reset input
+            });
+            reader.readAsDataURL(file);
         }
     };
 
-    const handleBannerChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+    const handleCropComplete = (croppedBlob) => {
+        const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(croppedBlob);
+
+        if (cropType === 'logo') {
+            setProfilePic(file);
+            setPreview(previewUrl);
+        } else {
             setBannerPic(file);
-            setBannerPreview(URL.createObjectURL(file));
+            setBannerPreview(previewUrl);
+        }
+
+        setShowCropper(false);
+        setCropperImage(null);
+        setCropType(null);
+    };
+
+    const handleDeleteImage = async (type) => {
+        // Confirm deletion
+        const result = await Swal.fire({
+            title: 'Remove Image?',
+            text: "Do you want to remove this image?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, remove it!'
+        });
+  
+        if (result.isConfirmed) {
+            if (type === 'logo') {
+                if (profilePic) {
+                   setProfilePic(null); // Clear local file
+                }
+                setPreview(null); // Clear preview (will need to save to persist if it was server image)
+                
+                // If we are deleting a server image, we should probably mark it for deletion in formData or separate API call?
+                // The current backend likely updates if file provided, but if we send nothing it might not clear it.
+                // However, the user request implies UI deletion first. 
+                // Let's add a `deleteLogo` flag to formData if we want to handle it on submit, OR call API now.
+                // Calling API now is safer for immediate feedback if not in a "draft" mode.
+                // Given the form has a Save button, we should probably defer until Save, but let's see.
+                // The current submit logic uses `formData` fields + `profilePic` file.
+                // If `profilePic` is null, it doesn't send it. 
+                // We'll need to modify handleSubmit to handle explicit deletion.
+                // For now, let's just clear the UI. 
+            } else {
+                if (bannerPic) {
+                   setBannerPic(null);
+                }
+                setBannerPreview(null);
+            }
         }
     };
 
@@ -236,17 +301,32 @@ const EmployerCompanyInfo = () => {
         
         if (profilePic) {
             data.append('profilePicture', profilePic);
+        } else if (preview === null) {
+            // Explicitly send flag to delete if preview is cleared (implied user deleted it)
+            data.append('deleteLogo', 'true');
         }
+
         if (bannerPic) {
             data.append('bannerPicture', bannerPic);
+        } else if (bannerPreview === null) {
+             data.append('deleteBanner', 'true');
         }
 
         try {
-            const res = await api.put('/auth/profile', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            login(res.data); // Update context
-            setMessage('Company info updated successfully!');
+            if (isUpdateMode) {
+                 const res = await api.post('/auth/company/update-request', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setMessage('Update request submitted for approval. You will be notified once reviewed.');
+            } else {
+                const res = await api.put('/auth/profile', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                login(res.data); // Update context
+                setMessage('Company info updated successfully!');
+                // Switch to update mode after successful first save
+                setIsUpdateMode(true);
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update company info');
         } finally {
@@ -282,6 +362,16 @@ const EmployerCompanyInfo = () => {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 
+                {/* Cropper Modal */}
+                {showCropper && (
+                    <ImageUrlCropper
+                        imageSrc={cropperImage}
+                        aspect={cropType === 'logo' ? 1 : 16/9}
+                        onCropComplete={handleCropComplete}
+                        onCancel={() => { setShowCropper(false); setCropperImage(null); }}
+                    />
+                )}
+
                 {/* Profile Picture / Logo section */}
                 <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 pb-8 border-b border-gray-100">
                     <div className="relative group">
@@ -293,10 +383,21 @@ const EmployerCompanyInfo = () => {
                             )}
                         </div>
                         {!isRecruiter && (
-                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
-                                <Camera className="w-8 h-8 text-white" />
-                                <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                            </label>
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
+                                <label className="cursor-pointer p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors">
+                                    <Camera className="w-6 h-6" />
+                                    <input type="file" className="hidden" onChange={(e) => handleFileSelect(e, 'logo')} accept="image/*" />
+                                </label>
+                                {preview && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => handleDeleteImage('logo')}
+                                        className="p-2 bg-white/20 hover:bg-red-500/80 rounded-full text-white transition-colors"
+                                    >
+                                        <Trash2 className="w-6 h-6" />
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
                     <div className="flex-1 text-center sm:text-left">
@@ -321,10 +422,21 @@ const EmployerCompanyInfo = () => {
                             )}
                         </div>
                         {!isRecruiter && (
-                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
-                                <Camera className="w-8 h-8 text-white" />
-                                <input type="file" className="hidden" onChange={handleBannerChange} accept="image/*" />
-                            </label>
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center gap-2">
+                                <label className="cursor-pointer p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors">
+                                    <Camera className="w-6 h-6" />
+                                    <input type="file" className="hidden" onChange={(e) => handleFileSelect(e, 'banner')} accept="image/*" />
+                                </label>
+                                {bannerPreview && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => handleDeleteImage('banner')}
+                                        className="p-2 bg-white/20 hover:bg-red-500/80 rounded-full text-white transition-colors"
+                                    >
+                                        <Trash2 className="w-6 h-6" />
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
                     <div className="flex-1 text-center sm:text-left">
@@ -594,12 +706,12 @@ const EmployerCompanyInfo = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-6 py-2 bg-[#4169E1] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            className={`px-6 py-2 text-white font-medium rounded-lg transition-colors flex items-center gap-2 ${isUpdateMode ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#4169E1] hover:bg-blue-700'}`}
                         >
-                            {loading ? 'Saving...' : (
+                            {loading ? 'Processing...' : (
                                 <>
-                                    <Save className="w-5 h-5" />
-                                    Save Changes
+                                    {isUpdateMode ? <Shield className="w-5 h-5" /> : <Save className="w-5 h-5" />}
+                                    {isUpdateMode ? 'Request Update' : 'Save Changes'}
                                 </>
                             )}
                         </button>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Briefcase } from 'lucide-react';
 import api from '../api';
+import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
@@ -60,7 +61,13 @@ const Signup = () => {
         setError('');
         try {
             await api.post('/auth/resend-otp', { email: formData.email });
-            alert('OTP Resent to your email');
+             Swal.fire({
+                 icon: 'success',
+                 title: 'OTP Resent',
+                 text: 'A new OTP has been sent to your email.',
+                 timer: 3000,
+                 showConfirmButton: false
+             });
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to resend OTP');
         }

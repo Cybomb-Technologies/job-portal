@@ -4,6 +4,7 @@ import api from '../../api';
 import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2 } from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
+import ImageUrlCropper from '../../components/ImageUrlCropper';
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -40,7 +41,10 @@ const ProfileDetails = () => {
     const [resumes, setResumes] = useState([]);
     const [existingResume, setExistingResume] = useState(null);
 
-
+    // Cropper State
+    const [showCropper, setShowCropper] = useState(false);
+    const [cropperImage, setCropperImage] = useState(null);
+    const [cropType, setCropType] = useState(null); // 'profile' or 'banner'
     
     const [loading, setLoading] = useState(false);
     // Removed message/error states as we use Swal now
@@ -200,19 +204,50 @@ const ProfileDetails = () => {
 
 
 
-    const handleFileChange = (e) => {
+    const handleFileSelect = (e, type) => {
         const file = e.target.files[0];
         if (file) {
-            setProfilePicture(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                setCropperImage(reader.result);
+                setCropType(type);
+                setShowCropper(true);
+                e.target.value = ''; 
+            });
+            reader.readAsDataURL(file);
         }
     };
 
-    const handleBannerChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+    const handleCropComplete = (croppedBlob) => {
+        const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(croppedBlob);
+
+        if (cropType === 'profile') {
+            setProfilePicture(file);
+            setPreviewUrl(previewUrl);
+        } else {
             setBannerPicture(file);
-            setBannerPreview(URL.createObjectURL(file));
+            setBannerPreview(previewUrl);
+        }
+
+        setShowCropper(false);
+        setCropperImage(null);
+        setCropType(null);
+    };
+
+    const handleDeleteImage = async (type) => {
+        if (type === 'profile') {
+            if (profilePicture && typeof profilePicture !== 'string') {
+                 setProfilePicture(null);
+            }
+            setPreviewUrl(null); 
+            // We assume user wants to delete image on server too when they click delete OR when they save.
+            // But immediate preview removal is needed.
+        } else {
+            if (bannerPicture && typeof bannerPicture !== 'string') {
+                setBannerPicture(null);
+            }
+            setBannerPreview(null);
         }
     };
 
@@ -593,10 +628,14 @@ const ProfileDetails = () => {
 
         if (profilePicture && typeof profilePicture === 'object') {
             formData.append('profilePicture', profilePicture);
+        } else if (previewUrl === null) {
+            formData.append('deleteProfilePicture', 'true');
         }
 
         if (bannerPicture && typeof bannerPicture === 'object') {
             formData.append('bannerPicture', bannerPicture);
+        } else if (bannerPreview === null) {
+            formData.append('deleteBanner', 'true');
         }
 
 
@@ -887,27 +926,39 @@ const ProfileDetails = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden min-h-[600px]">
                 
                 {/* Horizontal Tab Navigation */}
-                <div className="border-b border-gray-100 overflow-x-auto scrollbar-hide">
-                    <div className="flex px-4 md:px-8 space-x-8 min-w-max">
-                        {tabs.map((tab) => {
-                             const Icon = tab.icon;
-                             return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                        ? 'border-[#4169E1] text-[#4169E1]' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
-                                    }`}
-                                >
-                                    <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
-                                    <span>{tab.label}</span>
-                                    {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
-                                </button>
-                             );
-                        })}
+                {/* Horizontal Tab Navigation */}
+                <div className="flex items-center justify-between border-b border-gray-100 pr-4 md:pr-8">
+                    <div className="overflow-x-auto scrollbar-hide">
+                        <div className="flex px-4 md:px-8 space-x-8 min-w-max">
+                            {tabs.map((tab) => {
+                                 const Icon = tab.icon;
+                                 return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
+                                            activeTab === tab.id 
+                                            ? 'border-[#4169E1] text-[#4169E1]' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
+                                        <span>{tab.label}</span>
+                                        {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
+                                    </button>
+                                 );
+                            })}
+                        </div>
                     </div>
+                     <button 
+                         type="button"
+                         onClick={() => setIsEditing(false)}
+                         className="flex-shrink-0 text-gray-500 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold ml-2"
+                         title="Cancel Editing"
+                     >
+                         <X className="w-5 h-5" />
+                         <span className="hidden sm:inline">Cancel</span>
+                     </button>
                 </div>
 
                 {/* Form Content */}
@@ -917,6 +968,16 @@ const ProfileDetails = () => {
 
 
                     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-10 animate-fadeIn">
+                        
+                        {/* Cropper Modal */}
+                        {showCropper && (
+                            <ImageUrlCropper
+                                imageSrc={cropperImage}
+                                aspect={cropType === 'profile' ? 1 : 16/9} // Profile square, Banner wide
+                                onCropComplete={handleCropComplete}
+                                onCancel={() => { setShowCropper(false); setCropperImage(null); }}
+                            />
+                        )}
                         
                         {/* Basic Info Tab */}
                         {activeTab === 'basic' && (
@@ -931,7 +992,7 @@ const ProfileDetails = () => {
                                             <span className="text-xs font-semibold">Upload Banner Image</span>
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                          <label htmlFor="banner-upload" className="cursor-pointer bg-white text-gray-700 px-4 py-2 rounded-lg font-bold shadow-md hover:text-[#4169E1] transition-colors flex items-center gap-2">
                                             <Camera className="w-4 h-4" /> Change Banner
                                          </label>
@@ -940,18 +1001,18 @@ const ProfileDetails = () => {
                                             type="file" 
                                             className="hidden" 
                                             accept="image/*"
-                                            onChange={handleBannerChange}
+                                            onChange={(e) => handleFileSelect(e, 'banner')}
                                         />
+                                        {bannerPreview && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleDeleteImage('banner')}
+                                                className="bg-white text-red-500 px-3 py-2 rounded-lg font-bold shadow-md hover:bg-red-50 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
-                                    {/* Close/Cancel Edit Mode Button Floating */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setIsEditing(false)}
-                                        className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md z-10"
-                                        title="Cancel Edit"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row gap-8 items-start px-4 relative z-10">
@@ -968,19 +1029,30 @@ const ProfileDetails = () => {
                                                      <p className="text-white text-xs font-medium">Change Photo</p>
                                                 </div>
                                             </div>
-                                            <label 
-                                                htmlFor="profile-upload" 
-                                                className="absolute -bottom-3 -right-3 bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-[#4169E1] border border-gray-100 transition-colors"
-                                            >
-                                                <Camera className="w-4 h-4" />
-                                                <input 
-                                                    id="profile-upload"
-                                                    type="file" 
-                                                    className="hidden" 
-                                                    accept="image/*"
-                                                    onChange={handleFileChange}
-                                                />
-                                            </label>
+                                            <div className="absolute -bottom-3 -right-3 flex gap-1">
+                                                <label 
+                                                    htmlFor="profile-upload" 
+                                                    className="bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-[#4169E1] border border-gray-100 transition-colors"
+                                                >
+                                                    <Camera className="w-4 h-4" />
+                                                    <input 
+                                                        id="profile-upload"
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*"
+                                                        onChange={(e) => handleFileSelect(e, 'profile')}
+                                                    />
+                                                </label>
+                                                {previewUrl && (
+                                                    <button
+                                                        type="button" 
+                                                        onClick={() => handleDeleteImage('profile')}
+                                                        className="bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-red-500 border border-gray-100 transition-colors"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     

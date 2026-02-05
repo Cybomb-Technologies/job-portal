@@ -120,6 +120,16 @@ const userSchema = mongoose.Schema(
             type: Boolean,
             default: false
         },
+        idCard: {
+            fileUrl: String,
+            uploadedAt: Date,
+            status: {
+                type: String,
+                enum: ['Not Uploaded', 'Pending', 'Approved', 'Rejected'],
+                default: 'Not Uploaded'
+            },
+            rejectionReason: String
+        },
         documents: [{
             type: {
                 type: String,

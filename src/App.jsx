@@ -37,6 +37,7 @@ import AdminCompanies from './pages/admin/AdminCompanies';
 import AdminSupport from './pages/admin/AdminSupport';
 import AdminVerifications from './pages/admin/AdminVerifications';
 import AdminContacts from './pages/admin/AdminContacts';
+import AdminCompanyUpdates from './pages/admin/AdminCompanyUpdates';
 
 // Profile Imports
 import ProfileLayout from './pages/profile/ProfileLayout';
@@ -229,6 +230,7 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="employers" element={<AdminEmployers />} />
               <Route path="companies" element={<AdminCompanies />} />
+              <Route path="company-updates" element={<AdminCompanyUpdates />} />
               <Route path="verifications" element={<AdminVerifications />} />
               <Route path="messages" element={<AdminContacts />} /> {/* New Route */}
               <Route path="support" element={<AdminSupport />} />

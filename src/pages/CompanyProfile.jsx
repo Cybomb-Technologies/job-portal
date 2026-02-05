@@ -10,6 +10,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { X, Send, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const ReviewCard = ({ review, isOwner, onUpdate }) => {
     const handleToggleVisibility = async () => {
@@ -83,6 +84,7 @@ const ReviewCard = ({ review, isOwner, onUpdate }) => {
 };
 
 const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => {
+    const { user: currentUser } = useAuth();
     const [step, setStep] = useState(1); // 1: Choose type, 2: Form
     const [reviewType, setReviewType] = useState('Public');
     const [rating, setRating] = useState(5);
@@ -115,7 +117,11 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
             }
         } catch (err) {
             console.error('Review submission failed:', err);
-            alert(err.response?.data?.message || 'Failed to submit review');
+            Swal.fire({
+                icon: 'error',
+                title: 'Review Submission Failed',
+                text: err.response?.data?.message || 'Failed to submit review'
+            });
         } finally {
             setLoading(false);
         }
@@ -161,7 +167,11 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                     <button 
                                         onClick={() => { 
                                             if (!currentUser) {
-                                                alert('You must be logged in to leave a public review. For employee reviews, please use the Employee Review option.');
+                                                Swal.fire({
+                                                    icon: 'info',
+                                                    title: 'Login Required',
+                                                    text: 'You must be logged in to leave a public review. For employee reviews, please use the Employee Review option.'
+                                                });
                                                 return;
                                             }
                                             setReviewType('Public'); 
@@ -339,7 +349,15 @@ const CompanyProfile = () => {
                 await navigator.share(shareData);
             } else {
                 await navigator.clipboard.writeText(window.location.href);
-                alert('Profile link copied to clipboard!');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Copied!',
+                    text: 'Profile link copied to clipboard!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
             }
         } catch (err) {
             console.error('Error sharing:', err);
@@ -363,18 +381,30 @@ const CompanyProfile = () => {
             if (company.contactUser) {
                 // We need to ensure we are not chatting with ourselves if we are the admin
                 if (company.contactUser._id === currentUser._id) {
-                    alert("You cannot message your own company.");
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Action Not Allowed',
+                        text: "You cannot message your own company."
+                    });
                     return;
                 }
                 initiateChat(company.contactUser);
                 navigate('/messages');
             } else {
-                alert("Messaging unavailable: No contact person found for this company.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Messaging Unavailable',
+                    text: "No contact person found for this company."
+                });
             }
         } else {
             // Legacy user profile
              if (company._id === currentUser._id) {
-                 alert("You cannot message yourself.");
+                 Swal.fire({
+                     icon: 'warning',
+                     title: 'Action Not Allowed',
+                     text: "You cannot message yourself."
+                 });
                  return;
              }
             initiateChat(company);
@@ -585,7 +615,11 @@ const CompanyProfile = () => {
                                     <div className="flex gap-3">
                                         <button 
                                             onClick={async () => {
-                                                if (!currentUser) return alert("Please login to follow companies");
+                                                if (!currentUser) return Swal.fire({
+                                                    icon: 'info',
+                                                    title: 'Login Required',
+                                                    text: "Please login to follow companies"
+                                                });
                                                 try {
                                                     if (isFollowing) {
                                                         await api.delete(`/auth/unfollow/${id}`);
@@ -596,7 +630,11 @@ const CompanyProfile = () => {
                                                     }
                                                 } catch (err) {
                                                     console.error("Follow error:", err);
-                                                    alert("Failed to update follow status");
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Error',
+                                                        text: "Failed to update follow status"
+                                                    });
                                                 }
                                             }}
                                             className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${

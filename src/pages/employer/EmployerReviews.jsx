@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import api from '../../api';
+import Swal from 'sweetalert2';
 
 const EmployerReviews = () => {
     const [reviews, setReviews] = useState([]);
@@ -31,7 +32,11 @@ const EmployerReviews = () => {
             ));
         } catch (err) {
             console.error(err);
-            alert('Failed to update review visibility');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to update review visibility'
+            });
         }
     };
 
@@ -67,8 +72,10 @@ const EmployerReviews = () => {
                         <div key={review._id} className={`p-6 rounded-lg border transistion-all ${review.isHidden ? 'bg-gray-50 border-gray-200 opacity-75' : 'bg-white border-gray-100 hover:shadow-md'}`}>
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden">
-                                        {review.reviewer?.profilePicture ? (
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden ${review.reviewerType === 'Employee' ? 'bg-indigo-100 text-indigo-600' : 'bg-blue-100 text-blue-600'}`}>
+                                        {review.reviewerType === 'Employee' ? (
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                                        ) : review.reviewer?.profilePicture ? (
                                              <img src={review.reviewer.profilePicture.startsWith('http') ? review.reviewer.profilePicture : `${import.meta.env.VITE_SERVER_URL}${review.reviewer.profilePicture}`} alt={review.reviewer.name} className="w-full h-full object-cover" />
                                         ) : (
                                             review.reviewer?.name?.charAt(0) || 'U'
@@ -77,7 +84,9 @@ const EmployerReviews = () => {
                                     <div>
                                         <h4 className="font-bold text-gray-900">{review.title || 'Company Review'}</h4>
                                         <p className="text-sm text-gray-500">
-                                            by {review.reviewer?.name || (review.reviewerType === 'Employee' ? 'Verified Employee' : 'Anonymous')}
+                                            by {review.reviewerType === 'Employee' 
+                                                ? <span className="text-indigo-600 font-medium">Verified Employee {review.role ? `(${review.role})` : ''}</span> 
+                                                : (review.reviewer?.name || 'Anonymous')}
                                         </p>
                                     </div>
                                 </div>

@@ -16,7 +16,8 @@ const {
     followCompany,
     unfollowCompany,
     verifyOtp,
-    resendOtp
+    resendOtp,
+    requestCompanyUpdate
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -71,6 +72,11 @@ router.route('/profile')
         { name: 'resume', maxCount: 1 }
     ]), updateUserProfile)
     .delete(protect, deleteAccount);
+
+router.post('/company/update-request', protect, upload.fields([
+    { name: 'profilePicture', maxCount: 1 },
+    { name: 'bannerPicture', maxCount: 1 }
+]), requestCompanyUpdate);
 
 router.put('/update-password', protect, changePassword);
 router.get('/user/:id', getPublicUserProfile);

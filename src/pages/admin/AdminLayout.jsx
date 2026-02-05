@@ -129,6 +129,9 @@ const AdminLayout = () => {
                 case 'JOB_ALERT': // If admin gets alerts about jobs
                     navigate('/admin/dashboard'); 
                     break;
+                case 'COMPANY_UPDATE':
+                    navigate('/admin/company-updates');
+                    break;
                 default:
                     break;
             }
@@ -158,6 +161,7 @@ const AdminLayout = () => {
         { name: 'Users', icon: <FiUsers />, path: '/admin/users' },
         { name: 'Employers', icon: <FiBriefcase />, path: '/admin/employers' },
         { name: 'Companies', path: '/admin/companies', icon: <Building2 /> },
+        { name: 'Updates', path: '/admin/company-updates', icon: <FiLayers /> },
         { name: 'Verifications', path: '/admin/verifications', icon: <CheckSquare /> },
         { name: 'Messages', path: '/admin/messages', icon: <Mail /> },
         { name: 'Support', path: '/admin/support', icon: <MessageSquare /> }

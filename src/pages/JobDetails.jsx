@@ -16,6 +16,7 @@ import {
   Hourglass
 } from 'lucide-react';
 import api from '../api';
+import Swal from 'sweetalert2';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 
@@ -73,7 +74,11 @@ const cleanHtmlContent = (html) => {
         
         // Pass 3: Fix Word + Single Lowercase Letter Suffix (e.g., "analyz e" -> "analyze")
         // Restricting to lowercase avoids merging "Plan A", "part B"
-        .replace(/([a-zA-Z]{2,}) ([a-z])(?=[.,!?;:\s]|$)/g, '$1$2')
+        .replace(/([a-zA-Z]{2,}) ([a-z])(?=[.,!?;:\s]|$)/g, (match, p1, p2) => {
+            // Exclude valid single-letter words 'a' and 'i'
+            if (p2 === 'a' || p2 === 'i') return match; 
+            return p1 + p2; // Merge others (e.g. "analyz e" -> "analyze")
+        })
         
         // Clean up multiple spaces
         .replace(/ {2,}/g, ' ');
@@ -114,6 +119,7 @@ const JobDetails = () => {
   // Pre-screening Answers
   const [screeningAnswers, setScreeningAnswers] = useState({}); // { questionIndex: answer }
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [followCompany, setFollowCompany] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -130,9 +136,37 @@ const JobDetails = () => {
           navigate('/login');
           return;
       }
+      
+      // Enforce application requirement
+      if (!job.hasApplied) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'Application Required',
+              text: 'You must apply to this job before you can message the employer.',
+              confirmButtonText: 'Apply Now',
+              confirmButtonColor: '#2563EB',
+              showCancelButton: true
+          }).then((result) => {
+              if (result.isConfirmed) {
+                   if (job.applyMethod === 'website' && job.applyUrl) {
+                        window.open(job.applyUrl, '_blank');
+                    } else {
+                        setShowApplyModal(true);
+                    }
+              }
+          });
+          return;
+      }
+
       if (job && job.postedBy) {
           initiateChat(job.postedBy);
           navigate('/messages');
+      } else {
+          Swal.fire({
+              icon: 'error',
+              title: 'Unavailable',
+              text: 'Employer information is not available for this job.'
+          });
       }
   };
 
@@ -272,7 +306,21 @@ const JobDetails = () => {
 
       await api.post('/applications', payload);
 
+      if (followCompany) {
+          try {
+             // Prioritize companyId, fallback to postedBy ID if legacy
+             const targetId = job.companyId || job.postedBy?._id;
+             if (targetId) {
+                 await api.post(`/auth/follow/${targetId}`);
+             }
+          } catch (e) {
+             console.error("Failed to auto-follow company", e);
+             // Fail silently so we don't disrupt the application success flow
+          }
+      }
+
       setApplySuccess(true);
+      setJob(prev => ({ ...prev, hasApplied: true })); // Update local state immediately
       setTimeout(() => {
         setShowApplyModal(false);
         setApplySuccess(false);
@@ -408,18 +456,28 @@ const JobDetails = () => {
                      </div>
                   ) : (
                     <div className="flex flex-col gap-3">
-                        <button 
-                          onClick={() => {
-                            if (job.applyMethod === 'website' && job.applyUrl) {
-                                window.open(job.applyUrl, '_blank');
-                            } else {
-                                setShowApplyModal(true);
-                            }
-                          }}
-                          className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
-                        >
-                          {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
-                        </button>
+                        {job.hasApplied ? (
+                            <button 
+                                disabled
+                                className="w-full py-4 bg-green-600 text-white text-lg font-bold rounded-xl shadow-md cursor-not-allowed flex items-center justify-center gap-2 opacity-90"
+                            >
+                                <CheckCircle className="w-6 h-6" />
+                                Applied
+                            </button>
+                        ) : (
+                            <button 
+                              onClick={() => {
+                                if (job.applyMethod === 'website' && job.applyUrl) {
+                                    window.open(job.applyUrl, '_blank');
+                                } else {
+                                    setShowApplyModal(true);
+                                }
+                              }}
+                              className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
+                            >
+                              {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
+                            </button>
+                        )}
                         <button 
                             onClick={handleMessageEmployer}
                             className="w-full py-3 bg-white text-blue-600 text-lg font-bold rounded-xl border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2"
@@ -728,6 +786,18 @@ const JobDetails = () => {
                                                     </div>
                                                 </div>
                                             )}
+                                        </div>
+
+                                        <div 
+                                            className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group mb-3"
+                                            onClick={() => setFollowCompany(!followCompany)}
+                                        >
+                                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center mr-4 transition-all ${followCompany ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 group-hover:border-blue-400'}`}>
+                                                {followCompany && <CheckCircle className="w-4 h-4 text-white" />}
+                                            </div>
+                                            <label className="cursor-pointer select-none font-medium text-slate-600 text-sm">
+                                                Follow <span className="text-slate-900 font-bold">{job.company}</span> for future job updates.
+                                            </label>
                                         </div>
 
                                         <div 
