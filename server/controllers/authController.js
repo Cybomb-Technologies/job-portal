@@ -331,7 +331,7 @@ const resetPassword = async (req, res) => {
 // @route   GET /api/auth/profile
 // @access  Private
 const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).populate('followingCompanies', 'name profilePicture');
 
   if (user) {
     let responseData = {
@@ -741,6 +741,77 @@ const getPublicUserProfile = async (req, res) => {
   }
 };
 
+// @desc    Get company by slug
+// @route   GET /api/auth/company/slug/:slug
+// @access  Public
+const getCompanyBySlug = async (req, res) => {
+    try {
+        const { parseSlug } = require('../utils/slugify');
+        const slug = req.params.slug;
+        const idSuffix = parseSlug(slug);
+
+        // Find company where _id ends with the suffix
+        // We fetching all companies is inefficient but safe for suffix check given MongoDB constraints on _id.
+        // Better: Use $where or regex, but regex on ObjectId is tricky.
+        // Actually, we can fetch all companies and filter in JS if the dataset is small, 
+        // OR construct a regex for the ID.
+        // Valid Mongo ID is 24 hex chars. 
+        // Suffix is 4 chars. 
+        // Regex: /.*<suffix>$/ 
+        // But _id is ObjectId, not string. we can't search _id with regex directly in standard query unless we convert using aggregation or if mongoose supports it.
+        // Mongoose doesn't support regex on ObjectId.
+        
+        // Alternative: The slugify util logic uses the last 4 chars.
+        // Is it guaranteed that the backend has access to `slugify.js` logic? 
+        // Yes, I see `require('../utils/slugify')` in `candidateController.js`.
+        
+        // Efficient way: 
+        // We know the ID ends with these 4 chars.
+        // Since we can't easily query partial ObjectId, we might have to stick to full ID lookup if possible?
+        // But the URL only has 4 chars.
+        // Wait, `CandidateController` does:
+        // `const candidates = await User.find({ role: 'Job Seeker' }); const candidate = candidates.find(c => c._id.toString().endsWith(idSuffix));`
+        // That is highly inefficient for large datasets.
+        // However, for this project, I should mimic that pattern for consistency, 
+        // unless I can do better.
+        // I'll stick to the existing pattern to avoid risk, but I'll optimize by selecting only _id first if I can.
+        
+        // Actually, `User` collection might be large. `Company` collection is smaller.
+        const companies = await Company.find().select('name _id');
+        const companyId = companies.find(c => c._id.toString().endsWith(idSuffix))?._id;
+
+        if (companyId) {
+            // Re-use getPublicUserProfile logic but by ID
+            req.params.id = companyId;
+            return getPublicUserProfile(req, res);
+        } else {
+             // Fallback: Check Users (Job Seekers/Legacy) if not found in companies
+             // This keeps behavior consistent with "Profile" which could be a user.
+             // But the route is /company/slug... maybe unnecessary?
+             // `CompanyProfile` page is for companies. 
+             // But let's check just in case it's a legacy user profile link?
+             // Nah, let's keep it strict for Companies if the route is /company/slug.
+             // BUT providing a fallback to Users allows `getPublicUserProfile` to handle it.
+             
+             // Wait, `getPublicUserProfile` takes `req.params.id`.
+             // I'll manually call it.
+             
+             const users = await User.find({ role: { $ne: 'Job Seeker' } }).select('_id'); // Only check non-seekers (employers) who might be companies
+             const userId = users.find(u => u._id.toString().endsWith(idSuffix))?._id;
+             
+             if (userId) {
+                 req.params.id = userId;
+                 return getPublicUserProfile(req, res);
+             }
+             
+             res.status(404).json({ message: 'Company not found' });
+        }
+    } catch (error) {
+        console.error('Error fetching company by slug:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 const deleteAccount = async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -1034,6 +1105,32 @@ const requestCompanyUpdate = async (req, res) => {
     }
 };
 
+// @desc    Get company followers
+// @route   GET /api/auth/company/:id/followers
+// @access  Private (Company Admin only)
+const getCompanyFollowers = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        
+        // Verify User is a member of this company
+        if (!req.user.companyId || req.user.companyId.toString() !== companyId) {
+            return res.status(403).json({ message: 'Not authorized to view followers for this company' });
+        }
+
+        const company = await Company.findById(companyId).populate('followers', 'name profilePicture title about');
+        
+        if (!company) {
+             return res.status(404).json({ message: 'Company not found' });
+        }
+        
+        res.json(company.followers);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = { 
   authUser, 
   registerUser, 
@@ -1050,5 +1147,8 @@ module.exports = {
   requestCompanyUpdate,
   unfollowCompany,
   verifyOtp,
-  resendOtp
+  resendOtp,
+  getCompanyBySlug,
+  getCompanyFollowers
 };
+

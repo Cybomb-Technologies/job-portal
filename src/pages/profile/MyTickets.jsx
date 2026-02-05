@@ -1,24 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { HelpCircle, CheckCircle } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { useAuth } from '../../context/AuthContext';
 
 const MyTickets = () => {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+
+    const fetchTickets = async () => {
+        // Don't set loading for background refresh
+        if (tickets.length === 0) setLoading(true);
+        try {
+            const { data } = await api.get('/issues/my-issues');
+            setTickets(data);
+        } catch (err) {
+            console.error("Failed to fetch tickets", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchTickets = async () => {
-            try {
-                const { data } = await api.get('/issues/my-issues');
-                setTickets(data);
-            } catch (err) {
-                console.error("Failed to fetch tickets", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchTickets();
-    }, []);
+
+        // Socket Connection
+        const socket = io(import.meta.env.VITE_SERVER_URL);
+
+        if (user) {
+            socket.emit('join', user._id);
+        }
+
+        socket.on('notification', (data) => {
+            if (data.type === 'ISSUE_UPDATE') {
+                fetchTickets();
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user]);
 
     return (
         <div className="max-w-5xl mx-auto animate-fadeIn min-h-[85vh] py-8">
@@ -78,7 +101,7 @@ const MyTickets = () => {
                                             <CheckCircle className="w-4 h-4" /> Admin Reply
                                         </h5>
                                         <p className="text-gray-700 text-sm">
-                                            The issue has been marked as resolved by the administrator.
+                                            {ticket.reply || 'The issue has been marked as resolved by the administrator.'}
                                         </p>
                                     </div>
                                 )}

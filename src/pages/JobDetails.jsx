@@ -13,12 +13,14 @@ import {
   CheckCircle,
   FileText,
   MessageCircle,
-  Hourglass
+  Hourglass,
+  Share2
 } from 'lucide-react';
 import api from '../api';
-import Swal from 'sweetalert2';
+import { showWarning, showError, quickSuccess } from '../utils/sweetAlerts';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
+import { generateSlug } from '../utils/slugify';
 
 const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -94,7 +96,7 @@ const cleanHtmlContent = (html) => {
 };
 
 const JobDetails = () => {
-  const { id } = useParams();
+  const { slug } = useParams(); // Changed id to slug
   const navigate = useNavigate();
   const { user } = useAuth();
   const { initiateChat } = useChat();
@@ -120,6 +122,7 @@ const JobDetails = () => {
   const [screeningAnswers, setScreeningAnswers] = useState({}); // { questionIndex: answer }
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [followCompany, setFollowCompany] = useState(false);
+  const [isAlreadyFollowing, setIsAlreadyFollowing] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -139,14 +142,7 @@ const JobDetails = () => {
       
       // Enforce application requirement
       if (!job.hasApplied) {
-          Swal.fire({
-              icon: 'warning',
-              title: 'Application Required',
-              text: 'You must apply to this job before you can message the employer.',
-              confirmButtonText: 'Apply Now',
-              confirmButtonColor: '#2563EB',
-              showCancelButton: true
-          }).then((result) => {
+          showWarning('Application Required', 'You must apply to this job before you can message the employer.').then((result) => {
               if (result.isConfirmed) {
                    if (job.applyMethod === 'website' && job.applyUrl) {
                         window.open(job.applyUrl, '_blank');
@@ -162,12 +158,13 @@ const JobDetails = () => {
           initiateChat(job.postedBy);
           navigate('/messages');
       } else {
-          Swal.fire({
-              icon: 'error',
-              title: 'Unavailable',
-              text: 'Employer information is not available for this job.'
-          });
+          showError('Unavailable', 'Employer information is not available for this job.');
       }
+  };
+
+  const handleShareJob = () => {
+      navigator.clipboard.writeText(window.location.href);
+      quickSuccess('Link Copied!');
   };
 
   const handleNext = () => {
@@ -226,13 +223,24 @@ const JobDetails = () => {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const { data } = await api.get(`/jobs/${id}`);
-        setJob(data);
+        setLoading(true);
+        let jobData;
+        if(slug){
+            const { data } = await api.get(`/jobs/slug/${slug}`);
+            jobData = data;
+        } else {
+            // Fallback
+             setError('Invalida job URL');
+             setLoading(false);
+             return;
+        }
+
+        setJob(jobData);
         setLoading(false);
 
         // Fetch Related Jobs
         try {
-            const relatedRes = await api.get(`/jobs/${id}/related`);
+            const relatedRes = await api.get(`/jobs/${jobData._id}/related`);
             setRelatedJobs(relatedRes.data);
         } catch (err) {
             console.error("Failed to fetch related jobs", err);
@@ -243,8 +251,8 @@ const JobDetails = () => {
         setLoading(false);
       }
     };
-    fetchJob();
-  }, [id]);
+    if(slug) fetchJob();
+  }, [slug, user?._id]);
 
   useEffect(() => {
       if (user && showApplyModal) {
@@ -253,6 +261,29 @@ const JobDetails = () => {
               try {
                   const { data } = await api.get('/auth/profile');
                   setUserResumes(data.resumes || []);
+
+                  // Check if already following
+                  if (job) {
+                      // Helper to safely get string ID
+                      const getId = (item) => {
+                          if (!item) return null;
+                          if (typeof item === 'string') return item;
+                          return item._id;
+                      };
+
+                      const targetId = getId(job.companyId) || getId(job.postedBy);
+                      
+                      if (targetId) {
+                          const isFollowed = data.following?.some(f => getId(f) === targetId) || 
+                                           data.followingCompanies?.some(fc => getId(fc) === targetId);
+                          
+                          setIsAlreadyFollowing(!!isFollowed);
+                          
+                          if (!!isFollowed) {
+                              setFollowCompany(true);
+                          }
+                      }
+                  }
               } catch (err) {
                   console.error("Failed to fetch profile", err);
               } finally {
@@ -261,7 +292,7 @@ const JobDetails = () => {
           };
           fetchProfile();
       }
-  }, [user, showApplyModal]);
+  }, [user, showApplyModal, job]);
 
   const handleApply = async (e) => {
     e.preventDefault();
@@ -372,11 +403,25 @@ const JobDetails = () => {
                 <div>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2 font-display tracking-tight">{job.title}</h1>
                   <div className="flex items-center text-lg text-slate-600 font-medium mb-4 group/company">
-                    <Link to={`/company/${job.postedBy?._id}`} className="hover:text-blue-600 transition-all">
-                      {job.company}
-                    </Link>
+                    {(job.postedBy?._id || job.companyId) ? (
+                        <Link to={`/company/${generateSlug(job.company, job.postedBy?._id || job.companyId)}`} className="hover:text-blue-600 transition-all">
+                        {job.company}
+                        </Link>
+                    ) : (
+                        <span>{job.company}</span>
+                    )}
                   </div>
                 </div>
+
+                
+                {/* Share Button (Top Right) */}
+                <button 
+                    onClick={handleShareJob}
+                    className="ml-auto p-3 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group/share"
+                    title="Share Job"
+                >
+                    <Share2 className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
+                </button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-8 relative z-10">
@@ -497,9 +542,7 @@ const JobDetails = () => {
             <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 md:p-10">
               <h2 className="text-2xl font-bold text-slate-900 mb-6 font-display">Job Description</h2>
 
-              {/* Debug: Log content to console */}
-              {console.log('Original description:', job.description)}
-              {console.log('Cleaned description:', cleanHtmlContent(job.description))}
+
               <div 
                 className="job-description-text text-slate-700 mb-8 text-lg leading-relaxed font-sans w-full"
                 dangerouslySetInnerHTML={{ 
@@ -589,7 +632,7 @@ const JobDetails = () => {
                         <h3 className="text-lg font-bold text-slate-900 mb-6 font-display">Related Jobs</h3>
                         <div className="space-y-4">
                             {relatedJobs.map(job => (
-                                <Link to={`/job/${job._id}`} key={job._id} className="block group">
+                                <Link to={`/job/${generateSlug(job.title, job._id)}`} key={job._id} className="block group">
                                     <div className="p-4 border border-gray-100 rounded-xl hover:bg-blue-50 hover:border-blue-100 transition-all duration-200">
                                         <h4 className="font-bold text-slate-900 group-hover:text-blue-600 line-clamp-1 mb-1">{job.title}</h4>
                                         <div className="text-sm text-slate-500 font-medium mb-2">{job.company}</div>
@@ -788,17 +831,19 @@ const JobDetails = () => {
                                             )}
                                         </div>
 
-                                        <div 
-                                            className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group mb-3"
-                                            onClick={() => setFollowCompany(!followCompany)}
-                                        >
-                                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center mr-4 transition-all ${followCompany ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 group-hover:border-blue-400'}`}>
-                                                {followCompany && <CheckCircle className="w-4 h-4 text-white" />}
+                                        {!isAlreadyFollowing && (
+                                            <div 
+                                                className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group mb-3"
+                                                onClick={() => setFollowCompany(!followCompany)}
+                                            >
+                                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center mr-4 transition-all ${followCompany ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 group-hover:border-blue-400'}`}>
+                                                    {followCompany && <CheckCircle className="w-4 h-4 text-white" />}
+                                                </div>
+                                                <label className="cursor-pointer select-none font-medium text-slate-600 text-sm">
+                                                    Follow <span className="text-slate-900 font-bold">{job.company}</span> for future job updates.
+                                                </label>
                                             </div>
-                                            <label className="cursor-pointer select-none font-medium text-slate-600 text-sm">
-                                                Follow <span className="text-slate-900 font-bold">{job.company}</span> for future job updates.
-                                            </label>
-                                        </div>
+                                        )}
 
                                         <div 
                                             className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group"

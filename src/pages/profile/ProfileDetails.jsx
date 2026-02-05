@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2 } from 'lucide-react';
+import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2, Building } from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
 import ImageUrlCropper from '../../components/ImageUrlCropper';
+import { generateSlug } from '../../utils/slugify';
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -33,6 +34,7 @@ const ProfileDetails = () => {
     const [experience, setExperience] = useState([]);
     const [education, setEducation] = useState([]);
     const [certifications, setCertifications] = useState([]);
+    const [followingCompanies, setFollowingCompanies] = useState([]);
     
     // Files
     const [profilePicture, setProfilePicture] = useState(null);
@@ -92,8 +94,8 @@ const ProfileDetails = () => {
         total += 20;
         if (experience.length > 0) {
             score += 20;
-             const isValidExp = experience.every(exp => exp.title && exp.company);
-             if(!isValidExp) currentErrors.experience = "Complete all fields in experience entries";
+            const isValidExp = experience.every(exp => exp.title && exp.company);
+            if(!isValidExp) currentErrors.experience = "Complete all fields in experience entries";
         } else {
             missing.push("Work Experience");
         }
@@ -132,6 +134,36 @@ const ProfileDetails = () => {
         
         setFormErrors(currentErrors);
 
+        // Auto-calculate Total Experience
+        if (experience && experience.length > 0) {
+            let totalMonths = 0;
+            experience.forEach(exp => {
+                if (!exp.startYear || !exp.startMonth) return;
+                
+                const startMonthIndex = months.indexOf(exp.startMonth);
+                const startDate = new Date(exp.startYear, startMonthIndex);
+                
+                let endDate;
+                if (exp.endYear === 'Present' || !exp.endYear) {
+                    endDate = new Date();
+                } else {
+                    const endMonthIndex = months.indexOf(exp.endMonth) !== -1 ? months.indexOf(exp.endMonth) : 11;
+                    endDate = new Date(exp.endYear, endMonthIndex);
+                }
+                
+                if (startDate > endDate) return; // invalid range
+                
+                // Difference in months + 1 (inclusive)
+                let monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth()) + 1;
+                totalMonths += Math.max(0, monthsDiff);
+            });
+            
+            // Convert to years with 1 decimal place
+            setTotalExperience(parseFloat((totalMonths / 12).toFixed(1)));
+        } else {
+            setTotalExperience(0);
+        }
+
     }, [name, email, title, about, currentLocation, profilePicture, experience, education, skills, existingResume, resume]);
 
     const tabs = [
@@ -164,6 +196,8 @@ const ProfileDetails = () => {
             else setEducation([]);
 
             setCertifications(Array.isArray(data.certifications) ? data.certifications : []);
+            
+            setFollowingCompanies(data.followingCompanies || []);
             
             const getFullUrl = (path) => {
                 if (!path) return null;
@@ -1122,13 +1156,12 @@ const ProfileDetails = () => {
                                      <label className="block text-sm font-bold text-gray-700">Total Experience (Years)</label>
                                      <input 
                                          type="number" 
-                                         min="0"
-                                         step="0.1"
-                                         placeholder="e.g. 3.5"
                                          value={totalExperience}
-                                         onChange={(e) => setTotalExperience(parseFloat(e.target.value) || 0)}
-                                         className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all border-gray-200 focus:border-[#4169E1]`}
+                                         readOnly
+                                         className={`w-full px-4 py-3.5 border rounded-xl bg-gray-50 focus:outline-none transition-all border-gray-200 text-gray-500 font-medium`}
+                                         title="Calculated automatically from Work Experience"
                                      />
+                                     <p className="text-xs text-blue-500 mt-1">Calculated automatically from your work experience.</p>
                                 </div>
 
                                 <div className="space-y-2">

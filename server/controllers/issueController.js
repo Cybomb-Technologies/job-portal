@@ -87,8 +87,9 @@ const updateIssueStatus = async (req, res) => {
         }
 
         issue.status = status;
-        // Optionally save the reply in the issue itself if you add a 'reply' field to schema
-        // issue.reply = reply; 
+        if (reply) {
+            issue.reply = reply;
+        } 
         
         await issue.save();
 
@@ -99,7 +100,7 @@ const updateIssueStatus = async (req, res) => {
                 recipient: issue.user,
                 sender: req.user._id, // Admin ID
                 type: 'ISSUE_UPDATE',
-                message: `Issue Resolved: ${reply || status}`,
+                message: `Issue: ${reply || status}`,
                 relatedId: issue._id,
                 relatedModel: 'Issue'
             });

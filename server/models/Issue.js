@@ -23,6 +23,9 @@ const issueSchema = mongoose.Schema({
         type: String,
         required: true
     },
+    reply: {
+        type: String
+    },
     status: {
         type: String,
         enum: ['Open', 'In Progress', 'Resolved', 'Closed'],

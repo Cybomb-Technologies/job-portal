@@ -26,6 +26,7 @@ import EmployerReviews from './pages/employer/EmployerReviews';
 import EmployerWhyJoinUs from './pages/employer/EmployerWhyJoinUs';
 import EmployerActivityLogs from './pages/employer/EmployerActivityLogs';
 import TeamManagement from './pages/employer/TeamManagement';
+import EmployerFollowers from './pages/employer/EmployerFollowers';
 
 // Admin Imports
 import AdminLogin from './pages/admin/AdminLogin';
@@ -44,6 +45,7 @@ import ProfileLayout from './pages/profile/ProfileLayout';
 import ProfileDetails from './pages/profile/ProfileDetails';
 import AppliedJobs from './pages/profile/AppliedJobs';
 import MyTickets from './pages/profile/MyTickets';
+import FollowingCompanies from './pages/profile/FollowingCompanies';
 import ChangePassword from './pages/profile/ChangePassword';
 
 // Info Pages
@@ -75,8 +77,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/companies" element={<Companies />} />
-            <Route path="/company/:id" element={<CompanyProfile />} />
-            <Route path="/job/:id" element={<JobDetails />} />
+            <Route path="/company/:slug" element={<CompanyProfile />} />
+            <Route path="/job/:slug" element={<JobDetails />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -120,6 +122,7 @@ function App() {
               <Route index element={<ProfileDetails />} />
               <Route path="applications" element={<AppliedJobs />} />
               <Route path="tickets" element={<MyTickets />} />
+              <Route path="following" element={<FollowingCompanies />} />
               <Route path="password" element={<ChangePassword />} />
             </Route>
   
@@ -212,7 +215,9 @@ function App() {
               <Route path="why-join-us" element={<EmployerWhyJoinUs />} />
               <Route path="reviews" element={<EmployerReviews />} />
               <Route path="team" element={<TeamManagement />} />
+              <Route path="followers" element={<EmployerFollowers />} />
               <Route path="activity-logs" element={<EmployerActivityLogs />} />
+              <Route path="tickets" element={<MyTickets />} />
               <Route path="password" element={<ChangePassword />} />
             </Route>
   

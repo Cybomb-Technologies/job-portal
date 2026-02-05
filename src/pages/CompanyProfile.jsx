@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { X, Send, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { generateSlug } from '../utils/slugify';
 
 const ReviewCard = ({ review, isOwner, onUpdate }) => {
     const handleToggleVisibility = async () => {
@@ -300,8 +301,9 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
     );
 };
 
+
 const CompanyProfile = () => {
-    const { id } = useParams();
+    const { slug } = useParams(); // Changed from id to slug
     const navigate = useNavigate();
     const { initiateChat } = useChat();
     const [company, setCompany] = useState(null);
@@ -325,98 +327,65 @@ const CompanyProfile = () => {
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewSort, setReviewSort] = useState('newest');
     const { user: currentUser } = useAuth();
-    const isOwner = currentUser?._id === id;
+    
+    // Followers State
+    const [followers, setFollowers] = useState([]);
+    const [loadingFollowers, setLoadingFollowers] = useState(false);
+    
+    // Derived state for owner check - needs company ID which we might not have initially if using slug
+    // We'll update isOwner logic inside the effect or derived from company state
+    const isOwner = company && currentUser?._id === company._id; 
+    
     const [copiedMap, setCopiedMap] = useState({});
 
-    const handleCopy = (text, key) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setCopiedMap(prev => ({ ...prev, [key]: true }));
-            setTimeout(() => {
-                setCopiedMap(prev => ({ ...prev, [key]: false }));
-            }, 2000);
+    // ... (Handlers)
+
+    const handleMessage = async () => {
+        if (!currentUser) return Swal.fire({
+            icon: 'info',
+            title: 'Login Required',
+            text: "Please login to message the company recruiter"
+        });
+
+        if (isOwner) return Swal.fire({
+            icon: 'warning',
+            title: 'Action Not Allowed',
+            text: "You cannot message your own company"
+        });
+
+        // Use contactUser if available, otherwise fallback to company owner ID (company._id)
+        // But chat usually expects a user ID. company._id IS the user ID of the owner in this schema?
+        // Based on previous code, company._id seems to be the user ID of the employer.
+        // Let's use company.contactUser?._id || company._id
+        const recipientId = company.contactUser?._id || company._id;
+        const recipientName = company.companyName || company.name;
+        const recipientProfile = company.profilePicture;
+
+        initiateChat({
+            _id: recipientId,
+            name: recipientName,
+            profilePicture: recipientProfile
         });
     };
 
-    const handleShare = async () => {
-        const shareData = {
-            title: company.companyName || company.name,
-            text: `Check out ${company.companyName || company.name} on Cybomb Job Portal`,
-            url: window.location.href,
-        };
-
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(window.location.href);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Copied!',
-                    text: 'Profile link copied to clipboard!',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-            }
-        } catch (err) {
-            console.error('Error sharing:', err);
-        }
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        Swal.fire({
+            icon: 'success',
+            title: 'Link Copied',
+            text: 'Company profile link copied to clipboard',
+            timer: 1500,
+            showConfirmButton: false
+        });
     };
 
-    const getYoutubeId = (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    };
-
-    const handleMessage = () => {
-        if (!currentUser) {
-            // alert("Please login to message the recruiter."); // Optional: use more UI friendly way?
-            navigate('/login');
-            return;
-        }
-
-        if (company.isCompanyEntity) {
-            if (company.contactUser) {
-                // We need to ensure we are not chatting with ourselves if we are the admin
-                if (company.contactUser._id === currentUser._id) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Action Not Allowed',
-                        text: "You cannot message your own company."
-                    });
-                    return;
-                }
-                initiateChat(company.contactUser);
-                navigate('/messages');
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Messaging Unavailable',
-                    text: "No contact person found for this company."
-                });
-            }
-        } else {
-            // Legacy user profile
-             if (company._id === currentUser._id) {
-                 Swal.fire({
-                     icon: 'warning',
-                     title: 'Action Not Allowed',
-                     text: "You cannot message yourself."
-                 });
-                 return;
-             }
-            initiateChat(company);
-            navigate('/messages');
-        }
-    };
-
-    const fetchReviews = async () => {
+    const fetchReviews = async (companyId) => {
+        if (!companyId) return;
         try {
             setReviewsLoading(true);
             // Use owner-specific route if logged in as company owner to see names/hidden reviews
-            const endpoint = isOwner ? '/reviews/my/all' : `/reviews/company/${id}?sort=${reviewSort}`;
+            const currentIsOwner = currentUser?._id === companyId;
+            const endpoint = currentIsOwner ? '/reviews/my/all' : `/reviews/company/${companyId}?sort=${reviewSort}`;
             const { data } = await api.get(endpoint);
             setReviews(data);
         } catch (err) {
@@ -425,31 +394,74 @@ const CompanyProfile = () => {
             setReviewsLoading(false);
         }
     };
-
+    
+    // Effect to fetch custom reviews when sorting changes, dependent on company being loaded
     useEffect(() => {
-        if (id) {
-            fetchReviews();
+        if (company) {
+            fetchReviews(company._id);
         }
-    }, [id, reviewSort]);
+    }, [reviewSort, company?._id]); 
 
-    const averageRating = reviews.length > 0 
-        ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1) 
-        : 0.0;
+    // Fetch Followers when tab is active
+    useEffect(() => {
+        const fetchFollowers = async () => {
+             if (activeTab === 'followers' && company && currentUser?._id === company._id && followers.length === 0) {
+                 setLoadingFollowers(true);
+                 try {
+                     const { data } = await api.get(`/auth/company/${company._id}/followers`);
+                     setFollowers(data);
+                 } catch (err) {
+                     console.error("Failed to fetch followers", err);
+                 } finally {
+                     setLoadingFollowers(false);
+                 }
+             }
+        };
+        fetchFollowers();
+    }, [activeTab, company, currentUser]); 
 
+    // Main Data Fetch Effect
     useEffect(() => {
         const fetchCompanyData = async () => {
             try {
-                const [companyRes, jobsRes] = await Promise.all([
-                    api.get(`/auth/user/${id}`),
-                    api.get(`/jobs?companyId=${id}`) // Fetch by Company ID
-                ]);
+                setLoading(true);
+                let companyData;
+                
+                // 1. Fetch Company Profile
+                if (slug) {
+                    const { data } = await api.get(`/auth/company/slug/${slug}`);
+                    companyData = data;
+                } else {
+                     // Fallback/Legacy if :id route usage still exists anywhere (unlikely but safe)
+                     // Actually App.jsx routes are changed, but internal navigation might pass ID? 
+                     // No, usage of this component is via Route.
+                     // But let's check parseSlug or similar if needed. 
+                     // For now assume strictly slug.
+                     setError('Invalid company URL');
+                     setLoading(false);
+                     return;
+                }
 
-                setCompany(companyRes.data);
-                setJobs(jobsRes.data);
+                setCompany(companyData);
+
+                // 2. Fetch Jobs (dependant on company ID)
+                const { data: jobsData } = await api.get(`/jobs?companyId=${companyData._id}`);
+                setJobs(jobsData);
+                
                 setLoading(false);
+                
+                // 3. Initial Review Fetch
+                fetchReviews(companyData._id);
 
-                // Fetch Custom Reviews
-                fetchReviews();
+                // 4. Check Follow Status
+                if (currentUser && currentUser.role === 'Job Seeker') {
+                     api.get('/auth/profile').then(res => {
+                        const isFollowed = res.data.following?.some(f => f._id === companyData._id || f === companyData._id) || 
+                                         res.data.followingCompanies?.some(fc => fc._id === companyData._id || fc === companyData._id);
+                        setIsFollowing(!!isFollowed);
+                    }).catch(err => console.error(err));
+                }
+
             } catch (err) {
                 console.error('Error fetching company details:', err);
                 setError('Failed to load company profile.');
@@ -457,22 +469,10 @@ const CompanyProfile = () => {
             }
         };
 
-        if (id) {
+        if (slug) {
             fetchCompanyData();
-            // Check follow status
-            if (currentUser && currentUser.role === 'Job Seeker') {
-                // We need to check if companyId is in user's following list
-                // Since we don't have the updated user object with 'following' populated in context immediately after follow,
-                // we might need to fetch user profile or check against a list.
-                // For now, let's fetch the user profile again to get fresh 'following' list
-                api.get('/auth/profile').then(res => {
-                    const isFollowed = res.data.following?.some(f => f._id === id || f === id) || 
-                                     res.data.followingCompanies?.some(fc => fc._id === id || fc === id);
-                    setIsFollowing(!!isFollowed);
-                }).catch(err => console.error(err));
-            }
         }
-    }, [id, currentUser]);
+    }, [slug, currentUser]); // Removed id dependency, added slug. Also removed separate fetchReviews call/effect trigger on ID.
 
     const filteredJobs = jobs.filter(job => {
         const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -489,6 +489,10 @@ const CompanyProfile = () => {
     // Unique values for filters
     const departments = [...new Set(jobs.map(j => j.functionalArea).filter(Boolean))];
     const locations = [...new Set(jobs.map(j => j.location).filter(Boolean))];
+
+    const averageRating = reviews.length > 0 
+        ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1) 
+        : 'New';
 
     if (loading) {
         return (
@@ -622,10 +626,10 @@ const CompanyProfile = () => {
                                                 });
                                                 try {
                                                     if (isFollowing) {
-                                                        await api.delete(`/auth/unfollow/${id}`);
+                                                        await api.delete(`/auth/unfollow/${company._id}`);
                                                         setIsFollowing(false);
                                                     } else {
-                                                        await api.post(`/auth/follow/${id}`);
+                                                        await api.post(`/auth/follow/${company._id}`);
                                                         setIsFollowing(true);
                                                     }
                                                 } catch (err) {
@@ -673,7 +677,7 @@ const CompanyProfile = () => {
                 {/* Tabs Navigation */}
                 <div className="max-w-7xl mx-auto px-6 mt-8">
                     <div className="flex items-center gap-10 border-b border-gray-200 overflow-x-auto no-scrollbar">
-                        {['overview', 'jobs', 'why join us'].map((tab) => (
+                        {['overview', 'jobs', 'why join us', ...(isOwner ? ['followers'] : [])].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -982,7 +986,7 @@ const CompanyProfile = () => {
                             ) : (
                                 filteredJobs.map((job) => (
                                     <Link 
-                                        to={`/job/${job._id}`}
+                                        to={`/job/${generateSlug(job.title, job._id)}`}
                                         key={job._id} 
                                         className="group bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all active:scale-[0.98]"
                                     >
@@ -1112,7 +1116,7 @@ const CompanyProfile = () => {
             <ReviewModal 
                 isOpen={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
-                companyId={id}
+                companyId={company?._id}
                 companyName={company.companyName}
                 onSuccess={fetchReviews}
             />

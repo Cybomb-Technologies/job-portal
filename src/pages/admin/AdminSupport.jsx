@@ -3,14 +3,19 @@ import api from '../../api';
 import { Mail, CheckCircle, AlertCircle, Clock, Filter, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import Swal from 'sweetalert2';
 
+import { io } from 'socket.io-client';
+import { useAuth } from '../../context/AuthContext';
+
 const AdminSupport = () => {
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    const { user } = useAuth();
 
     const fetchIssues = async () => {
-        setLoading(true);
+        // Don't set loading to true for background refreshes if issues already exist
+        if (issues.length === 0) setLoading(true);
         try {
             const { data } = await api.get('/issues');
             setIssues(data);
@@ -23,7 +28,48 @@ const AdminSupport = () => {
 
     useEffect(() => {
         fetchIssues();
-    }, []);
+
+        // Socket Connection
+        const socket = io(import.meta.env.VITE_SERVER_URL);
+
+        if (user) {
+            socket.emit('join', 'admin-room');
+        }
+
+        socket.on('notification', (data) => {
+            if (data.type === 'NEW_ISSUE') {
+                fetchIssues();
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user]);
+
+    const handleUpdateStatus = async (id, newStatus) => {
+        try {
+            await api.put(`/issues/${id}/status`, { status: newStatus });
+            
+            setIssues(prevIssues => prevIssues.map(issue => 
+                issue._id === id ? { ...issue, status: newStatus } : issue
+            ));
+
+            Swal.fire({
+                title: 'Status Updated',
+                text: `Issue marked as ${newStatus}`,
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to update status',
+                icon: 'error'
+            });
+        }
+    };
 
     const handleResolve = async (id, currentStatus) => {
         // Confirmation with Reply Input
@@ -116,7 +162,7 @@ const AdminSupport = () => {
                     />
                 </div>
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                    {['All', 'Open', 'Resolved'].map(status => (
+                    {['All', 'Open', 'In Progress', 'Resolved'].map(status => (
                          <button
                             key={status}
                             onClick={() => setFilterStatus(status)}
@@ -143,7 +189,7 @@ const AdminSupport = () => {
                         <CheckCircle className="w-8 h-8 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">No tickets found</h3>
-                    <p className="text-gray-500">Great job! There are no pending issues.</p>
+                    <p className="text-gray-500">There are no tickets matching the current filter.</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -183,8 +229,28 @@ const AdminSupport = () => {
                                 <p className="text-gray-700 whitespace-pre-wrap">{issue.description}</p>
                             </div>
 
-                            {issue.status !== 'Resolved' && (
-                                <div className="flex justify-end">
+                            {issue.reply && (
+                                <div className="mb-4 pl-4 border-l-4 border-green-500 bg-green-50/50 p-4 rounded-r-lg">
+                                    <h5 className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
+                                        <CheckCircle className="w-4 h-4" /> Your Reply
+                                    </h5>
+                                    <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                                        {issue.reply}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3">
+                                {issue.status === 'Open' && (
+                                    <button 
+                                        onClick={() => handleUpdateStatus(issue._id, 'In Progress')}
+                                        className="px-4 py-2 bg-yellow-100 text-yellow-700 text-sm font-bold rounded-lg hover:bg-yellow-200 transition-colors flex items-center gap-2"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        Mark In Progress
+                                    </button>
+                                )}
+                                {issue.status !== 'Resolved' && (
                                     <button 
                                         onClick={() => handleResolve(issue._id)}
                                         className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -192,8 +258,8 @@ const AdminSupport = () => {
                                         <CheckCircle className="w-4 h-4" />
                                         Mark as Resolved
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>

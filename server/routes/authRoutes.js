@@ -11,13 +11,15 @@ const {
     updateUserProfile,
     changePassword,
     deleteAccount,
+    getCompanyBySlug,
     getPublicUserProfile,
     getCompanies,
     followCompany,
     unfollowCompany,
     verifyOtp,
     resendOtp,
-    requestCompanyUpdate
+    requestCompanyUpdate,
+    getCompanyFollowers
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -79,9 +81,11 @@ router.post('/company/update-request', protect, upload.fields([
 ]), requestCompanyUpdate);
 
 router.put('/update-password', protect, changePassword);
+router.get('/company/slug/:slug', getCompanyBySlug);
 router.get('/user/:id', getPublicUserProfile);
 router.get('/companies', getCompanies);
 router.post('/follow/:id', protect, followCompany);
 router.delete('/unfollow/:id', protect, unfollowCompany);
+router.get('/company/:id/followers', protect, getCompanyFollowers);
 
 module.exports = router;

@@ -448,10 +448,48 @@ const getRelatedJobs = async (req, res) => {
     }
 };
 
+
+// @desc    Get job by slug
+// @route   GET /api/jobs/slug/:slug
+// @access  Public
+const getJobBySlug = async (req, res) => {
+    try {
+        const { parseSlug } = require('../utils/slugify');
+        const slug = req.params.slug;
+        const idSuffix = parseSlug(slug);
+
+        // Find job where _id ends with the suffix
+        // Efficient way: Fetch _id for all active jobs (or reasonable subset if possible) 
+        // to filter by suffix.
+        const jobs = await Job.find({ status: 'Active' }).select('_id');
+        const jobId = jobs.find(j => j._id.toString().endsWith(idSuffix))?._id;
+
+        if (jobId) {
+             req.params.id = jobId;
+             return getJobById(req, res);
+        } else {
+             // Check closed jobs too just in case? Or return 404
+             const closedJobs = await Job.find().select('_id status'); // Check all
+             const closedJobId = closedJobs.find(j => j._id.toString().endsWith(idSuffix))?._id;
+             
+             if (closedJobId) {
+                 req.params.id = closedJobId;
+                 return getJobById(req, res);
+             }
+
+             res.status(404).json({ message: 'Job not found' });
+        }
+    } catch (error) {
+        console.error('Error fetching job by slug:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
   createJob,
   getJobs,
   getJobById,
+  getJobBySlug,
   getMyJobs,
   updateJob,
   deleteJob,
