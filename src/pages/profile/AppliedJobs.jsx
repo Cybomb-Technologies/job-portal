@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, MapPin, Briefcase, Calendar, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 import api from '../../api';
+import { generateSlug } from '../../utils/slugify';
 
 const AppliedJobs = () => {
   const [applications, setApplications] = useState([]);
@@ -58,7 +59,7 @@ const AppliedJobs = () => {
                     <div key={app._id} className="p-4 rounded-lg border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-black mb-1">
-                                <Link to={`/job/${app.job?._id}`} className="hover:text-[#4169E1]">{app.job?.title || 'Job Unavailable'}</Link>
+                                <Link to={`/job/${app.job ? generateSlug(app.job.title, app.job._id) : '#'}`} className="hover:text-[#4169E1]">{app.job?.title || 'Job Unavailable'}</Link>
                             </h3>
                             <div className="flex flex-wrap gap-4 text-xs text-gray-600 mb-2">
                                 <span className="flex items-center"><Briefcase className="w-3 h-3 mr-1" /> {app.job?.company || 'Unknown Company'}</span>
@@ -70,7 +71,7 @@ const AppliedJobs = () => {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                             {getStatusBadge(app.status)}
-                            <Link to={`/job/${app.job?._id}`} className="text-[#4169E1] text-xs hover:underline font-medium">
+                            <Link to={`/job/${app.job ? generateSlug(app.job.title, app.job._id) : '#'}`} className="text-[#4169E1] text-xs hover:underline font-medium">
                                 View Job
                             </Link>
                         </div>

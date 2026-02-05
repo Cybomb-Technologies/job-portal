@@ -11,6 +11,7 @@ const {
     updateUserProfile,
     changePassword,
     deleteAccount,
+    getCompanyBySlug,
     getPublicUserProfile,
     getCompanies,
     followCompany,
@@ -79,6 +80,7 @@ router.post('/company/update-request', protect, upload.fields([
 ]), requestCompanyUpdate);
 
 router.put('/update-password', protect, changePassword);
+router.get('/company/slug/:slug', getCompanyBySlug);
 router.get('/user/:id', getPublicUserProfile);
 router.get('/companies', getCompanies);
 router.post('/follow/:id', protect, followCompany);
