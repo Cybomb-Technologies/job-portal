@@ -44,6 +44,7 @@ import AdminCompanyUpdates from './pages/admin/AdminCompanyUpdates';
 import ProfileLayout from './pages/profile/ProfileLayout';
 import ProfileDetails from './pages/profile/ProfileDetails';
 import AppliedJobs from './pages/profile/AppliedJobs';
+import SavedJobs from './pages/profile/SavedJobs';
 import MyTickets from './pages/profile/MyTickets';
 import FollowingCompanies from './pages/profile/FollowingCompanies';
 import ChangePassword from './pages/profile/ChangePassword';
@@ -121,6 +122,7 @@ function App() {
             >
               <Route index element={<ProfileDetails />} />
               <Route path="applications" element={<AppliedJobs />} />
+              <Route path="saved-jobs" element={<SavedJobs />} />
               <Route path="tickets" element={<MyTickets />} />
               <Route path="following" element={<FollowingCompanies />} />
               <Route path="password" element={<ChangePassword />} />

@@ -1131,6 +1131,82 @@ const getCompanyFollowers = async (req, res) => {
     }
 };
 
+// @desc    Save a job
+// @route   POST /api/auth/jobs/:id/save
+// @access  Private (Job Seeker)
+const saveJob = async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const userId = req.user._id;
+
+        // Verify job exists
+        const job = await Job.findById(jobId);
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        await User.findByIdAndUpdate(userId, {
+            $addToSet: { savedJobs: jobId }
+        });
+
+        res.json({ message: 'Job saved successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Unsave a job
+// @route   DELETE /api/auth/jobs/:id/unsave
+// @access  Private (Job Seeker)
+const unsaveJob = async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const userId = req.user._id;
+
+        await User.findByIdAndUpdate(userId, {
+            $pull: { savedJobs: jobId }
+        });
+
+        res.json({ message: 'Job unsaved successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get saved jobs
+// @route   GET /api/auth/saved-jobs
+// @access  Private (Job Seeker)
+const getSavedJobs = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const user = await User.findById(userId).populate({
+            path: 'savedJobs',
+            populate: {
+                path: 'postedBy',
+                select: 'name profilePicture companyName'
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Filter out expired or inactive jobs
+        const savedJobs = user.savedJobs?.filter(job => job && job.status === 'Active') || [];
+
+        res.json(savedJobs);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = { 
   authUser, 
   registerUser, 
@@ -1149,6 +1225,9 @@ module.exports = {
   verifyOtp,
   resendOtp,
   getCompanyBySlug,
-  getCompanyFollowers
+  getCompanyFollowers,
+  saveJob,
+  unsaveJob,
+  getSavedJobs
 };
 
