@@ -328,6 +328,10 @@ const CompanyProfile = () => {
     const [reviewSort, setReviewSort] = useState('newest');
     const { user: currentUser } = useAuth();
     
+    // Followers State
+    const [followers, setFollowers] = useState([]);
+    const [loadingFollowers, setLoadingFollowers] = useState(false);
+    
     // Derived state for owner check - needs company ID which we might not have initially if using slug
     // We'll update isOwner logic inside the effect or derived from company state
     const isOwner = company && currentUser?._id === company._id; 
@@ -397,6 +401,24 @@ const CompanyProfile = () => {
             fetchReviews(company._id);
         }
     }, [reviewSort, company?._id]); 
+
+    // Fetch Followers when tab is active
+    useEffect(() => {
+        const fetchFollowers = async () => {
+             if (activeTab === 'followers' && company && currentUser?._id === company._id && followers.length === 0) {
+                 setLoadingFollowers(true);
+                 try {
+                     const { data } = await api.get(`/auth/company/${company._id}/followers`);
+                     setFollowers(data);
+                 } catch (err) {
+                     console.error("Failed to fetch followers", err);
+                 } finally {
+                     setLoadingFollowers(false);
+                 }
+             }
+        };
+        fetchFollowers();
+    }, [activeTab, company, currentUser]); 
 
     // Main Data Fetch Effect
     useEffect(() => {
@@ -655,7 +677,7 @@ const CompanyProfile = () => {
                 {/* Tabs Navigation */}
                 <div className="max-w-7xl mx-auto px-6 mt-8">
                     <div className="flex items-center gap-10 border-b border-gray-200 overflow-x-auto no-scrollbar">
-                        {['overview', 'jobs', 'why join us'].map((tab) => (
+                        {['overview', 'jobs', 'why join us', ...(isOwner ? ['followers'] : [])].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}

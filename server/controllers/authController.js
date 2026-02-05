@@ -331,7 +331,7 @@ const resetPassword = async (req, res) => {
 // @route   GET /api/auth/profile
 // @access  Private
 const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).populate('followingCompanies', 'name profilePicture');
 
   if (user) {
     let responseData = {
@@ -1105,6 +1105,32 @@ const requestCompanyUpdate = async (req, res) => {
     }
 };
 
+// @desc    Get company followers
+// @route   GET /api/auth/company/:id/followers
+// @access  Private (Company Admin only)
+const getCompanyFollowers = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        
+        // Verify User is a member of this company
+        if (!req.user.companyId || req.user.companyId.toString() !== companyId) {
+            return res.status(403).json({ message: 'Not authorized to view followers for this company' });
+        }
+
+        const company = await Company.findById(companyId).populate('followers', 'name profilePicture title about');
+        
+        if (!company) {
+             return res.status(404).json({ message: 'Company not found' });
+        }
+        
+        res.json(company.followers);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = { 
   authUser, 
   registerUser, 
@@ -1122,5 +1148,7 @@ module.exports = {
   unfollowCompany,
   verifyOtp,
   resendOtp,
-  getCompanyBySlug
+  getCompanyBySlug,
+  getCompanyFollowers
 };
+
