@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Briefcase, IndianRupee, Clock, ShieldCheck, CheckCircle } from 'lucide-react';
+import { generateSlug } from '../../utils/slugify';
 
 const JobCard = ({ job }) => {
 
   
   return (
-    <Link to={`/job/${job._id}`} className="block group h-full">
+    <Link to={`/job/${generateSlug(job.title, job._id)}`} className="block group h-full">
         <div className="bg-white rounded-[1.5rem] p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100/80 hover:border-blue-100/80 h-full relative flex flex-col justify-between group-hover:bg-gradient-to-br from-white to-blue-50/30">
         
         {/* Card Header & Content */}

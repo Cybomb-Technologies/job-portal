@@ -75,8 +75,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/companies" element={<Companies />} />
-            <Route path="/company/:id" element={<CompanyProfile />} />
-            <Route path="/job/:id" element={<JobDetails />} />
+            <Route path="/company/:slug" element={<CompanyProfile />} />
+            <Route path="/job/:slug" element={<JobDetails />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

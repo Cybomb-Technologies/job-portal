@@ -1,12 +1,13 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const User = require('../models/User');
+const AIChat = require('../models/AIChat');
 
 // Lazy init inside handler
 // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const chatWithGemini = async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, chatId } = req.body;
     const userId = req.user._id;
 
     // 1. Rate Limit Check
@@ -33,27 +34,47 @@ const chatWithGemini = async (req, res) => {
       });
     }
 
-    // 2. Call Gemini
-    // Initialize inside request to ensure env vars are loaded
+    // 2. Fetch or Create Chat Session
+    let chatSession;
+    if (chatId) {
+        chatSession = await AIChat.findOne({ _id: chatId, userId });
+        if (!chatSession) {
+            return res.status(404).json({ message: 'Chat session not found' });
+        }
+    } else {
+        // Create new session
+        // Generate title from first few words of message
+        const title = message.split(' ').slice(0, 5).join(' ') + '...';
+        chatSession = new AIChat({
+            userId,
+            title,
+            messages: []
+        });
+    }
+
+    // 3. Call Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     
     // Construct chat history for Gemini
-    // History format from frontend might need adaptation. 
-    // Gemini expects [{ role: "user" | "model", parts: [{ text: "..." }] }]
-    // Assuming frontend sends simple objects, we map them here.
-    let chatHistory = history?.map(msg => ({
+    // We use the messages from the DB session + the new message (handled by startChat automatically if we pass history correctly)
+    // Actually, startChat expects history EXCLUDING the new message we are about to send.
+    
+    let geminiHistory = chatSession.messages.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }]
-    })) || [];
+    }));
 
-    // Gemini requires history to start with a 'user' role
-    while (chatHistory.length > 0 && chatHistory[0].role === 'model') {
-        chatHistory.shift();
+    // Gemini requires history to start with a 'user' role if it's not empty? 
+    // Actually it just needs to be alternating.
+    // Ensure we don't start with model if that's a rule (usually it is).
+    // Our DB messages should be strictly alternating ideally, but let's be safe.
+    while (geminiHistory.length > 0 && geminiHistory[0].role === 'model') {
+        geminiHistory.shift();
     }
 
     const chat = model.startChat({
-      history: chatHistory,
+      history: geminiHistory,
       generationConfig: {
         maxOutputTokens: 500,
       },
@@ -86,13 +107,20 @@ const chatWithGemini = async (req, res) => {
     const result = await sendMessageWithRetry(message);
     const responseText = result.response.text();
 
-    // 3. Update Usage
+    // 4. Save Messages to DB
+    chatSession.messages.push({ sender: 'user', text: message });
+    chatSession.messages.push({ sender: 'ai', text: responseText });
+    await chatSession.save();
+
+    // 5. Update Usage
     user.chatUsage.count += 1;
     user.chatUsage.date = new Date(); // Update date to now to keep it fresh
     await user.save();
 
     res.json({ 
       response: responseText, 
+      chatId: chatSession._id,
+      title: chatSession.title,
       remainingChats: 10 - user.chatUsage.count 
     });
 
@@ -122,4 +150,29 @@ const getChatUsage = async (req, res) => {
     }
 }
 
-module.exports = { chatWithGemini, getChatUsage };
+const getChatHistory = async (req, res) => {
+    try {
+        const chats = await AIChat.find({ userId: req.user._id })
+            .select('_id title createdAt')
+            .sort({ createdAt: -1 });
+        res.json(chats);
+    } catch (error) {
+        console.error("Fetch history error", error);
+        res.status(500).json({ message: 'Failed to fetch history' });
+    }
+};
+
+const getChatDetails = async (req, res) => {
+    try {
+        const chat = await AIChat.findOne({ _id: req.params.id, userId: req.user._id });
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
+        }
+        res.json(chat);
+    } catch (error) {
+        console.error("Fetch chat details error", error);
+        res.status(500).json({ message: 'Failed to fetch chat details' });
+    }
+};
+
+module.exports = { chatWithGemini, getChatUsage, getChatHistory, getChatDetails };
