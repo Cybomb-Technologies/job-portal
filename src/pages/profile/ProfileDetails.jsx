@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2 } from 'lucide-react';
+import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2, Building } from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
 import ImageUrlCropper from '../../components/ImageUrlCropper';
+import { generateSlug } from '../../utils/slugify';
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -33,6 +34,7 @@ const ProfileDetails = () => {
     const [experience, setExperience] = useState([]);
     const [education, setEducation] = useState([]);
     const [certifications, setCertifications] = useState([]);
+    const [followingCompanies, setFollowingCompanies] = useState([]);
     
     // Files
     const [profilePicture, setProfilePicture] = useState(null);
@@ -194,6 +196,8 @@ const ProfileDetails = () => {
             else setEducation([]);
 
             setCertifications(Array.isArray(data.certifications) ? data.certifications : []);
+            
+            setFollowingCompanies(data.followingCompanies || []);
             
             const getFullUrl = (path) => {
                 if (!path) return null;

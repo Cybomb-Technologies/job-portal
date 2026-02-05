@@ -18,7 +18,8 @@ const {
     unfollowCompany,
     verifyOtp,
     resendOtp,
-    requestCompanyUpdate
+    requestCompanyUpdate,
+    getCompanyFollowers
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -85,5 +86,6 @@ router.get('/user/:id', getPublicUserProfile);
 router.get('/companies', getCompanies);
 router.post('/follow/:id', protect, followCompany);
 router.delete('/unfollow/:id', protect, unfollowCompany);
+router.get('/company/:id/followers', protect, getCompanyFollowers);
 
 module.exports = router;

@@ -125,6 +125,16 @@ const Header = () => {
               case 'APPLICATION_STATUS_UPDATE':
                   navigate('/profile/applications');
                   break;
+              case 'NEW_ISSUE':
+                  navigate('/admin/support');
+                  break;
+              case 'ISSUE_UPDATE':
+                  if (user?.role === 'Employer') {
+                      navigate('/employer/profile/tickets');
+                  } else {
+                      navigate('/profile/tickets');
+                  }
+                  break;
               default:
                   // Default navigation if needed
                   break;

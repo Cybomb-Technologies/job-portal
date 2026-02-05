@@ -206,21 +206,60 @@ const AdminCompanyUpdates = () => {
                         <div className="lg:col-span-2">
                             {selectedRequest ? (
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                    <div className="flex justify-between items-start mb-6 border-b pb-4">
-                                        <div>
-                                            <h2 className="text-xl font-bold text-gray-900">Review Changes</h2>
-                                            <p className="text-sm text-gray-500">
-                                                Applying updates to {selectedRequest.companyId?.name}
-                                            </p>
+                                    <div className="mb-6 border-b pb-6">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Review Changes</h2>
+                                                <p className="text-sm text-gray-500">
+                                                    Applying updates to {selectedRequest.companyId?.name}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => handleApprove(selectedRequest._id)}
+                                                    disabled={actionLoading}
+                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                                >
+                                                    <Check size={18} /> Approve
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button 
-                                                onClick={() => handleApprove(selectedRequest._id)}
-                                                disabled={actionLoading}
-                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                                            >
-                                                <Check size={18} /> Approve
-                                            </button>
+
+                                        {/* Company Visual Header */}
+                                        <div className="relative h-32 w-full rounded-lg bg-gray-100 overflow-hidden mb-12 border border-gray-200">
+                                            {/* Banner */}
+                                            {selectedRequest.companyId?.bannerPicture ? (
+                                                <img 
+                                                    src={selectedRequest.companyId.bannerPicture.startsWith('http') 
+                                                        ? selectedRequest.companyId.bannerPicture 
+                                                        : `${import.meta.env.VITE_SERVER_URL}${selectedRequest.companyId.bannerPicture}`
+                                                    } 
+                                                    alt="Banner" 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                    <span className="text-xs">No Banner</span>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Logo overlay */}
+                                            <div className="absolute -bottom-6 left-6">
+                                                <div className="h-16 w-16 rounded-lg border-4 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center">
+                                                    {selectedRequest.companyId?.profilePicture ? (
+                                                        <img 
+                                                            src={selectedRequest.companyId.profilePicture.startsWith('http') 
+                                                                ? selectedRequest.companyId.profilePicture 
+                                                                : `${import.meta.env.VITE_SERVER_URL}${selectedRequest.companyId.profilePicture}`
+                                                            } 
+                                                            alt="Logo" 
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <Building2 className="text-gray-300 h-8 w-8" />
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
