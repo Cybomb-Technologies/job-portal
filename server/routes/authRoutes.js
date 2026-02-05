@@ -19,7 +19,10 @@ const {
     verifyOtp,
     resendOtp,
     requestCompanyUpdate,
-    getCompanyFollowers
+    getCompanyFollowers,
+    saveJob,
+    unsaveJob,
+    getSavedJobs
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -88,4 +91,10 @@ router.post('/follow/:id', protect, followCompany);
 router.delete('/unfollow/:id', protect, unfollowCompany);
 router.get('/company/:id/followers', protect, getCompanyFollowers);
 
+// Saved Jobs Routes
+router.get('/saved-jobs', protect, getSavedJobs);
+router.post('/jobs/:id/save', protect, saveJob);
+router.delete('/jobs/:id/unsave', protect, unsaveJob);
+
 module.exports = router;
+

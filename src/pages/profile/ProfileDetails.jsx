@@ -365,8 +365,14 @@ const ProfileDetails = () => {
     };
 
     // --- Experience Handlers ---
+    const [activeExpLocationIndex, setActiveExpLocationIndex] = useState(null);
+    const [expLocationSuggestions, setExpLocationSuggestions] = useState([]);
+    const [isLoadingExpLocations, setIsLoadingExpLocations] = useState(false);
+    
+    const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance', 'Remote'];
+    
     const addExperience = () => {
-        setExperience([...experience, { title: '', company: '', startYear: '', endYear: '', description: '' }]);
+        setExperience([...experience, { title: '', company: '', location: '', jobType: '', startYear: '', endYear: '', description: '' }]);
     };
 
     const updateExperience = (index, field, value) => {
@@ -468,6 +474,22 @@ const ProfileDetails = () => {
         return () => clearTimeout(timer);
     }, [activeLocationField, currentLocation, preferredLocationInput]);
 
+    // Experience Location Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+             if (activeExpLocationIndex !== null && experience[activeExpLocationIndex]?.location?.length > 2) {
+                 setIsLoadingExpLocations(true);
+                 try {
+                     const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(experience[activeExpLocationIndex].location)}&count=5&language=en&format=json`);
+                     const data = await response.json();
+                     setExpLocationSuggestions(data.results || []);
+                 } catch (err) { console.error(err); } 
+                 finally { setIsLoadingExpLocations(false); }
+             } else { setExpLocationSuggestions([]); }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [activeExpLocationIndex, experience]);
+
     // Job Title Suggestion Logic
     useEffect(() => {
         const filterTitles = (query) => {
@@ -525,6 +547,20 @@ const ProfileDetails = () => {
     
     const handleCompanyChange = (index, value) => { updateExperience(index, 'company', value); setActiveExperienceIndex(index); };
     const selectCompany = (index, name) => { updateExperience(index, 'company', name); setCompanySuggestions([]); setActiveExperienceIndex(null); };
+
+    const handleExpLocationChange = (index, value) => { updateExperience(index, 'location', value); setActiveExpLocationIndex(index); };
+    const selectExpLocation = (index, name) => { 
+        updateExperience(index, 'location', name); 
+        setExpLocationSuggestions([]); 
+        setActiveExpLocationIndex(null); 
+    };
+    const handleExpLocationKeyDown = (e, index) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setActiveExpLocationIndex(null);
+            setExpLocationSuggestions([]);
+        }
+    };
 
     const selectLocation = (name) => {
         if (activeLocationField === 'current') setCurrentLocation(name);
@@ -862,6 +898,19 @@ const ProfileDetails = () => {
                                         <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-[#4169E1]"></div>
                                         <h3 className="font-bold text-gray-900 text-lg">{exp.title}</h3>
                                         <p className="text-[#4169E1] font-bold mb-1">{exp.company}</p>
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-2 font-medium">
+                                            {exp.location && (
+                                                <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg text-xs">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {exp.location}
+                                                </span>
+                                            )}
+                                            {exp.jobType && (
+                                                <span className="bg-blue-50 text-[#4169E1] px-2 py-1 rounded-lg text-xs font-semibold">
+                                                    {exp.jobType}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-2 text-sm text-gray-500 mb-3 font-medium">
                                             <Calendar className="w-4 h-4" />
                                             <span>{exp.startMonth} {exp.startYear} - {exp.endMonth ? `${exp.endMonth} ${exp.endYear}` : 'Present'}</span>
@@ -1301,6 +1350,60 @@ const ProfileDetails = () => {
                                                             </li>
                                                         ))}
                                                     </ul>
+                                                )}
+                                             </div>
+                                        </div>
+
+                                        {/* Location and Job Type Row */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Location</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="e.g. Bangalore, India" 
+                                                    value={exp.location || ''} 
+                                                    onChange={(e) => handleExpLocationChange(index, e.target.value)}
+                                                    onFocus={() => setActiveExpLocationIndex(index)}
+                                                    onBlur={() => setTimeout(() => setActiveExpLocationIndex(null), 200)}
+                                                    onKeyDown={(e) => handleExpLocationKeyDown(e, index)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeExpLocationIndex === index && expLocationSuggestions.length > 0 && (
+                                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                                        {isLoadingExpLocations ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : expLocationSuggestions.map((loc, i) => (
+                                                            <li key={i} onClick={(e) => { e.stopPropagation(); selectExpLocation(index, `${loc.name}, ${loc.admin1 || ''}, ${loc.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '')); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors block">
+                                                                <div className="font-medium text-gray-900 text-sm">{loc.name}</div>
+                                                                <div className="text-xs text-gray-500">{[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                             </div>
+                                            
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Job Type</label>
+                                                <select 
+                                                    value={exp.jobType || ''} 
+                                                    onChange={(e) => updateExperience(index, 'jobType', e.target.value)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white"
+                                                >
+                                                    <option value="">Select Job Type</option>
+                                                    {jobTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                                </select>
+                                                {/* Custom Job Type Input */}
+                                                {exp.jobType === '' && (
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Or enter custom job type..." 
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all mt-2 text-sm"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                                                e.preventDefault();
+                                                                updateExperience(index, 'jobType', e.target.value.trim());
+                                                                e.target.value = '';
+                                                            }
+                                                        }}
+                                                    />
                                                 )}
                                              </div>
                                         </div>
