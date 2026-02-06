@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Briefcase, Lock, HelpCircle, Building } from 'lucide-react';
+import { User, Briefcase, Lock, HelpCircle, Building, Bookmark } from 'lucide-react';
 
 const ProfileSidebar = () => {
     return (
@@ -36,6 +36,20 @@ const ProfileSidebar = () => {
                 >
                     <Briefcase className="w-5 h-5" />
                     <span>Applied Jobs</span>
+                </NavLink>
+
+                <NavLink 
+                    to="/profile/saved-jobs" 
+                    className={({ isActive }) => 
+                        `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            isActive 
+                            ? 'bg-blue-50 text-[#4169E1]' 
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`
+                    }
+                >
+                    <Bookmark className="w-5 h-5" />
+                    <span>Saved Jobs</span>
                 </NavLink>
 
                 <NavLink 

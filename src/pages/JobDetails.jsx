@@ -14,7 +14,8 @@ import {
   FileText,
   MessageCircle,
   Hourglass,
-  Share2
+  Share2,
+  Bookmark
 } from 'lucide-react';
 import api from '../api';
 import { showWarning, showError, quickSuccess } from '../utils/sweetAlerts';
@@ -126,6 +127,10 @@ const JobDetails = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
 
+  // Saved Job State
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingJob, setSavingJob] = useState(false);
+
   // Helper to determining if we skip screening
   const hasScreening = job?.preScreeningQuestions?.length > 0;
   
@@ -165,6 +170,32 @@ const JobDetails = () => {
   const handleShareJob = () => {
       navigator.clipboard.writeText(window.location.href);
       quickSuccess('Link Copied!');
+  };
+
+  const handleSaveJob = async () => {
+      if (!user) {
+          navigate('/login');
+          return;
+      }
+      if (!job?._id) return;
+      
+      setSavingJob(true);
+      try {
+          if (isSaved) {
+              await api.delete(`/auth/jobs/${job._id}/unsave`);
+              setIsSaved(false);
+              quickSuccess('Job removed from saved!');
+          } else {
+              await api.post(`/auth/jobs/${job._id}/save`);
+              setIsSaved(true);
+              quickSuccess('Job saved!');
+          }
+      } catch (err) {
+          console.error('Failed to save/unsave job', err);
+          showError('Error', 'Failed to update saved status');
+      } finally {
+          setSavingJob(false);
+      }
   };
 
   const handleNext = () => {
@@ -253,6 +284,22 @@ const JobDetails = () => {
     };
     if(slug) fetchJob();
   }, [slug, user?._id]);
+
+  // Check if job is saved
+  useEffect(() => {
+      const checkSavedStatus = async () => {
+          if (user && job?._id) {
+              try {
+                  const { data } = await api.get('/auth/saved-jobs');
+                  const savedIds = data.map(j => j._id);
+                  setIsSaved(savedIds.includes(job._id));
+              } catch (err) {
+                  console.error('Failed to check saved status', err);
+              }
+          }
+      };
+      checkSavedStatus();
+  }, [user, job?._id]);
 
   useEffect(() => {
       if (user && showApplyModal) {
@@ -413,15 +460,24 @@ const JobDetails = () => {
                   </div>
                 </div>
 
-                
-                {/* Share Button (Top Right) */}
-                <button 
-                    onClick={handleShareJob}
-                    className="ml-auto p-3 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group/share"
-                    title="Share Job"
-                >
-                    <Share2 className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
-                </button>
+                {/* Share and Save Buttons (Top Right) */}
+                <div className="ml-auto flex items-center gap-2">
+                    <button 
+                        onClick={handleSaveJob}
+                        disabled={savingJob}
+                        className={`p-3 rounded-xl border shadow-sm hover:shadow-md transition-all group/save ${isSaved ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-100 text-slate-400 hover:text-blue-600'}`}
+                        title={isSaved ? 'Unsave Job' : 'Save Job'}
+                    >
+                        <Bookmark className={`w-5 h-5 group-hover/save:scale-110 transition-transform ${isSaved ? 'fill-current' : ''}`} />
+                    </button>
+                    <button 
+                        onClick={handleShareJob}
+                        className="p-3 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group/share"
+                        title="Share Job"
+                    >
+                        <Share2 className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
+                    </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-8 relative z-10">
