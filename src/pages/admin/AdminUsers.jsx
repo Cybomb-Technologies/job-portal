@@ -91,7 +91,6 @@ const AdminUsers = () => {
                         <tr>
                             <th>User</th>
                             <th>Current Location</th>
-                            <th>Skills</th>
                             <th>Joined Date</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -121,16 +120,6 @@ const AdminUsers = () => {
                                     </div>
                                 </td>
                                 <td>
-                                    <div className="skills-wrap">
-                                        {user.skills && user.skills.slice(0, 3).map((skill, i) => (
-                                            <span key={i} className="skill-tag">{skill}</span>
-                                        ))}
-                                        {user.skills && user.skills.length > 3 && (
-                                            <span className="skill-tag-more">+{user.skills.length - 3}</span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td>
                                     <div className="date-cell">
                                         <FiCalendar /> {new Date(user.createdAt).toLocaleDateString()}
                                     </div>
@@ -147,7 +136,7 @@ const AdminUsers = () => {
                                             title={user.isActive !== false ? 'Block User' : 'Unblock User'}
                                             onClick={() => handleToggleStatus(user._id, user.isActive !== false)}
                                         >
-                                            {user.isActive !== false ? <FiUserX /> : <FiUserCheck />}
+                                            {user.isActive !== false ? 'Block' : 'Unblock'}
                                         </button>
                                     </div>
                                 </td>

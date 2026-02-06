@@ -400,7 +400,11 @@ const AdminCompanyUpdates = () => {
                                     </tr>
                                 ) : (
                                     history.map((item) => (
-                                        <tr key={item._id} className="hover:bg-gray-50/50">
+                                        <tr 
+                                            key={item._id} 
+                                            className="hover:bg-gray-50/50 cursor-pointer"
+                                            onClick={() => setSelectedRequest(item)}
+                                        >
                                             <td className="px-6 py-4 font-medium text-gray-900">
                                                 {item.companyId?.name || 'Unknown'}
                                             </td>
@@ -431,6 +435,75 @@ const AdminCompanyUpdates = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* History Detail Modal */}
+            {activeTab === 'history' && selectedRequest && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+                            <h2 className="text-xl font-bold text-gray-900">Update Details</h2>
+                            <button 
+                                onClick={() => setSelectedRequest(null)}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-6 h-6 text-gray-500" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="font-bold text-lg">{selectedRequest.companyId?.name || 'Unknown Company'}</h3>
+                                    <p className="text-sm text-gray-500">
+                                        Status: <span className={`font-medium ${selectedRequest.status === 'Approved' ? 'text-green-600' : 'text-red-600'}`}>{selectedRequest.status}</span>
+                                    </p>
+                                </div>
+                                <div className="text-right text-sm text-gray-500">
+                                    <p>Processed on: {new Date(selectedRequest.processedAt).toLocaleString()}</p>
+                                    <p>Processed by: {selectedRequest.processedBy?.name || 'System'}</p>
+                                </div>
+                            </div>
+
+                            <div className="border rounded-lg overflow-hidden bg-white">
+                                {Object.entries(selectedRequest.requestedChanges).map(([key, value]) => (
+                                    <div key={key} className="p-4 border-b last:border-0 hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                            </span>
+                                            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                                                Changed
+                                            </span>
+                                        </div>
+                                        <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-sm text-gray-800 break-all relative group">
+                                            {key.toLowerCase().includes('picture') || key.toLowerCase().includes('logo') ? (
+                                                <img 
+                                                    src={value.toString().startsWith('http') ? value : `${import.meta.env.VITE_SERVER_URL}${value}`} 
+                                                    alt={key} 
+                                                    className="h-32 w-auto rounded object-cover shadow-sm bg-white" 
+                                                />
+                                            ) : (
+                                                <span className="font-medium text-gray-900">{String(value)}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {selectedRequest.adminComments && (
+                                <div className="mt-6 bg-gray-100 p-4 rounded-lg">
+                                    <span className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Admin Comments</span>
+                                    <p className="text-gray-700">{selectedRequest.adminComments}</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="p-6 border-t bg-gray-50 flex justify-end text-sm">
+                            <span className="text-gray-400">Request ID: {selectedRequest._id}</span>
+                        </div>
                     </div>
                 </div>
             )}

@@ -27,6 +27,10 @@ const authUser = async (req, res) => {
       });
     }
 
+    if (user.isActive === false) {
+        return res.status(403).json({ message: 'Your account has been deactivated. Please contact support.' });
+    }
+
     // Log Activity
     if (user.role === 'Employer') {
         await logActivity(user, 'LOGIN', 'User logged in');
@@ -1049,7 +1053,44 @@ const requestCompanyUpdate = async (req, res) => {
         const requestedChanges = {};
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
-                requestedChanges[field] = req.body[field];
+                const newValue = req.body[field];
+                
+                // Map frontend field names to DB field names
+                let dbField = field;
+                if (field === 'companyName') dbField = 'name';
+
+                const currentValue = company[dbField];
+
+                // Normalize for comparison (handle null/undefined/types)
+                // We treat null/undefined as empty string for text fields to avoid false positives
+                // For 'whyJoinUs' (mixed/object), we need special handling if it comes as string
+                
+                let normCurrent = currentValue;
+                let normNew = newValue;
+                
+                if (field === 'whyJoinUs') {
+                     try {
+                         // If new value is string but represents object, try to parse
+                         if (typeof newValue === 'string') {
+                            normNew = JSON.parse(newValue);
+                         }
+                         // Deep equality check using stringify for simplicity
+                         if (JSON.stringify(normCurrent) !== JSON.stringify(normNew)) {
+                             requestedChanges[dbField] = normNew; // Use dbField (whyJoinUs is same)
+                         }
+                         continue; 
+                     } catch (e) {
+                         // Fallback to string compare
+                     }
+                } 
+
+                // Standard normalization for text/numbers
+                normCurrent = normCurrent === undefined || normCurrent === null ? '' : String(normCurrent).trim();
+                normNew = normNew === undefined || normNew === null ? '' : String(normNew).trim();
+
+                if (normCurrent !== normNew) {
+                    requestedChanges[dbField] = newValue; // Store with DB key (e.g., 'name')
+                }
             }
         }
         

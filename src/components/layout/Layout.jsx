@@ -7,7 +7,7 @@ const Layout = ({ children }) => {
   const isAdminPath = location.pathname.startsWith('/admin');
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-200">
       {!isAdminPath && <Header />}
       <main className={`flex-grow ${!isAdminPath ? 'pt-20' : ''}`}>
         {children}
