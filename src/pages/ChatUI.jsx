@@ -244,7 +244,7 @@ const ChatUI = () => {
             <div className={`w-full sm:w-72 md:w-80 lg:w-96 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${currentChat || activeTeamChat ? 'hidden sm:flex' : 'flex'}`}>
                 <div className="p-3 sm:p-4 border-b border-gray-200">
                     <div className="flex justify-between items-center mb-3 sm:mb-4">
-                        <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                             {viewMode === 'my' ? 'Messages' : 'Team Chats'}
                         </h2>
                         {isCompanyAdmin && (
@@ -329,7 +329,7 @@ const ChatUI = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start mb-1">
-                                                <h3 className="font-semibold text-gray-900 truncate hover:text-blue-600 transition-colors">
+                                                <h3 className="font-semibold text-gray-900 dark:text-white truncate hover:text-blue-600 transition-colors">
                                                     {conv.user.name}
                                                     {user?.role === 'Job Seeker' && conv.user.role === 'Employer' && companyName && <span className="text-gray-500 font-normal ml-1 hidden xs:inline">• {companyName}</span>}
                                                 </h3>
@@ -383,7 +383,7 @@ const ChatUI = () => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <h3 className="font-semibold text-gray-900 truncate">{conv.user.name}</h3>
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">{conv.user.name}</h3>
                                                     {conv.lastMessage && (
                                                         <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
                                                             {new Date(conv.lastMessage.createdAt).toLocaleDateString()}
@@ -430,7 +430,7 @@ const ChatUI = () => {
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-semibold text-gray-900 truncate">{member.user.name}</h3>
+                                                <h3 className="font-semibold text-gray-900 dark:text-white truncate">{member.user.name}</h3>
                                                 <p className="text-sm text-gray-500 truncate">{member.role}</p>
                                                 <p className="text-xs text-blue-500 mt-1">Click to view chats</p>
                                             </div>

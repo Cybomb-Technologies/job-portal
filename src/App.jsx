@@ -47,7 +47,7 @@ import AppliedJobs from './pages/profile/AppliedJobs';
 import SavedJobs from './pages/profile/SavedJobs';
 import MyTickets from './pages/profile/MyTickets';
 import FollowingCompanies from './pages/profile/FollowingCompanies';
-import ChangePassword from './pages/profile/ChangePassword';
+import Settings from './pages/profile/Settings';
 
 // Info Pages
 import AboutUs from './pages/AboutUs';
@@ -66,14 +66,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 
 import { ChatProvider } from './context/ChatContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ChatUI from './pages/ChatUI';
 
 function App() {
   return (
     <Router>
       <ScrollToTop />
-      <ChatProvider>
-        <Layout>
+      <ThemeProvider>
+        <ChatProvider>
+          <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/jobs" element={<Jobs />} />
@@ -125,7 +127,7 @@ function App() {
               <Route path="saved-jobs" element={<SavedJobs />} />
               <Route path="tickets" element={<MyTickets />} />
               <Route path="following" element={<FollowingCompanies />} />
-              <Route path="password" element={<ChangePassword />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
   
             {/* Redirect old routes if necessary */}
@@ -220,7 +222,7 @@ function App() {
               <Route path="followers" element={<EmployerFollowers />} />
               <Route path="activity-logs" element={<EmployerActivityLogs />} />
               <Route path="tickets" element={<MyTickets />} />
-              <Route path="password" element={<ChangePassword />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
   
             {/* Admin Routes */}
@@ -243,9 +245,10 @@ function App() {
               <Route path="support" element={<AdminSupport />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
-          </Routes>
-        </Layout>
-      </ChatProvider>
+            </Routes>
+          </Layout>
+        </ChatProvider>
+      </ThemeProvider>
     </Router>
   );
 }

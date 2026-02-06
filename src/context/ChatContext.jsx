@@ -10,7 +10,7 @@ export const useChat = () => {
 };
 
 export const ChatProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [socket, setSocket] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [currentChat, setCurrentChat] = useState(null);
@@ -83,6 +83,12 @@ export const ChatProvider = ({ children }) => {
                   (msg.sender === user._id || msg.sender?._id === user._id) ? { ...msg, read: true } : msg
               ));
           }
+      });
+
+      newSocket.on('force_logout', (data) => {
+          // alert(data.message || 'You have been logged out.');
+          logout();
+          window.location.href = '/login';
       });
 
       newSocket.on('receive_message', (message) => {

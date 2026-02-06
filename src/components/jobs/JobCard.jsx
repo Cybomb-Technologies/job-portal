@@ -8,7 +8,7 @@ const JobCard = ({ job }) => {
   
   return (
     <Link to={`/job/${generateSlug(job.title, job._id)}`} className="block group h-full">
-        <div className="bg-white rounded-[1.5rem] p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100/80 hover:border-blue-100/80 h-full relative flex flex-col justify-between group-hover:bg-gradient-to-br from-white to-blue-50/30">
+        <div className="bg-white dark:bg-gray-800 rounded-[1.5rem] p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-gray-100/80 dark:border-gray-700 hover:border-blue-100/80 dark:hover:border-blue-500/30 h-full relative flex flex-col justify-between group-hover:bg-gradient-to-br group-hover:from-white group-hover:to-blue-50/30 dark:group-hover:from-gray-800 dark:group-hover:to-gray-800">
         
         {/* Card Header & Content */}
         <div>
@@ -69,7 +69,7 @@ const JobCard = ({ job }) => {
                     {job.skills.slice(0, 3).map((skill, index) => (
                         <span
                         key={index}
-                        className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg border border-transparent group-hover:bg-white group-hover:border-blue-100 group-hover:text-blue-600 transition-colors"
+                        className="px-3 py-1 bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 text-xs font-semibold rounded-lg border border-transparent group-hover:bg-white dark:group-hover:bg-gray-600 group-hover:border-blue-100 dark:group-hover:border-blue-500/30 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                         >
                         {skill}
                         </span>

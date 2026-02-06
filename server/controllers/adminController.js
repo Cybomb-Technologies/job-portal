@@ -97,9 +97,24 @@ const getJobSeekers = async (req, res) => {
 // @access  Private/Admin
 const getEmployers = async (req, res) => {
     try {
-        const employers = await User.find({ role: 'Employer' }).select('-password');
-        res.json(employers);
+        const employers = await User.find({ role: 'Employer' })
+            .select('-password')
+            .populate('companyId', 'name companyEmail companyLocation');
+            
+        // Map to ensure company info is present even if inconsistent in User doc
+        const formattedEmployers = employers.map(emp => {
+            const empObj = emp.toObject();
+            if (empObj.companyId && typeof empObj.companyId === 'object') {
+                 if (!empObj.companyName) empObj.companyName = empObj.companyId.name;
+                 if (!empObj.companyEmail) empObj.companyEmail = empObj.companyId.companyEmail;
+                 if (!empObj.companyLocation) empObj.companyLocation = empObj.companyId.companyLocation;
+            }
+            return empObj;
+        });
+
+        res.json(formattedEmployers);
     } catch (error) {
+        console.error("Error fetching employers:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -109,25 +124,19 @@ const getEmployers = async (req, res) => {
 // @access  Private/Admin
 const getCompanies = async (req, res) => {
     try {
-        // Companies are derived from employers
-        const companies = await User.find({ 
-            role: 'Employer', 
-            companyName: { $exists: true, $ne: '' } 
-        }).select('companyName website companyEmail companyLocation companyCategory companyType employeeCount foundedYear employerVerification profilePicture');
+        const Company = require('../models/Company');
+        const companies = await Company.find({})
+            .sort({ createdAt: -1 });
         
-        // Group by company name to avoid duplicates if multiple employers share a company name
-        const uniqueCompanies = [];
-        const seenCompanies = new Set();
-        
-        companies.forEach(company => {
-            if (!seenCompanies.has(company.companyName)) {
-                seenCompanies.add(company.companyName);
-                uniqueCompanies.push(company);
-            }
-        });
+        // Map to format expected by frontend (User model had companyName, Company model has name)
+        const formattedCompanies = companies.map(comp => ({
+            ...comp.toObject(),
+            companyName: comp.name
+        }));
 
-        res.json(uniqueCompanies);
+        res.json(formattedCompanies);
     } catch (error) {
+        console.error("Error fetching companies:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -150,9 +159,39 @@ const toggleUserStatus = async (req, res) => {
         user.isActive = !user.isActive;
         await user.save();
 
+        if (user.isActive === false && req.io) {
+             req.io.to(user._id.toString()).emit('force_logout', {
+                message: 'Your account has been deactivated by an administrator.'
+             });
+        }
+
         res.json({ 
             message: `User ${user.isActive ? 'unblocked' : 'blocked'} successfully`,
             isActive: user.isActive 
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Toggle company active status
+// @route   PUT /api/admin/company/:id/toggle-status
+// @access  Private/Admin
+const toggleCompanyStatus = async (req, res) => {
+    try {
+        const Company = require('../models/Company');
+        const company = await Company.findById(req.params.id);
+
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        company.isActive = company.isActive === undefined ? false : !company.isActive;
+        await company.save();
+
+        res.json({
+            message: `Company ${company.isActive ? 'unblocked' : 'blocked'} successfully`,
+            isActive: company.isActive
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -470,7 +509,9 @@ module.exports = {
     getJobSeekers,
     getEmployers,
     getCompanies,
+    getCompanies,
     toggleUserStatus,
+    toggleCompanyStatus,
     getPendingVerifications,
     updateVerificationStatus,
     getPendingIdVerifications,
@@ -584,6 +625,62 @@ module.exports = {
             }
 
             res.json({ message: 'Update request rejected' });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    },
+    getVerificationHistory: async (req, res) => {
+        try {
+            // Find users who have at least one document or ID card that is NOT pending
+            // or whose overall status is Verified/Rejected
+            const users = await User.find({
+                role: 'Employer',
+                $or: [
+                    { 'employerVerification.documents.status': { $in: ['Approved', 'Rejected'] } },
+                    { 'employerVerification.idCard.status': { $in: ['Approved', 'Rejected'] } }
+                ]
+            })
+            .select('name email companyName employerVerification companyId')
+            .sort({ updatedAt: -1 });
+
+            // Robust Company Name Fetching (reuse logic if needed, but select limited fields)
+            const companyIds = users.filter(u => u.companyId).map(u => u.companyId);
+            const Company = require('../models/Company');
+             const mongoose = require('mongoose');
+            const companies = await Company.find({
+                $or: [
+                    { _id: { $in: companyIds.filter(id => mongoose.Types.ObjectId.isValid(id)) } },
+                    { companyId: { $in: companyIds.filter(id => !mongoose.Types.ObjectId.isValid(id)) } }
+                ]
+            }).select('name companyId');
+
+            const companyMap = {};
+            companies.forEach(c => {
+                 companyMap[c._id.toString()] = c.name;
+                 if (c.companyId) companyMap[c.companyId] = c.name;
+            });
+
+            const formattedUsers = users.map(user => ({
+                ...user.toObject(),
+                companyName: user.companyName || (user.companyId ? companyMap[user.companyId.toString()] : 'No Company Name')
+            }));
+
+            res.json(formattedUsers);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    },
+    getCompanyDetails: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const Company = require('../models/Company');
+            const company = await Company.findById(id).populate('members.user', 'name email employerVerification');
+            
+            if (!company) {
+                return res.status(404).json({ message: 'Company not found' });
+            }
+            
+            res.json(company);
         } catch (error) {
             res.status(500).json({ message: error.message });
         }
