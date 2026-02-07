@@ -15,6 +15,7 @@ const AdminVerifications = () => {
     const [activeTab, setActiveTab] = useState('documents');
     const [pendingUsers, setPendingUsers] = useState([]);
     const [pendingIdCards, setPendingIdCards] = useState([]);
+    const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -31,9 +32,12 @@ const AdminVerifications = () => {
             if (activeTab === 'documents') {
                 const { data } = await api.get('/admin/verifications');
                 setPendingUsers(data);
-            } else {
+            } else if (activeTab === 'idcards') {
                 const { data } = await api.get('/admin/verifications/id-cards');
                 setPendingIdCards(data);
+            } else if (activeTab === 'history') {
+                const { data } = await api.get('/admin/verifications/history');
+                setHistory(data);
             }
         } catch (error) {
             console.error("Failed to fetch verifications", error);
@@ -153,7 +157,11 @@ const AdminVerifications = () => {
         }
     };
 
-    const filteredUsers = (activeTab === 'documents' ? pendingUsers : pendingIdCards).filter(user => 
+    const userList = activeTab === 'documents' ? pendingUsers 
+                   : activeTab === 'idcards' ? pendingIdCards 
+                   : history;
+
+    const filteredUsers = userList.filter(user => 
         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -182,6 +190,12 @@ const AdminVerifications = () => {
                 >
                     ID Cards (Level 1)
                 </button>
+                <button
+                    className={`px-6 py-3 font-medium text-sm transition-colors ${activeTab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    History
+                </button>
             </div>
 
             {/* Search */}
@@ -208,7 +222,103 @@ const AdminVerifications = () => {
                 </div>
             ) : (
                 <div className="grid gap-6">
-                    {filteredUsers.map(user => (
+                    {activeTab === 'history' ? (
+                       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                           <table className="w-full text-left font-medium">
+                               <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
+                                   <tr>
+                                       <th className="px-6 py-4">Company / User</th>
+                                       <th className="px-6 py-4">Type</th>
+                                       <th className="px-6 py-4">Status</th>
+                                       <th className="px-6 py-4">Date</th>
+                                       <th className="px-6 py-4">Reason/Details</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   {filteredUsers.map((user) => {
+                                       // Flattening history items (ID card + Documents that are processed)
+                                       // This is a bit complex as one user can have multiple history items.
+                                       // For simplicity, we'll list the User row and show their statuses inside.
+                                       const hasIdCardProcessed = user.employerVerification?.idCard?.status !== 'Pending' && user.employerVerification?.idCard?.status !== 'Not Uploaded';
+                                       const processedDocs = user.employerVerification?.documents?.filter(d => d.status !== 'Pending') || [];
+                                    
+                                       if (!hasIdCardProcessed && processedDocs.length === 0) return null;
+
+                                       return (
+                                           <React.Fragment key={user._id}>
+                                               {hasIdCardProcessed && (
+                                                   <tr className="border-b border-gray-100 hover:bg-gray-50">
+                                                       <td className="px-6 py-4">
+                                                           <div>
+                                                               <div className="text-gray-900 font-bold">{user.companyName}</div>
+                                                               <div className="text-xs text-gray-400">{user.name}</div>
+                                                           </div>
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-600">ID Verification</td>
+                                                       <td className="px-6 py-4">
+                                                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                                               user.employerVerification.idCard.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                           }`}>
+                                                               {user.employerVerification.idCard.status}
+                                                           </span>
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-500">
+                                                           {new Date(user.employerVerification.idCard.uploadedAt || user.updatedAt).toLocaleDateString()}
+                                                           {user.employerVerification.idCard.fileUrl && (
+                                                               <a 
+                                                                    href={user.employerVerification.idCard.fileUrl.startsWith('http') ? user.employerVerification.idCard.fileUrl : `${import.meta.env.VITE_SERVER_URL}${user.employerVerification.idCard.fileUrl}`} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-500 hover:underline ml-2 text-xs"
+                                                                >
+                                                                    (View)
+                                                                </a>
+                                                           )}
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-500">
+                                                           {user.employerVerification.idCard.rejectionReason || '-'}
+                                                       </td>
+                                                   </tr>
+                                               )}
+                                               {processedDocs.map((doc, idx) => (
+                                                   <tr key={`${user._id}-doc-${idx}`} className="border-b border-gray-100 hover:bg-gray-50">
+                                                       <td className="px-6 py-4">
+                                                           <div>
+                                                               <div className="text-gray-900 font-bold">{user.companyName}</div>
+                                                               <div className="text-xs text-gray-400">{user.name}</div>
+                                                           </div>
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-600">{doc.type} Document</td>
+                                                        <td className="px-6 py-4">
+                                                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                                               doc.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                           }`}>
+                                                               {doc.status}
+                                                           </span>
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-500">
+                                                           {new Date(doc.uploadedAt).toLocaleDateString()}
+                                                            <a 
+                                                                href={doc.fileUrl.startsWith('http') ? doc.fileUrl : `${import.meta.env.VITE_SERVER_URL}${doc.fileUrl}`} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-500 hover:underline ml-2 text-xs"
+                                                            >
+                                                                (View)
+                                                            </a>
+                                                       </td>
+                                                       <td className="px-6 py-4 text-sm text-gray-500">
+                                                            {doc.rejectionReason || '-'}
+                                                       </td>
+                                                   </tr>
+                                               ))}
+                                           </React.Fragment>
+                                       );
+                                   })}
+                               </tbody>
+                           </table>
+                       </div>
+                    ) : filteredUsers.map(user => (
                         <div key={user._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                             <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-wrap justify-between items-center">
                                 <div className="flex items-center gap-3">

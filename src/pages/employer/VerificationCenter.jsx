@@ -154,14 +154,14 @@ const VerificationCenter = () => {
     if (loading) return <div className="p-10 text-center">Loading verification status...</div>;
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-8">
+        <div className="max-w-4xl mx-auto p-6 space-y-8 dark:text-gray-100">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Verification Center</h1>
-                    <p className="text-gray-500 mt-2">Verify your company identity to unlock premium features and build trust.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Verification Center</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Verify your company identity to unlock premium features and build trust.</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 text-center min-w-[150px]">
-                    <p className="text-sm text-gray-500 uppercase font-semibold">Current Level</p>
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 text-center min-w-[150px]">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 uppercase font-semibold">Current Level</p>
                     <div className="text-4xl font-bold text-blue-600">Level {status?.level || 0}</div>
                     <div className="text-xs font-medium text-gray-400 mt-1 uppercase tracking-wide">
                         {status?.level === 0 ? 'Unverified' : status?.level === 1 ? 'Identity Verified' : 'Fully Verified'}
@@ -177,15 +177,15 @@ const VerificationCenter = () => {
             )}
 
             {/* Level 1: Identity Verification */}
-            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 1 ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
-                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 1 ? 'border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}>
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start">
                     <div className="flex gap-4">
                         <div className={`p-3 rounded-lg ${status?.level >= 1 ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
                             <Store size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">Level 1: Company Identity</h2>
-                            <p className="text-gray-500 text-sm mt-1">Verify your official work email and domain.</p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Level 1: Company Identity</h2>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Verify your official work email and domain.</p>
                         </div>
                     </div>
                     {status?.level >= 1 ? (
@@ -283,15 +283,15 @@ const VerificationCenter = () => {
             </div>
 
             {/* Level 2: Legal Verification */}
-            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 2 || status?.inheritedFromCompany ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-white'}`}>
-                <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+            <div className={`border rounded-2xl overflow-hidden transition-all ${status?.level >= 2 || status?.inheritedFromCompany ? 'border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}>
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start">
                     <div className="flex gap-4">
                         <div className={`p-3 rounded-lg ${status?.level >= 2 || status?.inheritedFromCompany ? 'bg-green-100 text-green-600' : 'bg-purple-50 text-purple-600'}`}>
                             <Building2 size={24} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">Level 2: Legal Business Verification</h2>
-                            <p className="text-gray-500 text-sm mt-1">Upload official government documents (GST, CIN, Udyam).</p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Level 2: Legal Business Verification</h2>
+                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Upload official government documents (GST, CIN, Udyam).</p>
                         </div>
                     </div>
                     {status?.level >= 2 ? (

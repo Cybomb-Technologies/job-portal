@@ -168,7 +168,7 @@ const AdminLayout = () => {
     ];
 
     return (
-        <div className="admin-container">
+        <div className="admin-container admin-layout">
             {/* Overlay for mobile */}
             {isSidebarOpen && <div className="admin-overlay" onClick={closeSidebar}></div>}
 

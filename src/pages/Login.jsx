@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Briefcase, User, Mail, Lock } from 'lucide-react';
@@ -14,6 +14,15 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => {
+                setError('');
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {

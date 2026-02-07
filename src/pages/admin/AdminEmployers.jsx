@@ -149,7 +149,7 @@ const AdminEmployers = () => {
                                             title={emp.isActive !== false ? 'Block Employer' : 'Unblock Employer'}
                                             onClick={() => handleToggleStatus(emp._id, emp.isActive !== false)}
                                         >
-                                            {emp.isActive !== false ? <FiUserX /> : <FiUserCheck />}
+                                            {emp.isActive !== false ? 'Block' : 'Unblock'}
                                         </button>
                                     </div>
                                 </td>

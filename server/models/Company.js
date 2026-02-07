@@ -85,6 +85,10 @@ const companySchema = mongoose.Schema(
     companyId: {
         type: String,
         unique: true
+    },
+    isActive: {
+        type: Boolean,
+        default: true
     }
   },
   {

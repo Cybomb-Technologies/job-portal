@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Building2, Lock, PlayCircle, Users, Activity, Heart } from 'lucide-react';
+import { User, Building2, PlayCircle, Users, Activity, Heart, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const EmployerProfileSidebar = () => {
@@ -8,9 +8,9 @@ const EmployerProfileSidebar = () => {
     const isRecruiter = user?.companyRole === 'Recruiter';
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-                <h3 className="text-lg font-bold text-gray-800">Profile Settings</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Profile Settings</h3>
             </div>
             <nav className="flex flex-col p-2 space-y-1">
                 <NavLink 
@@ -19,8 +19,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -33,8 +33,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -47,8 +47,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -61,8 +61,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -75,8 +75,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -89,8 +89,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -119,8 +119,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -129,17 +129,17 @@ const EmployerProfileSidebar = () => {
                 </NavLink>
 
                 <NavLink 
-                    to="/employer/profile/password" 
+                    to="/employer/profile/settings" 
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
-                    <Lock className="w-5 h-5" />
-                    <span>Change Password</span>
+                    <Settings className="w-5 h-5" />
+                    <span>Settings</span>
                 </NavLink>
             </nav>
         </div>
