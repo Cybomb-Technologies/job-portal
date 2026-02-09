@@ -9,6 +9,12 @@ const { OAuth2Client } = require('google-auth-library');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const { logActivity } = require('./activityLogController');
+const CompanyUpdateRequest = require('../models/CompanyUpdateRequest');
+const Notification = require('../models/Notification');
+
+// ... (existing imports)
+
 // @desc    Auth user & get token (Login)
 const authUser = async (req, res) => {
   const { email, password, role } = req.body;
@@ -20,6 +26,16 @@ const authUser = async (req, res) => {
         message: `Please login as a ${user.role}. You cannot login as ${role}.` 
       });
     }
+
+    if (user.isActive === false) {
+        return res.status(403).json({ message: 'Your account has been deactivated. Please contact support.' });
+    }
+
+    // Log Activity
+    if (user.role === 'Employer') {
+        await logActivity(user, 'LOGIN', 'User logged in');
+    }
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -27,12 +43,15 @@ const authUser = async (req, res) => {
       role: user.role,
       companyId: user.companyId,
       companyRole: user.companyRole,
+      mobileNumber: user.mobileNumber,
       token: generateToken(user._id),
     });
   } else {
     res.status(401).json({ message: 'Invalid email or password' });
   }
 };
+
+
 
 // @desc    Register a new user
 const registerUser = async (req, res) => {
@@ -43,21 +62,144 @@ const registerUser = async (req, res) => {
     return res.status(400).json({ message: 'User already exists' });
   }
 
-  const user = await User.create({ name, email, password, role });
+  // Generate OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  const user = await User.create({ 
+      name, 
+      email, 
+      password, 
+      role,
+      otp,
+      otpExpire,
+      isEmailVerified: false
+  });
 
   if (user) {
-    res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      companyId: user.companyId,
-      companyRole: user.companyRole,
-      token: generateToken(user._id),
-    });
+      // Send OTP Email
+      const message = `
+        <h1>Email Verification</h1>
+        <p>Your OTP for verification is: <b>${otp}</b></p>
+        <p>This OTP is valid for 10 minutes.</p>
+      `;
+
+      try {
+          await sendEmail({
+              email: user.email,
+              subject: 'Verify your email',
+              message: `Your OTP is ${otp}`,
+              html: message
+          });
+          
+          res.status(201).json({
+              message: 'OTP sent to email',
+              email: user.email,
+              userId: user._id
+          });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'User created, but failed to send OTP. Please try resending.' });
+      }
+
   } else {
     res.status(400).json({ message: 'Invalid user data' });
   }
+};
+
+// @desc    Verify OTP
+const verifyOtp = async (req, res) => {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+        return res.status(201).json({ // Already verified
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            companyId: user.companyId,
+            companyRole: user.companyRole,
+            token: generateToken(user._id),
+        });
+    }
+
+    if (!user.otp || !user.otpExpire) {
+        return res.status(400).json({ message: 'No OTP generated' });
+    }
+
+    if (user.otp !== otp) {
+        return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    if (user.otpExpire < new Date()) {
+        return res.status(400).json({ message: 'OTP Expired' });
+    }
+
+    // Verify Success
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.otpExpire = undefined;
+    await user.save();
+
+    res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
+        token: generateToken(user._id),
+    });
+};
+
+// @desc    Resend OTP
+const resendOtp = async (req, res) => {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+        return res.status(400).json({ message: 'Email already verified. Please login.' });
+    }
+
+    // Generate New OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.otp = otp;
+    user.otpExpire = otpExpire;
+    await user.save();
+
+     const message = `
+        <h1>Email Verification</h1>
+        <p>Your new OTP for verification is: <b>${otp}</b></p>
+        <p>This OTP is valid for 10 minutes.</p>
+      `;
+
+      try {
+          await sendEmail({
+              email: user.email,
+              subject: 'Resend: Verify your email',
+              message: `Your OTP is ${otp}`,
+              html: message
+          });
+          
+          res.json({ message: 'OTP resent successfully' });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({ message: 'Failed to send OTP' });
+      }
 };
 
 // @desc    Google Login
@@ -83,6 +225,7 @@ const googleLogin = async (req, res) => {
         role: user.role,
         companyId: user.companyId,
         companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
         token: generateToken(user._id),
       });
     } else {
@@ -103,6 +246,7 @@ const googleLogin = async (req, res) => {
         role: user.role,
         companyId: user.companyId,
         companyRole: user.companyRole,
+        mobileNumber: user.mobileNumber,
         token: generateToken(user._id),
       });
     }
@@ -191,7 +335,7 @@ const resetPassword = async (req, res) => {
 // @route   GET /api/auth/profile
 // @access  Private
 const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).populate('followingCompanies', 'name profilePicture');
 
   if (user) {
     let responseData = {
@@ -215,7 +359,9 @@ const getUserProfile = async (req, res) => {
       companyRole: user.companyRole,
       totalExperience: user.totalExperience,
       following: user.following,
-      followers: user.followers
+      followingCompanies: user.followingCompanies,
+      followers: user.followers,
+      mobileNumber: user.mobileNumber
     };
 
     if (user.companyId) {
@@ -273,6 +419,7 @@ const updateUserProfile = async (req, res) => {
     user.title = req.body.title || user.title;
     user.about = req.body.about || user.about; // Personal bio
     user.currentLocation = req.body.currentLocation || user.currentLocation;
+    user.mobileNumber = req.body.mobileNumber || user.mobileNumber;
     
     if (req.body.totalExperience !== undefined) {
         user.totalExperience = Number(req.body.totalExperience);
@@ -325,6 +472,14 @@ const updateUserProfile = async (req, res) => {
         }
     }
 
+    // Handle Deletion Flags
+    if (req.body.deleteProfilePicture === 'true') {
+        user.profilePicture = undefined;
+    }
+    if (req.body.deleteBanner === 'true') {
+        user.bannerPicture = undefined;
+    }
+
     // Handle Resumes (Delete/Set Active)
     if (req.body.activeResumeId) {
         const target = user.resumes.id(req.body.activeResumeId);
@@ -360,6 +515,7 @@ const updateUserProfile = async (req, res) => {
                 if (req.body.whyJoinUs) {
                     try {
                         company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+                        await logActivity(user, 'WHY_JOIN_US_UPDATE', 'Updated "Why Join Us" section');
                     } catch (e) { console.error("Error parsing whyJoinUs", e); }
                 }
 
@@ -373,15 +529,60 @@ const updateUserProfile = async (req, res) => {
                     }
                 }
 
+                // Handle Company Image Deletion
+                if (req.body.deleteLogo === 'true' || req.body.deleteProfilePicture === 'true') {
+                    company.profilePicture = undefined;
+                }
+                if (req.body.deleteBanner === 'true') {
+                    company.bannerPicture = undefined;
+                }
+
                 await company.save();
             }
         }
     } else if (user.role === 'Employer' && !user.companyId) {
-        // Fallback for legacy employers not yet migrated
-        user.companyName = req.body.companyName || user.companyName;
-        user.website = req.body.website ? req.body.website.toLowerCase() : user.website;
-        // ... other fields as fallback
-        if (req.files?.profilePicture) user.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+        // Create new Company Document
+        company = await Company.create({
+            name: req.body.companyName || user.companyName || 'My Company',
+            website: req.body.website ? req.body.website.toLowerCase() : user.website,
+            companyEmail: req.body.companyEmail || user.companyEmail || user.email,
+            companyLocation: req.body.companyLocation || user.companyLocation,
+            companyCategory: req.body.companyCategory || user.companyCategory,
+            companyType: req.body.companyType || user.companyType,
+            foundedYear: req.body.foundedYear || user.foundedYear,
+            employeeCount: req.body.employeeCount || user.employeeCount,
+            about: req.body.about || user.about, // Company bio
+            members: [{
+                user: user._id,
+                role: 'Admin'
+            }]
+        });
+
+        if (req.body.whyJoinUs) {
+            try {
+                company.whyJoinUs = typeof req.body.whyJoinUs === 'string' ? JSON.parse(req.body.whyJoinUs) : req.body.whyJoinUs;
+                await logActivity(user, 'WHY_JOIN_US_UPDATE', 'Updated "Why Join Us" section');
+            } catch (e) {
+                 console.error("Error parsing whyJoinUs", e);
+            }
+        }
+
+        // Handle Company Picture Uploads during Creation
+        if (req.files) {
+            if (req.files.profilePicture) {
+                company.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+            }
+             if (req.files.bannerPicture) {
+                company.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
+            }
+        }
+        
+        await company.save();
+
+        // Update User with Company ID
+        user.companyId = company._id;
+        user.companyRole = 'Admin';
+        user.companyName = undefined; // Clear legacy fields if desired, or keep for backup
     }
 
     const updatedUser = await user.save();
@@ -408,7 +609,9 @@ const updateUserProfile = async (req, res) => {
         companyRole: updatedUser.companyRole,
         token: generateToken(updatedUser._id),
         following: updatedUser.following,
-        followers: updatedUser.followers
+        followingCompanies: updatedUser.followingCompanies,
+        followers: updatedUser.followers,
+        mobileNumber: updatedUser.mobileNumber
     };
 
     if (company) {
@@ -465,6 +668,29 @@ const getPublicUserProfile = async (req, res) => {
     let company = await Company.findById(req.params.id);
     
     if (company) {
+      // Find a contact person (Company Admin) to allow messaging
+      let contactUser = null;
+      console.log(`Debug: Fetching contact for company ${company.name} (${company._id})`);
+      
+      if (company.members && company.members.length > 0) {
+          console.log(`Debug: Found members array with length ${company.members.length}`);
+           const User = require('../models/User'); 
+           contactUser = await User.findById(company.members[0].user).select('name email profilePicture role companyName');
+      } 
+      
+      // Fallback: If no members listed, find any user who has this companyId
+      if (!contactUser) {
+           console.log('Debug: No contact found in members, trying fallback search by companyId');
+           const User = require('../models/User');
+           const users = await User.find({ companyId: company._id }).select('name email profilePicture role companyName').limit(1);
+           if (users.length > 0) {
+               contactUser = users[0];
+               console.log('Debug: Found contact via fallback');
+           }
+      }
+      
+      console.log('Debug: Final contactUser:', contactUser);
+
       return res.json({
         _id: company._id,
         companyName: company.name,
@@ -481,7 +707,8 @@ const getPublicUserProfile = async (req, res) => {
         bannerPicture: company.bannerPicture,
         employerVerification: company.employerVerification,
         whyJoinUs: company.whyJoinUs,
-        isCompanyEntity: true
+        isCompanyEntity: true,
+        contactUser // Return the contact user for messaging
       });
     }
 
@@ -507,6 +734,8 @@ const getPublicUserProfile = async (req, res) => {
         role: user.role,
         employerVerification: user.employerVerification,
         whyJoinUs: user.whyJoinUs,
+        totalExperience: user.totalExperience,
+        mobileNumber: user.mobileNumber
       });
     } else {
       res.status(404).json({ message: 'Profile not found' });
@@ -514,6 +743,77 @@ const getPublicUserProfile = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
   }
+};
+
+// @desc    Get company by slug
+// @route   GET /api/auth/company/slug/:slug
+// @access  Public
+const getCompanyBySlug = async (req, res) => {
+    try {
+        const { parseSlug } = require('../utils/slugify');
+        const slug = req.params.slug;
+        const idSuffix = parseSlug(slug);
+
+        // Find company where _id ends with the suffix
+        // We fetching all companies is inefficient but safe for suffix check given MongoDB constraints on _id.
+        // Better: Use $where or regex, but regex on ObjectId is tricky.
+        // Actually, we can fetch all companies and filter in JS if the dataset is small, 
+        // OR construct a regex for the ID.
+        // Valid Mongo ID is 24 hex chars. 
+        // Suffix is 4 chars. 
+        // Regex: /.*<suffix>$/ 
+        // But _id is ObjectId, not string. we can't search _id with regex directly in standard query unless we convert using aggregation or if mongoose supports it.
+        // Mongoose doesn't support regex on ObjectId.
+        
+        // Alternative: The slugify util logic uses the last 4 chars.
+        // Is it guaranteed that the backend has access to `slugify.js` logic? 
+        // Yes, I see `require('../utils/slugify')` in `candidateController.js`.
+        
+        // Efficient way: 
+        // We know the ID ends with these 4 chars.
+        // Since we can't easily query partial ObjectId, we might have to stick to full ID lookup if possible?
+        // But the URL only has 4 chars.
+        // Wait, `CandidateController` does:
+        // `const candidates = await User.find({ role: 'Job Seeker' }); const candidate = candidates.find(c => c._id.toString().endsWith(idSuffix));`
+        // That is highly inefficient for large datasets.
+        // However, for this project, I should mimic that pattern for consistency, 
+        // unless I can do better.
+        // I'll stick to the existing pattern to avoid risk, but I'll optimize by selecting only _id first if I can.
+        
+        // Actually, `User` collection might be large. `Company` collection is smaller.
+        const companies = await Company.find().select('name _id');
+        const companyId = companies.find(c => c._id.toString().endsWith(idSuffix))?._id;
+
+        if (companyId) {
+            // Re-use getPublicUserProfile logic but by ID
+            req.params.id = companyId;
+            return getPublicUserProfile(req, res);
+        } else {
+             // Fallback: Check Users (Job Seekers/Legacy) if not found in companies
+             // This keeps behavior consistent with "Profile" which could be a user.
+             // But the route is /company/slug... maybe unnecessary?
+             // `CompanyProfile` page is for companies. 
+             // But let's check just in case it's a legacy user profile link?
+             // Nah, let's keep it strict for Companies if the route is /company/slug.
+             // BUT providing a fallback to Users allows `getPublicUserProfile` to handle it.
+             
+             // Wait, `getPublicUserProfile` takes `req.params.id`.
+             // I'll manually call it.
+             
+             const users = await User.find({ role: { $ne: 'Job Seeker' } }).select('_id'); // Only check non-seekers (employers) who might be companies
+             const userId = users.find(u => u._id.toString().endsWith(idSuffix))?._id;
+             
+             if (userId) {
+                 req.params.id = userId;
+                 return getPublicUserProfile(req, res);
+             }
+             
+             res.status(404).json({ message: 'Company not found' });
+        }
+    } catch (error) {
+        console.error('Error fetching company by slug:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
 const deleteAccount = async (req, res) => {
@@ -535,28 +835,34 @@ const deleteAccount = async (req, res) => {
 
 // @route   GET /api/auth/companies
 // @access  Public
+// @desc    Get all companies
+// @route   GET /api/auth/companies
+// @access  Public
 const getCompanies = async (req, res) => {
     try {
         const { search, location } = req.query;
-        let query = { role: 'Employer', isActive: true };
+        let query = {};
 
         if (search) {
-            query.companyName = { $regex: search, $options: 'i' };
+            query.name = { $regex: search, $options: 'i' };
         }
         if (location) {
             query.companyLocation = { $regex: location, $options: 'i' };
         }
 
-        const companies = await User.find(query).select('-password');
+        const companies = await Company.find(query);
 
         // Add Job Count
         const companiesWithJobs = await Promise.all(companies.map(async (company) => {
             const jobCount = await Job.countDocuments({ 
-                postedBy: company._id, 
+                companyId: company._id, 
                 status: 'Active' 
             });
+            
+            const companyObj = company.toObject();
             return {
-                ...company.toObject(),
+                ...companyObj,
+                companyName: companyObj.name, // Frontend expects companyName
                 jobCount
             };
         }));
@@ -571,29 +877,85 @@ const getCompanies = async (req, res) => {
 // @desc    Follow a company
 // @route   POST /api/auth/follow/:id
 // @access  Private (Job Seeker)
+// @desc    Follow a company
+// @route   POST /api/auth/follow/:id
+// @access  Private (Job Seeker)
 const followCompany = async (req, res) => {
     try {
-        const companyId = req.params.id;
+        const targetId = req.params.id;
         const jobSeekerId = req.user._id;
 
-        const company = await User.findById(companyId);
-        if (!company || company.role !== 'Employer') {
+        // Check if target is a Company
+        const company = await Company.findById(targetId);
+        
+        if (company) {
+            // It is a Company Entity
+            await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+                $addToSet: { followingCompanies: targetId }
+            });
+
+            await Company.findByIdAndUpdate(targetId, {
+                $addToSet: { followers: jobSeekerId }
+            });
+
+             // Notify Company Admins/Recruiters
+             // We can find the company owner or team members
+             // For now, let's notify the owner if linked or company email via notification log? 
+             // Existing notif logic relied on recipient being a User.
+             // We need to find the User(s) who manage this company.
+             if (company.companyEmail) {
+                 // Maybe future: send email to company
+             }
+             
+             // Create in-app notification for the company account owner?
+             // Assuming Company doesn't receive notifs directly, but the User managing it does.
+             // We find users with this companyId
+             const companyUsers = await require('../models/User').find({ companyId: targetId });
+             if (companyUsers.length > 0) {
+                 const Notification = require('../models/Notification');
+                 const notifications = companyUsers.map(u => ({
+                    recipient: u._id,
+                    sender: jobSeekerId,
+                    type: 'FOLLOW',
+                    message: `${req.user.name} started following your company ${company.name}`,
+                    relatedId: jobSeekerId,
+                    relatedModel: 'User'
+                 }));
+                 await Notification.insertMany(notifications);
+                 
+                  // Real-time Push Notification
+                 if (req.io) {
+                     notifications.forEach(n => {
+                        req.io.to(n.recipient.toString()).emit('notification', {
+                            message: n.message,
+                            type: 'FOLLOW'
+                        });
+                     });
+                 }
+             }
+
+            return res.json({ message: 'Followed company successfully' });
+        }
+
+        // Fallback: Check if target is a User (Legacy Employer)
+        const userTarget = await require('../models/User').findById(targetId);
+        if (!userTarget || userTarget.role !== 'Employer') {
              return res.status(404).json({ message: 'Company not found' });
         }
 
-        // Add to Job Seeker's following list
-        await User.findByIdAndUpdate(jobSeekerId, {
-            $addToSet: { following: companyId }
+        // Add to Job Seeker's following list (User ref)
+        await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+            $addToSet: { following: targetId }
         });
 
-        // Add to Company's followers list
-        await User.findByIdAndUpdate(companyId, {
+        // Add to Company's followers list (User ref)
+        await require('../models/User').findByIdAndUpdate(targetId, {
             $addToSet: { followers: jobSeekerId }
         });
 
         const Notification = require('../models/Notification');
         await Notification.create({
-            recipient: companyId,
+            recipient: targetId,
             sender: jobSeekerId,
             type: 'FOLLOW',
             message: `${req.user.name} started following your company`,
@@ -603,7 +965,7 @@ const followCompany = async (req, res) => {
 
         // Real-time Push Notification
         if (req.io) {
-            req.io.to(companyId).emit('notification', {
+            req.io.to(targetId).emit('notification', {
                 message: `${req.user.name} started following your company`,
                 type: 'FOLLOW'
             });
@@ -622,20 +984,263 @@ const followCompany = async (req, res) => {
 // @access  Private (Job Seeker)
 const unfollowCompany = async (req, res) => {
     try {
-        const companyId = req.params.id;
+        const targetId = req.params.id;
         const jobSeekerId = req.user._id;
 
-        // Remove from Job Seeker's following list
-        await User.findByIdAndUpdate(jobSeekerId, {
-            $pull: { following: companyId }
+        // Check if Company
+        const company = await Company.findById(targetId);
+        if (company) {
+             await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+                $pull: { followingCompanies: targetId }
+            });
+
+            await Company.findByIdAndUpdate(targetId, {
+                $pull: { followers: jobSeekerId }
+            });
+            return res.json({ message: 'Unfollowed company successfully' });
+        }
+
+        // Fallback: User
+        await require('../models/User').findByIdAndUpdate(jobSeekerId, {
+            $pull: { following: targetId }
         });
 
-        // Remove from Company's followers list
-        await User.findByIdAndUpdate(companyId, {
+        await require('../models/User').findByIdAndUpdate(targetId, {
             $pull: { followers: jobSeekerId }
         });
 
         res.json({ message: 'Unfollowed successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Request company profile update
+// @route   POST /api/auth/company/update-request
+// @access  Private (Employer Admin)
+const requestCompanyUpdate = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user || user.role !== 'Employer' || user.companyRole !== 'Admin') {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const company = await Company.findById(user.companyId);
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        // Check for existing pending request
+        const existingRequest = await CompanyUpdateRequest.findOne({
+            companyId: company._id,
+            status: 'Pending'
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({ message: 'A pending update request already exists.' });
+        }
+
+        // Prepare requested changes
+        // Only include fields that are allowed to be updated
+        const allowedFields = [
+            'companyName', 'website', 'companyEmail', 'companyLocation',
+            'companyCategory', 'companyType', 'foundedYear', 'employeeCount',
+            'about', 'whyJoinUs'
+        ];
+
+        const requestedChanges = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                const newValue = req.body[field];
+                
+                // Map frontend field names to DB field names
+                let dbField = field;
+                if (field === 'companyName') dbField = 'name';
+
+                const currentValue = company[dbField];
+
+                // Normalize for comparison (handle null/undefined/types)
+                // We treat null/undefined as empty string for text fields to avoid false positives
+                // For 'whyJoinUs' (mixed/object), we need special handling if it comes as string
+                
+                let normCurrent = currentValue;
+                let normNew = newValue;
+                
+                if (field === 'whyJoinUs') {
+                     try {
+                         // If new value is string but represents object, try to parse
+                         if (typeof newValue === 'string') {
+                            normNew = JSON.parse(newValue);
+                         }
+                         // Deep equality check using stringify for simplicity
+                         if (JSON.stringify(normCurrent) !== JSON.stringify(normNew)) {
+                             requestedChanges[dbField] = normNew; // Use dbField (whyJoinUs is same)
+                         }
+                         continue; 
+                     } catch (e) {
+                         // Fallback to string compare
+                     }
+                } 
+
+                // Standard normalization for text/numbers
+                normCurrent = normCurrent === undefined || normCurrent === null ? '' : String(normCurrent).trim();
+                normNew = normNew === undefined || normNew === null ? '' : String(normNew).trim();
+
+                if (normCurrent !== normNew) {
+                    requestedChanges[dbField] = newValue; // Store with DB key (e.g., 'name')
+                }
+            }
+        }
+        
+        // Handle Files for Request
+        // Since we can't easily store files in a JSON request object without uploading them first,
+        // we'll upload them to a temporary location or just normal uploads and store the path.
+        // The middleware `upload` handles the saving to disk.
+        if (req.files) {
+             if (req.files.profilePicture) {
+                requestedChanges.profilePicture = `/uploads/${req.files.profilePicture[0].filename}`;
+            }
+            if (req.files.bannerPicture) {
+                requestedChanges.bannerPicture = `/uploads/${req.files.bannerPicture[0].filename}`;
+            }
+        }
+
+        const updateRequest = await CompanyUpdateRequest.create({
+            companyId: company._id,
+            requesterId: user._id,
+            requestedChanges
+        });
+
+        // Notify Admins
+        const admins = await User.find({ role: 'Admin' });
+        console.log(`[CompanyUpdate] Found ${admins.length} admins to notify.`);
+        
+        const notifications = admins.map(admin => ({
+            recipient: admin._id,
+            sender: user._id,
+            type: 'COMPANY_UPDATE',
+            message: `New update request from ${company.name}`,
+            relatedId: updateRequest._id,
+            relatedModel: 'CompanyUpdateRequest'
+        }));
+        
+        const savedNotifs = await Notification.insertMany(notifications);
+        console.log(`[CompanyUpdate] Created ${savedNotifs.length} notifications.`);
+
+        // Emit Socket Event to Admin Room
+        if (req.io) {
+            req.io.to('admin-room').emit('notification', {
+                message: `New update request from ${company.name}`,
+                type: 'COMPANY_UPDATE',
+                relatedId: updateRequest._id
+            });
+        }
+
+        res.status(201).json({ message: 'Update request submitted for approval', requestId: updateRequest._id });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get company followers
+// @route   GET /api/auth/company/:id/followers
+// @access  Private (Company Admin only)
+const getCompanyFollowers = async (req, res) => {
+    try {
+        const companyId = req.params.id;
+        
+        // Verify User is a member of this company
+        if (!req.user.companyId || req.user.companyId.toString() !== companyId) {
+            return res.status(403).json({ message: 'Not authorized to view followers for this company' });
+        }
+
+        const company = await Company.findById(companyId).populate('followers', 'name profilePicture title about');
+        
+        if (!company) {
+             return res.status(404).json({ message: 'Company not found' });
+        }
+        
+        res.json(company.followers);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Save a job
+// @route   POST /api/auth/jobs/:id/save
+// @access  Private (Job Seeker)
+const saveJob = async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const userId = req.user._id;
+
+        // Verify job exists
+        const job = await Job.findById(jobId);
+        if (!job) {
+            return res.status(404).json({ message: 'Job not found' });
+        }
+
+        await User.findByIdAndUpdate(userId, {
+            $addToSet: { savedJobs: jobId }
+        });
+
+        res.json({ message: 'Job saved successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Unsave a job
+// @route   DELETE /api/auth/jobs/:id/unsave
+// @access  Private (Job Seeker)
+const unsaveJob = async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const userId = req.user._id;
+
+        await User.findByIdAndUpdate(userId, {
+            $pull: { savedJobs: jobId }
+        });
+
+        res.json({ message: 'Job unsaved successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get saved jobs
+// @route   GET /api/auth/saved-jobs
+// @access  Private (Job Seeker)
+const getSavedJobs = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const user = await User.findById(userId).populate({
+            path: 'savedJobs',
+            populate: {
+                path: 'postedBy',
+                select: 'name profilePicture companyName'
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Filter out expired or inactive jobs
+        const savedJobs = user.savedJobs?.filter(job => job && job.status === 'Active') || [];
+
+        res.json(savedJobs);
 
     } catch (error) {
         console.error(error);
@@ -656,5 +1261,14 @@ module.exports = {
   getPublicUserProfile,
   getCompanies,
   followCompany,
-  unfollowCompany
+  requestCompanyUpdate,
+  unfollowCompany,
+  verifyOtp,
+  resendOtp,
+  getCompanyBySlug,
+  getCompanyFollowers,
+  saveJob,
+  unsaveJob,
+  getSavedJobs
 };
+

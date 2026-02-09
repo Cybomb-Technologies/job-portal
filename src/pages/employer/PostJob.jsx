@@ -250,6 +250,13 @@ const PostJob = () => {
         }
     };
 
+    const handleKeyDown = (e, field) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setShowSuggestions(prev => ({ ...prev, [field]: false }));
+        }
+    };
+
     const selectSuggestion = (field, value) => {
         setFormData({ ...formData, [field]: value });
         setShowSuggestions({ ...showSuggestions, [field]: false });
@@ -372,7 +379,7 @@ const PostJob = () => {
         window.scrollTo(0, 0);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (status = 'Active') => {
         setLoading(true);
         try {
             // Formatting payload to match backend schema
@@ -386,15 +393,16 @@ const PostJob = () => {
                 // Ensure arrays are arrays
                 benefits: formData.benefits,
                 skills: formData.skills,
-                preScreeningQuestions: formData.preScreeningQuestions
+                preScreeningQuestions: formData.preScreeningQuestions,
+                status: status // 'Active' or 'Closed'
             };
 
             if (id) {
                 await api.put(`/jobs/${id}`, payload);
                  Swal.fire({
                     icon: 'success',
-                    title: 'Job Updated!',
-                    text: 'Your job listing has been updated successfully.',
+                    title: status === 'Active' ? 'Job Updated!' : 'Draft Saved!',
+                    text: status === 'Active' ? 'Your job listing has been updated successfully.' : 'Your job has been saved as a draft.',
                     confirmButtonColor: '#4169E1'
                 }).then(() => {
                     navigate('/employer/my-jobs');
@@ -403,8 +411,8 @@ const PostJob = () => {
                 await api.post('/jobs', payload);
                  Swal.fire({
                     icon: 'success',
-                    title: 'Job Posted Successfully!',
-                    text: 'Your job listing is now live.',
+                    title: status === 'Active' ? 'Job Posted Successfully!' : 'Draft Saved!',
+                    text: status === 'Active' ? 'Your job listing is now live.' : 'Your job has been saved as a draft.',
                     confirmButtonColor: '#4169E1'
                 }).then(() => {
                     navigate('/employer/my-jobs');
@@ -413,11 +421,28 @@ const PostJob = () => {
 
         } catch (err) {
             console.error(err);
-            Swal.fire({
-                icon: 'error',
-                title: id ? 'Update Failed' : 'Post Failed',
-                text: err.response?.data?.message || 'Something went wrong. Please try again.'
-            });
+             // Specific error for unverified users trying to post active jobs
+            if (err.response?.status === 403 && status === 'Active') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Verification Required',
+                    text: 'Unverified companies can only save Drafts. Please verify your company to publish active jobs, or save as Draft for now.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save as Draft',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#4169E1'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        handleSubmit('Closed');
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: id ? 'Update Failed' : 'Post Failed',
+                    text: err.response?.data?.message || 'Something went wrong. Please try again.'
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -434,13 +459,11 @@ const PostJob = () => {
         ];
 
         const handleStepClick = (targetStep) => {
-            // Allow going back always
             if (targetStep < currentStep) {
                 setCurrentStep(targetStep);
                 return;
             }
 
-            // Validate all steps up to the target
             for (let i = 1; i < targetStep; i++) {
                 if (!validateStep(i)) {
                     Swal.fire({
@@ -449,7 +472,7 @@ const PostJob = () => {
                         text: `Please complete Step ${i} (${steps[i-1].label}) before proceeding.`,
                         confirmButtonColor: '#4169E1'
                     });
-                    setCurrentStep(i); // Go to the first invalid step
+                    setCurrentStep(i);
                     return;
                 }
             }
@@ -457,32 +480,34 @@ const PostJob = () => {
         };
 
         return (
-            <div className="flex items-center justify-between mb-8 px-4">
-                {steps.map((step, index) => (
-                    <div 
-                        key={step.num} 
-                        className="flex flex-col items-center relative z-10 w-full group"
-                        onClick={() => handleStepClick(step.num)}
-                    >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 cursor-pointer ${
-                            currentStep >= step.num 
-                                ? 'bg-[#4169E1] border-[#4169E1] text-white shadow-lg shadow-blue-500/30' 
-                                : 'bg-white border-gray-200 text-gray-400 group-hover:border-[#4169E1] group-hover:text-[#4169E1]'
-                        }`}>
-                            {currentStep > step.num ? <Check className="w-5 h-5" /> : step.num}
+            <div className="mb-8 overflow-x-auto no-scrollbar -mx-4 md:mx-0 pb-2">
+                <div className="flex items-center justify-between min-w-[350px] md:min-w-0 px-4 md:px-0">
+                    {steps.map((step, index) => (
+                        <div 
+                            key={step.num} 
+                            className="flex flex-col items-center relative z-10 w-full group min-w-[60px]"
+                            onClick={() => handleStepClick(step.num)}
+                        >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 border-2 cursor-pointer ${
+                                currentStep >= step.num 
+                                    ? 'bg-[#4169E1] border-[#4169E1] text-white shadow-lg shadow-blue-500/30' 
+                                    : 'bg-white border-gray-200 text-gray-400 group-hover:border-[#4169E1] group-hover:text-[#4169E1]'
+                            }`}>
+                                {currentStep > step.num ? <Check className="w-5 h-5" /> : step.num}
+                            </div>
+                            <span className={`text-xs font-medium mt-2 uppercase tracking-wide cursor-pointer transition-colors ${
+                                currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400 group-hover:text-[#4169E1]'
+                            }`}>
+                                {step.label}
+                            </span>
+                            {index !== steps.length - 1 && (
+                                <div className={`hidden md:block absolute top-5 left-1/2 w-full h-[2px] transition-all duration-500 ${
+                                    currentStep > step.num ? 'bg-[#4169E1]' : 'bg-gray-200'
+                                }`} style={{ width: 'calc(100% - 2.5rem)', transform: 'translateX(1.25rem)' }}></div>
+                            )}
                         </div>
-                        <span className={`text-xs font-medium mt-2 uppercase tracking-wide cursor-pointer transition-colors ${
-                            currentStep >= step.num ? 'text-[#4169E1]' : 'text-gray-400 group-hover:text-[#4169E1]'
-                        }`}>
-                            {step.label}
-                        </span>
-                        {index !== steps.length - 1 && (
-                             <div className={`hidden md:block absolute top-5 left-1/2 w-full h-[2px] transition-all duration-500 ${
-                                 currentStep > step.num ? 'bg-[#4169E1]' : 'bg-gray-200'
-                             }`} style={{ width: 'calc(100% - 2.5rem)', transform: 'translateX(1.25rem)' }}></div>
-                        )}
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
         );
     };
@@ -490,7 +515,7 @@ const PostJob = () => {
     const SuggestionList = ({ items, field, onSelect }) => {
         if (!showSuggestions[field] || items.length === 0) return null;
         return (
-            <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
+            <ul className="absolute top-full left-0 z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-60 overflow-y-auto animate-fadeIn divide-y divide-gray-50">
                 {items.map((item, i) => {
                      const val = field === 'location' ? `${item.name}, ${item.admin1 || ''}, ${item.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '') : item;
                      return (
@@ -524,7 +549,7 @@ const PostJob = () => {
                 </button>
 
                 <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                    <div className="p-8 md:p-10">
+                    <div className="p-5 md:p-10">
                         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Post a New Job</h1>
                         <p className="text-gray-500 mb-10">Create a compelling job post to attract top talent.</p>
 
@@ -548,6 +573,7 @@ const PostJob = () => {
                                                 value={formData.title} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('title')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'title')}
                                                 className="input-field" 
                                                 placeholder="e.g. Senior Frontend Developer" 
                                                 autoFocus 
@@ -563,6 +589,7 @@ const PostJob = () => {
                                                 value={formData.jobRole} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('jobRole')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'jobRole')}
                                                 className="input-field" 
                                                 placeholder="e.g. Software Engineer" 
                                             />
@@ -577,6 +604,7 @@ const PostJob = () => {
                                                 value={formData.functionalArea} 
                                                 onChange={handleInputChange} 
                                                 onFocus={() => handleFocus('functionalArea')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'functionalArea')}
                                                 className="input-field" 
                                                 placeholder="e.g. IT Software" 
                                             />
@@ -605,6 +633,7 @@ const PostJob = () => {
                                                 className="input-field" 
                                                 placeholder="e.g. Immediate, 1 Month" 
                                                 onFocus={() => handleFocus('recruitmentDuration')}
+                                                onKeyDown={(e) => handleKeyDown(e, 'recruitmentDuration')}
                                             />
                                             <SuggestionList items={suggestions.recruitmentDuration} field="recruitmentDuration" onSelect={selectSuggestion} />
                                         </div>
@@ -616,6 +645,7 @@ const PostJob = () => {
                                                 name="openings" 
                                                 value={formData.openings} 
                                                 onChange={handleInputChange} 
+                                                onWheel={(e) => e.target.blur()}
                                                 className="input-field" 
                                                 placeholder="e.g. 20" 
                                             />
@@ -631,6 +661,7 @@ const PostJob = () => {
                                                     value={formData.location} 
                                                     onChange={handleInputChange} 
                                                     onFocus={() => handleFocus('location')}
+                                                    onKeyDown={(e) => handleKeyDown(e, 'location')}
                                                     className="input-field pl-15" 
                                                     placeholder="Search city..." 
                                                 />
@@ -708,13 +739,13 @@ const PostJob = () => {
                                             
                                             <div>
                                                 <label className="label">{formData.salaryType === 'Range' ? 'Min Salary' : 'Amount'} (₹) <span className="text-red-500">*</span></label>
-                                                <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} className="input-field" placeholder="e.g. 500000" />
+                                                <input type="number" name="salaryMin" value={formData.salaryMin} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 500000" />
                                             </div>
 
                                             {formData.salaryType === 'Range' && (
                                                 <div>
                                                     <label className="label">Max Salary (₹) <span className="text-red-500">*</span></label>
-                                                    <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} className="input-field" placeholder="e.g. 1500000" />
+                                                    <input type="number" name="salaryMax" value={formData.salaryMax} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 1500000" />
                                                 </div>
                                             )}
                                         </div>
@@ -723,11 +754,11 @@ const PostJob = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div>
                                              <label className="label">Min Experience (Years) <span className="text-red-500">*</span></label>
-                                             <input type="number" name="experienceMin" value={formData.experienceMin} onChange={handleInputChange} className="input-field" placeholder="e.g. 2" />
+                                             <input type="number" name="experienceMin" value={formData.experienceMin} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 2" />
                                         </div>
                                          <div>
                                              <label className="label">Max Experience (Years) <span className="text-red-500">*</span></label>
-                                             <input type="number" name="experienceMax" value={formData.experienceMax} onChange={handleInputChange} className="input-field" placeholder="e.g. 5" />
+                                             <input type="number" name="experienceMax" value={formData.experienceMax} onChange={handleInputChange} onWheel={(e) => e.target.blur()} className="input-field" placeholder="e.g. 5" />
                                         </div>
                                     </div>
                                 </div>
@@ -755,7 +786,7 @@ const PostJob = () => {
 
                                     <div>
                                         <label className="label">Skills <span className="text-red-500">*</span> <span className="text-xs font-normal text-gray-500">(Type and press Enter)</span></label>
-                                        <div className="p-2 border border-gray-200 rounded-xl flex flex-wrap gap-2 focus-within:border-[#4169E1] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all bg-white">
+                                        <div className="relative p-2 border border-gray-200 rounded-xl flex flex-wrap gap-2 focus-within:border-[#4169E1] focus-within:ring-4 focus-within:ring-blue-500/10 transition-all bg-white">
                                             {formData.skills.map((skill, index) => (
                                                 <span key={index} className="bg-gray-100 text-gray-800 px-3 py-1 rounded-lg text-sm font-medium flex items-center">
                                                     {skill}
@@ -1023,17 +1054,28 @@ const PostJob = () => {
                             <ChevronLeft className="w-5 h-5 mr-1" /> Back
                         </button>
 
-                        <button
-                            onClick={currentStep === 5 ? handleSubmit : handleNext}
-                            disabled={loading}
-                            className={`bg-[#4169E1] text-white font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-blue-500/30 flex items-center space-x-2 hover:bg-[#3A5FCD] ${loading ? 'opacity-70 cursor-wait' : ''}`}
-                        >
-                            {currentStep === 5 ? (
-                                loading ? (id ? 'Updating...' : 'Publishing...') : <><span>{id ? 'Update Job' : 'Publish Job'}</span> <Save className="w-5 h-5 ml-2" /></>
-                            ) : (
-                                <><span>Next Step</span> <ChevronRight className="w-5 h-5 ml-1" /></>
+                        <div className="flex space-x-4">
+                            {currentStep === 5 && (
+                                <button
+                                    onClick={() => handleSubmit('Closed')}
+                                    disabled={loading}
+                                    className="bg-gray-100 text-gray-700 font-bold px-6 py-3 rounded-xl transition hover:bg-gray-200 flex items-center"
+                                >
+                                    Save as Draft
+                                </button>
                             )}
-                        </button>
+                            <button
+                                onClick={currentStep === 5 ? () => handleSubmit('Active') : handleNext}
+                                disabled={loading}
+                                className={`bg-[#4169E1] text-white font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-blue-500/30 flex items-center space-x-2 hover:bg-[#3A5FCD] ${loading ? 'opacity-70 cursor-wait' : ''}`}
+                            >
+                                {currentStep === 5 ? (
+                                    loading ? (id ? 'Updating...' : 'Publishing...') : <><span>{id ? 'Update Job' : 'Publish Job'}</span> <Save className="w-5 h-5 ml-2" /></>
+                                ) : (
+                                    <><span>Next Step</span> <ChevronRight className="w-5 h-5 ml-1" /></>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

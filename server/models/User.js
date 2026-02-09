@@ -22,6 +22,9 @@ const userSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    mobileNumber: {
+      type: String,
+    },
     password: {
       type: String,
     },
@@ -117,6 +120,16 @@ const userSchema = mongoose.Schema(
             type: Boolean,
             default: false
         },
+        idCard: {
+            fileUrl: String,
+            uploadedAt: Date,
+            status: {
+                type: String,
+                enum: ['Not Uploaded', 'Pending', 'Approved', 'Rejected'],
+                default: 'Not Uploaded'
+            },
+            rejectionReason: String
+        },
         documents: [{
             type: {
                 type: String,
@@ -140,6 +153,16 @@ const userSchema = mongoose.Schema(
         },
         verificationOTP: String,
         verificationOTPExpire: Date
+    },
+    otp: {
+        type: String
+    },
+    otpExpire: {
+        type: Date
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
     },
     whyJoinUs: {
         videos: [{
@@ -171,9 +194,17 @@ const userSchema = mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User' // For Job Seekers: Companies they follow
     }],
+    followingCompanies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company'
+    }],
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User' // For Companies: Job Seekers following them
+    }],
+    savedJobs: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Job'
     }]
   },
   {

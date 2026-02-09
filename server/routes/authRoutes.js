@@ -11,10 +11,18 @@ const {
     updateUserProfile,
     changePassword,
     deleteAccount,
+    getCompanyBySlug,
     getPublicUserProfile,
     getCompanies,
     followCompany,
-    unfollowCompany
+    unfollowCompany,
+    verifyOtp,
+    resendOtp,
+    requestCompanyUpdate,
+    getCompanyFollowers,
+    saveJob,
+    unsaveJob,
+    getSavedJobs
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -54,6 +62,8 @@ function checkFileType(file, cb) {
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/signup', registerUser);
+router.post('/verify-otp', verifyOtp);
+router.post('/resend-otp', resendOtp);
 router.post('/login', authUser);
 router.post('/google-login', googleLogin);
 router.post('/forgot-password', forgotPassword);
@@ -68,10 +78,23 @@ router.route('/profile')
     ]), updateUserProfile)
     .delete(protect, deleteAccount);
 
+router.post('/company/update-request', protect, upload.fields([
+    { name: 'profilePicture', maxCount: 1 },
+    { name: 'bannerPicture', maxCount: 1 }
+]), requestCompanyUpdate);
+
 router.put('/update-password', protect, changePassword);
+router.get('/company/slug/:slug', getCompanyBySlug);
 router.get('/user/:id', getPublicUserProfile);
 router.get('/companies', getCompanies);
 router.post('/follow/:id', protect, followCompany);
 router.delete('/unfollow/:id', protect, unfollowCompany);
+router.get('/company/:id/followers', protect, getCompanyFollowers);
+
+// Saved Jobs Routes
+router.get('/saved-jobs', protect, getSavedJobs);
+router.post('/jobs/:id/save', protect, saveJob);
+router.delete('/jobs/:id/unsave', protect, unsaveJob);
 
 module.exports = router;
+

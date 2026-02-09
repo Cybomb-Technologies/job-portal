@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Briefcase, User, Mail, Lock } from 'lucide-react';
@@ -14,6 +14,15 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    useEffect(() => {
+        if (error) {
+            const timer = setTimeout(() => {
+                setError('');
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
@@ -184,24 +193,28 @@ const Login = () => {
                     </button>
                 </form>
 
-                <div className="relative mb-8">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-600/50"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-gray-800 text-gray-400">Or continue with</span>
-                    </div>
-                </div>
+                {role === 'Job Seeker' && (
+                    <>
+                        <div className="relative mb-8">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-gray-600/50"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-4 bg-gray-800 text-gray-400">Or continue with</span>
+                            </div>
+                        </div>
 
-                <div className="flex justify-center mb-8">
-                    <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={handleGoogleError}
-                        theme="filled_black"
-                        shape="pill"
-                        size="large"
-                    />
-                </div>
+                        <div className="flex justify-center mb-8">
+                            <GoogleLogin
+                                onSuccess={handleGoogleSuccess}
+                                onError={handleGoogleError}
+                                theme="filled_black"
+                                shape="pill"
+                                size="large"
+                            />
+                        </div>
+                    </>
+                )}
 
                 <p className="text-center text-gray-400 text-sm">
                     Don't have an account?{' '}

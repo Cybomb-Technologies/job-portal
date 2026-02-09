@@ -5,12 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
 import { io } from 'socket.io-client';
 import Swal from 'sweetalert2';
+import { useChat } from '../../context/ChatContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { unreadCount: chatUnreadCount } = useChat();
 
   // Notifications State
   const [notifications, setNotifications] = React.useState([]);
@@ -18,14 +19,26 @@ const Header = () => {
   const [showNotifications, setShowNotifications] = React.useState(false);
   const desktopNotificationRef = useRef(null);
   const mobileNotificationRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const menuButtonRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
         const isDesktopOutside = desktopNotificationRef.current && !desktopNotificationRef.current.contains(event.target);
         const isMobileOutside = mobileNotificationRef.current && !mobileNotificationRef.current.contains(event.target);
-
+        
+        // Close Notifications
         if (isDesktopOutside && isMobileOutside) {
             setShowNotifications(false);
+        }
+
+        // Close Mobile Menu
+        if (isMenuOpen && 
+            mobileMenuRef.current && 
+            !mobileMenuRef.current.contains(event.target) && 
+            menuButtonRef.current && 
+            !menuButtonRef.current.contains(event.target)) {
+            setIsMenuOpen(false);
         }
     };
 
@@ -33,7 +46,7 @@ const Header = () => {
     return () => {
         document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isMenuOpen]);
 
   const fetchNotifications = async () => {
     if (user) {
@@ -61,10 +74,6 @@ const Header = () => {
     }
 
     socket.on('notification', (data) => {
-        // Play notification sound
-        // const audio = new Audio('/notification.mp3');
-        // audio.play().catch(e => console.log('Audio play failed', e));
-
         // Show Toast
         Swal.fire({
             icon: 'info',
@@ -110,6 +119,22 @@ const Header = () => {
               case 'JOB_ALERT':
                   navigate(`/job/${notification.relatedId}`); // Assuming relatedId is jobId
                   break;
+              case 'NEW_MESSAGE':
+                  navigate('/messages', { state: { userId: notification.sender } });
+                  break;
+              case 'APPLICATION_STATUS_UPDATE':
+                  navigate('/profile/applications');
+                  break;
+              case 'NEW_ISSUE':
+                  navigate('/admin/support');
+                  break;
+              case 'ISSUE_UPDATE':
+                  if (user?.role === 'Employer') {
+                      navigate('/employer/profile/tickets');
+                  } else {
+                      navigate('/profile/tickets');
+                  }
+                  break;
               default:
                   // Default navigation if needed
                   break;
@@ -143,6 +168,7 @@ const Header = () => {
     { name: 'Home', path: '/' },
     { name: 'Find Jobs', path: '/jobs' },
     { name: 'Companies', path: '/companies' },
+    { name: 'Messages', path: '/messages' },
     { name: 'Career Tips', path: '/career-tips' },
     { name: 'Pricing', path: '/pricing' },
   ];
@@ -152,6 +178,7 @@ const Header = () => {
     { name: 'Post Job', path: '/employer/post-job' },
     { name: 'My Jobs', path: '/employer/my-jobs' },
     { name: 'Find Candidates', path: '/employer/candidates' },
+    { name: 'Messages', path: '/messages' },
     { name: 'Pricing', path: '/pricing' },
     { name: 'Verification', path: '/employer/verification' },
   ];
@@ -159,7 +186,7 @@ const Header = () => {
   const currentNavItems = user?.role === 'Employer' ? employerNavItems : navItems;
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-gray-200/50 transition-all duration-300">
+    <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md z-50 border-b border-gray-200/50 dark:border-gray-700/50 transition-all duration-300">
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -167,41 +194,44 @@ const Header = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:shadow-blue-300 transition-all duration-300 group-hover:scale-105">
               <Briefcase className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-extrabold text-slate-800 tracking-tight font-display">
+            <span className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight font-display">
               Job<span className="text-blue-600">Portal</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden xl:flex items-center space-x-1">
             {currentNavItems.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                  `px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 relative ${
                     isActive 
-                    ? 'bg-blue-50 text-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`
                 }
               >
                 {item.name}
+                {item.name === 'Messages' && chatUnreadCount > 0 && (
+                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse">
+                         {chatUnreadCount}
+                     </span>
+                )}
               </NavLink>
             ))}
           </nav>
 
-{/* Search Bar Removed */}
-
           {/* User Actions */}
-          <div className="hidden md:flex items-center space-x-5">
+          <div className="hidden xl:flex items-center space-x-5">
             {user ? (
               <>
                  {/* Notification Bell */}
                  <div className="relative" ref={desktopNotificationRef}>
                     <button 
                         onClick={() => setShowNotifications(!showNotifications)}
-                        className="p-2.5 relative hover:bg-gray-100 rounded-full transition-all duration-300 hover:scale-105 hover:text-blue-600 text-gray-500"
+                        className="p-2.5 relative hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-300 hover:scale-105 hover:text-blue-600 text-gray-500 dark:text-gray-400"
                     >
                         <Bell className="w-6 h-6" />
                         {unreadCount > 0 && (
@@ -211,9 +241,9 @@ const Header = () => {
 
                     {/* Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-14 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-fadeIn">
+                        <div className="absolute right-0 top-14 w-96 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-[100] animate-fadeIn">
                             <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50 backdrop-blur-sm">
-                                <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
+                                <h3 className="font-bold text-gray-900 dark:text-white font-display">Notifications</h3>
                                 {unreadCount > 0 && (
                                     <button onClick={markAllRead} className="text-xs text-blue-600 font-bold hover:text-blue-700 transition-colors">Mark all read</button>
                                 )}
@@ -247,8 +277,8 @@ const Header = () => {
                     )}
                  </div>
 
-                 <Link to={user.role === 'Employer' ? "/employer/profile" : "/profile"} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 transition-all duration-300 border border-transparent hover:border-gray-200">
-                  <div className="w-9 h-9 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center text-gray-600 border border-gray-200 shadow-inner">
+                 <Link to={user.role === 'Employer' ? "/employer/profile" : "/profile"} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-300 border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+                  <div className="w-9 h-9 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 shadow-inner">
                     <User className="w-5 h-5" />
                   </div>
                 </Link>
@@ -281,7 +311,7 @@ const Header = () => {
           </div>
 
           {/* Mobile Actions */}
-          <div className="flex md:hidden items-center space-x-4">
+          <div className="flex xl:hidden items-center gap-4">
             {user && (
                  <div className="relative" ref={mobileNotificationRef}>
                     <button 
@@ -295,7 +325,7 @@ const Header = () => {
                     </button>
                     {/* Mobile Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-14 w-[85vw] sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-[100]">
+                        <div className="fixed top-24 left-4 right-4 md:absolute md:top-14 md:left-auto md:right-0 md:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in slide-in-from-top-2">
                             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <h3 className="font-bold text-gray-900 font-display">Notifications</h3>
                                 {unreadCount > 0 && (
@@ -332,6 +362,7 @@ const Header = () => {
                  </div>
             )}
             <button
+              ref={menuButtonRef}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-800 hover:text-blue-600 transition-colors"
             >
@@ -340,11 +371,9 @@ const Header = () => {
           </div>
         </div>
 
-{/* Mobile Search Content Removed */}
-
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-6 border-t border-gray-100 animate-slide-up">
+          <div ref={mobileMenuRef} className="xl:hidden py-6 border-t border-gray-100 animate-slide-up">
             <div className="flex flex-col space-y-2">
               {currentNavItems.map((item) => (
                 <NavLink

@@ -49,7 +49,7 @@ const ContactUs = () => {
       {/* Header */}
       <div className="bg-black text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Contact Us</h1>
+          <h1 className="text-4xl md:text-5xl !text-white font-bold mb-4">Contact Us</h1>
           <p className="text-gray-300 max-w-2xl mx-auto">
             We're here to help. Reach out to us with any questions about your account, job postings, or general inquiries.
           </p>

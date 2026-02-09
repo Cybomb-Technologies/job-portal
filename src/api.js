@@ -23,4 +23,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        // Only redirect if not already on public pages? 
+        // But 403/401 implies auth failure.
+        // Check message content for "deactivated" to be specific?
+        if (error.response.data.message === 'Your account has been deactivated. Please contact support.') {
+             localStorage.removeItem('user');
+             // Only redirect if NOT on login page to avoid clearing error state
+             if (window.location.pathname !== '/login') {
+                 window.location.href = '/login'; 
+             }
+        }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

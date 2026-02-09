@@ -1,12 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, Building2, Lock, PlayCircle, Users } from 'lucide-react';
+import { User, Building2, PlayCircle, Users, Activity, Heart, Settings } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const EmployerProfileSidebar = () => {
+    const { user } = useAuth();
+    const isRecruiter = user?.companyRole === 'Recruiter';
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-                <h3 className="text-lg font-bold text-gray-800">Profile Settings</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Profile Settings</h3>
             </div>
             <nav className="flex flex-col p-2 space-y-1">
                 <NavLink 
@@ -15,8 +19,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -29,8 +33,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -43,8 +47,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -57,8 +61,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -71,8 +75,8 @@ const EmployerProfileSidebar = () => {
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
@@ -81,17 +85,61 @@ const EmployerProfileSidebar = () => {
                 </NavLink>
 
                 <NavLink 
-                    to="/employer/profile/password" 
+                    to="/employer/profile/followers" 
                     className={({ isActive }) => 
                         `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                             isActive 
-                            ? 'bg-blue-50 text-[#4169E1]' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`
                     }
                 >
-                    <Lock className="w-5 h-5" />
-                    <span>Change Password</span>
+                    <Heart className="w-5 h-5" />
+                    <span>Followers</span>
+                </NavLink>
+
+                {!isRecruiter && (
+                    <NavLink 
+                        to="/employer/profile/activity-logs" 
+                        className={({ isActive }) => 
+                            `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                                isActive 
+                                ? 'bg-blue-50 text-[#4169E1]' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }`
+                        }
+                    >
+                        <Activity className="w-5 h-5" />
+                        <span>Activity Logs</span>
+                    </NavLink>
+                )}
+
+                <NavLink 
+                    to="/employer/profile/tickets" 
+                    className={({ isActive }) => 
+                        `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            isActive 
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                        }`
+                    }
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-ticket"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+                    <span>My Tickets</span>
+                </NavLink>
+
+                <NavLink 
+                    to="/employer/profile/settings" 
+                    className={({ isActive }) => 
+                        `flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                            isActive 
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-[#4169E1]' 
+                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                        }`
+                    }
+                >
+                    <Settings className="w-5 h-5" />
+                    <span>Settings</span>
                 </NavLink>
             </nav>
         </div>

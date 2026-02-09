@@ -297,7 +297,7 @@ const CandidatesPage = () => {
                                         
                                         <div className={`flex flex-col gap-2 ${viewMode === 'grid' ? 'w-full mt-4' : 'w-full md:w-auto min-w-[140px]'}`}>
                                             <Link
-                                                to={`/employer/candidates/${candidate._id}`}
+                                                to={`/employer/candidates/${candidate.name.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')}-${candidate._id.slice(-4)}`}
                                                 className="w-full px-4 py-2 border border-[#4169E1] text-[#4169E1] font-medium rounded-lg hover:bg-blue-50 transition-colors text-center"
                                             >
                                                 View Profile

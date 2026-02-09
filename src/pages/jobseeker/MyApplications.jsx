@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, MapPin, Briefcase, Calendar, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 import api from '../../api';
+import { generateSlug } from '../../utils/slugify';
 
 const MyApplications = () => {
   const [applications, setApplications] = useState([]);
@@ -59,7 +60,7 @@ const MyApplications = () => {
                         <div key={app._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition">
                             <div>
                                 <h3 className="text-xl font-bold text-black mb-1">
-                                    <Link to={`/job/${app.job?._id}`} className="hover:text-[#4169E1]">{app.job?.title || 'Job Unavailable'}</Link>
+                                    <Link to={`/job/${app.job ? generateSlug(app.job.title, app.job._id) : '#'}`} className="hover:text-[#4169E1]">{app.job?.title || 'Job Unavailable'}</Link>
                                 </h3>
                                 <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                                     <span className="flex items-center"><Briefcase className="w-4 h-4 mr-1" /> {app.job?.company || 'Unknown Company'}</span>
@@ -70,7 +71,7 @@ const MyApplications = () => {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 {getStatusBadge(app.status)}
-                                <Link to={`/job/${app.job?._id}`} className="text-[#4169E1] text-sm hover:underline">
+                                <Link to={`/job/${app.job ? generateSlug(app.job.title, app.job._id) : '#'}`} className="text-[#4169E1] text-sm hover:underline">
                                     View Job Details
                                 </Link>
                             </div>

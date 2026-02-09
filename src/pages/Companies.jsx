@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, MapPin, Users, Globe, ExternalLink, Search, Grid, List, TrendingUp, ShieldCheck, CheckCircle } from 'lucide-react';
+import { generateSlug } from '../utils/slugify';
 import api from '../api';
+
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -28,10 +30,14 @@ const Companies = () => {
           employerVerification: company.employerVerification
         }));
         setCompanies(formattedCompanies);
-        setLoading(false);
       } catch (err) {
-        console.error('Error fetching companies:', err);
-        setError('Failed to load companies.');
+        if (err.response && err.response.status === 404) {
+            setCompanies([]);
+        } else {
+            console.error('Error fetching companies:', err);
+            setError('Failed to load companies.');
+        }
+      } finally {
         setLoading(false);
       }
     };
@@ -139,7 +145,7 @@ const Companies = () => {
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'flex flex-col gap-4'}>
             {filteredCompanies.map((company, index) => (
                 <Link 
-                    to={company.employerId ? `/company/${company.employerId}` : '#'}
+                    to={company.employerId ? `/company/${generateSlug(company.name, company.employerId)}` : '#'}
                     key={index}
                     className="block group"
                 >

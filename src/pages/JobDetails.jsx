@@ -12,10 +12,16 @@ import {
   X,
   CheckCircle,
   FileText,
-  Hourglass
+  MessageCircle,
+  Hourglass,
+  Share2,
+  Bookmark
 } from 'lucide-react';
 import api from '../api';
+import { showWarning, showError, quickSuccess } from '../utils/sweetAlerts';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
+import { generateSlug } from '../utils/slugify';
 
 const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -35,10 +41,66 @@ const formatApplicants = (count) => {
     return `${rounded}+`;
 };
 
+// Helper function to clean HTML content
+const cleanHtmlContent = (html) => {
+    if (!html) return '';
+    
+    // 1. First cleanup basic artifacts
+    let cleaned = html
+        .replace(/<wbr\s*\/?>/gi, '')
+        .replace(/&shy;/gi, '')
+        .replace(/\u00AD/g, '')
+        .replace(/[\u200B\u200C\u200D\uFEFF\u2060]/g, '')
+        .replace(/<p>\s*<\/p>/g, '') 
+        .trim();
+
+    // 2. Protect HTML tags from regex replacements
+    const tags = [];
+    const tagPlaceholder = '___HTML_TAG___';
+    cleaned = cleaned.replace(/<[^>]+>/g, (match) => {
+        tags.push(match);
+        return tagPlaceholder;
+    });
+
+    // 3. Apply word text fixes
+    // Normalize whitespace (including &nbsp; and newlines) to single space
+    cleaned = cleaned.replace(/(&nbsp;|\s)+/g, ' ');
+
+    cleaned = cleaned
+        // Pass 1: Fix isolated single Consonant + word (e.g., "p ractical" -> "practical")
+        // Safe because we exclude vowels (avoid "a lot", "I am")
+        .replace(/\b([b-df-hj-np-tv-zB-DF-HJ-NP-TV-Z]) ([a-zA-Z]{2,})\b/g, '$1$2')
+        
+        // Pass 2: Fix Word + Specific Floating Fragments (e.g., "diag nostics", "al gorithms")
+        // STRICT MATCH on the fragment part to avoid merging full words (e.g. "machine learning")
+        .replace(/([a-zA-Z]{2,}) (tion|sion|ment|ance|ence|nostics|tics|tive|sive|lize|yse|yze|tical|rch|ghts|nsights|lts|ning|ding|ming|ting|ger|ler|est|ies|edge|gorithms|opment|uction|ysis|nologies|telligence|ers)\b/g, '$1$2')
+        
+        // Pass 3: Fix Word + Single Lowercase Letter Suffix (e.g., "analyz e" -> "analyze")
+        // Restricting to lowercase avoids merging "Plan A", "part B"
+        .replace(/([a-zA-Z]{2,}) ([a-z])(?=[.,!?;:\s]|$)/g, (match, p1, p2) => {
+            // Exclude valid single-letter words 'a' and 'i'
+            if (p2 === 'a' || p2 === 'i') return match; 
+            return p1 + p2; // Merge others (e.g. "analyz e" -> "analyze")
+        })
+        
+        // Clean up multiple spaces
+        .replace(/ {2,}/g, ' ');
+
+    // 4. Restore HTML tags
+    let tagIndex = 0;
+    while (cleaned.includes(tagPlaceholder) && tagIndex < tags.length) {
+        cleaned = cleaned.replace(tagPlaceholder, tags[tagIndex]);
+        tagIndex++;
+    }
+
+    return cleaned;
+};
+
 const JobDetails = () => {
-  const { id } = useParams();
+  const { slug } = useParams(); // Changed id to slug
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { initiateChat } = useChat();
   
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,8 +122,14 @@ const JobDetails = () => {
   // Pre-screening Answers
   const [screeningAnswers, setScreeningAnswers] = useState({}); // { questionIndex: answer }
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [followCompany, setFollowCompany] = useState(false);
+  const [isAlreadyFollowing, setIsAlreadyFollowing] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Saved Job State
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingJob, setSavingJob] = useState(false);
 
   // Helper to determining if we skip screening
   const hasScreening = job?.preScreeningQuestions?.length > 0;
@@ -70,6 +138,65 @@ const JobDetails = () => {
   useEffect(() => {
     if (!showApplyModal) setCurrentStep(1);
   }, [showApplyModal]);
+
+  const handleMessageEmployer = () => {
+      if (!user) {
+          navigate('/login');
+          return;
+      }
+      
+      // Enforce application requirement
+      if (!job.hasApplied) {
+          showWarning('Application Required', 'You must apply to this job before you can message the employer.').then((result) => {
+              if (result.isConfirmed) {
+                   if (job.applyMethod === 'website' && job.applyUrl) {
+                        window.open(job.applyUrl, '_blank');
+                    } else {
+                        setShowApplyModal(true);
+                    }
+              }
+          });
+          return;
+      }
+
+      if (job && job.postedBy) {
+          initiateChat(job.postedBy);
+          navigate('/messages');
+      } else {
+          showError('Unavailable', 'Employer information is not available for this job.');
+      }
+  };
+
+  const handleShareJob = () => {
+      navigator.clipboard.writeText(window.location.href);
+      quickSuccess('Link Copied!');
+  };
+
+  const handleSaveJob = async () => {
+      if (!user) {
+          navigate('/login');
+          return;
+      }
+      if (!job?._id) return;
+      
+      setSavingJob(true);
+      try {
+          if (isSaved) {
+              await api.delete(`/auth/jobs/${job._id}/unsave`);
+              setIsSaved(false);
+              quickSuccess('Job removed from saved!');
+          } else {
+              await api.post(`/auth/jobs/${job._id}/save`);
+              setIsSaved(true);
+              quickSuccess('Job saved!');
+          }
+      } catch (err) {
+          console.error('Failed to save/unsave job', err);
+          showError('Error', 'Failed to update saved status');
+      } finally {
+          setSavingJob(false);
+      }
+  };
 
   const handleNext = () => {
     if (currentStep === 1 && !resume) {
@@ -116,20 +243,35 @@ const JobDetails = () => {
   const steps = [
       { num: 1, label: 'Resume' },
       { num: 2, label: 'Cover Letter' },
-      ...(hasScreening ? [{ num: 3, label: 'Screening' }] : []),
-      { num: 4, label: 'Review' }
+      ...(hasScreening 
+        ? [{ num: 3, label: 'Screening' }, { num: 4, label: 'Review' }] 
+        : [{ num: 3, label: 'Review' }]
+      )
   ];
+
+  const displayStep = (!hasScreening && currentStep === 4) ? 3 : currentStep;
 
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const { data } = await api.get(`/jobs/${id}`);
-        setJob(data);
+        setLoading(true);
+        let jobData;
+        if(slug){
+            const { data } = await api.get(`/jobs/slug/${slug}`);
+            jobData = data;
+        } else {
+            // Fallback
+             setError('Invalida job URL');
+             setLoading(false);
+             return;
+        }
+
+        setJob(jobData);
         setLoading(false);
 
         // Fetch Related Jobs
         try {
-            const relatedRes = await api.get(`/jobs/${id}/related`);
+            const relatedRes = await api.get(`/jobs/${jobData._id}/related`);
             setRelatedJobs(relatedRes.data);
         } catch (err) {
             console.error("Failed to fetch related jobs", err);
@@ -140,8 +282,24 @@ const JobDetails = () => {
         setLoading(false);
       }
     };
-    fetchJob();
-  }, [id]);
+    if(slug) fetchJob();
+  }, [slug, user?._id]);
+
+  // Check if job is saved
+  useEffect(() => {
+      const checkSavedStatus = async () => {
+          if (user && job?._id) {
+              try {
+                  const { data } = await api.get('/auth/saved-jobs');
+                  const savedIds = data.map(j => j._id);
+                  setIsSaved(savedIds.includes(job._id));
+              } catch (err) {
+                  console.error('Failed to check saved status', err);
+              }
+          }
+      };
+      checkSavedStatus();
+  }, [user, job?._id]);
 
   useEffect(() => {
       if (user && showApplyModal) {
@@ -150,6 +308,29 @@ const JobDetails = () => {
               try {
                   const { data } = await api.get('/auth/profile');
                   setUserResumes(data.resumes || []);
+
+                  // Check if already following
+                  if (job) {
+                      // Helper to safely get string ID
+                      const getId = (item) => {
+                          if (!item) return null;
+                          if (typeof item === 'string') return item;
+                          return item._id;
+                      };
+
+                      const targetId = getId(job.companyId) || getId(job.postedBy);
+                      
+                      if (targetId) {
+                          const isFollowed = data.following?.some(f => getId(f) === targetId) || 
+                                           data.followingCompanies?.some(fc => getId(fc) === targetId);
+                          
+                          setIsAlreadyFollowing(!!isFollowed);
+                          
+                          if (!!isFollowed) {
+                              setFollowCompany(true);
+                          }
+                      }
+                  }
               } catch (err) {
                   console.error("Failed to fetch profile", err);
               } finally {
@@ -158,7 +339,7 @@ const JobDetails = () => {
           };
           fetchProfile();
       }
-  }, [user, showApplyModal]);
+  }, [user, showApplyModal, job]);
 
   const handleApply = async (e) => {
     e.preventDefault();
@@ -203,7 +384,21 @@ const JobDetails = () => {
 
       await api.post('/applications', payload);
 
+      if (followCompany) {
+          try {
+             // Prioritize companyId, fallback to postedBy ID if legacy
+             const targetId = job.companyId || job.postedBy?._id;
+             if (targetId) {
+                 await api.post(`/auth/follow/${targetId}`);
+             }
+          } catch (e) {
+             console.error("Failed to auto-follow company", e);
+             // Fail silently so we don't disrupt the application success flow
+          }
+      }
+
       setApplySuccess(true);
+      setJob(prev => ({ ...prev, hasApplied: true })); // Update local state immediately
       setTimeout(() => {
         setShowApplyModal(false);
         setApplySuccess(false);
@@ -255,10 +450,33 @@ const JobDetails = () => {
                 <div>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2 font-display tracking-tight">{job.title}</h1>
                   <div className="flex items-center text-lg text-slate-600 font-medium mb-4 group/company">
-                    <Link to={`/company/${job.postedBy?._id}`} className="hover:text-blue-600 transition-all">
-                      {job.company}
-                    </Link>
+                    {(job.postedBy?._id || job.companyId) ? (
+                        <Link to={`/company/${generateSlug(job.company, job.postedBy?._id || job.companyId)}`} className="hover:text-blue-600 transition-all">
+                        {job.company}
+                        </Link>
+                    ) : (
+                        <span>{job.company}</span>
+                    )}
                   </div>
+                </div>
+
+                {/* Share and Save Buttons (Top Right) */}
+                <div className="ml-auto flex items-center gap-2">
+                    <button 
+                        onClick={handleSaveJob}
+                        disabled={savingJob}
+                        className={`p-3 rounded-xl border shadow-sm hover:shadow-md transition-all group/save ${isSaved ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-gray-100 text-slate-400 hover:text-blue-600'}`}
+                        title={isSaved ? 'Unsave Job' : 'Save Job'}
+                    >
+                        <Bookmark className={`w-5 h-5 group-hover/save:scale-110 transition-transform ${isSaved ? 'fill-current' : ''}`} />
+                    </button>
+                    <button 
+                        onClick={handleShareJob}
+                        className="p-3 bg-white text-slate-400 hover:text-blue-600 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group/share"
+                        title="Share Job"
+                    >
+                        <Share2 className="w-5 h-5 group-hover/share:scale-110 transition-transform" />
+                    </button>
                 </div>
               </div>
 
@@ -338,18 +556,37 @@ const JobDetails = () => {
                         Preview Mode (Employer View)
                      </div>
                   ) : (
-                    <button 
-                      onClick={() => {
-                        if (job.applyMethod === 'website' && job.applyUrl) {
-                            window.open(job.applyUrl, '_blank');
-                        } else {
-                            setShowApplyModal(true);
-                        }
-                      }}
-                      className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
-                    >
-                      {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
-                    </button>
+                    <div className="flex flex-col gap-3">
+                        {job.hasApplied ? (
+                            <button 
+                                disabled
+                                className="w-full py-4 bg-green-600 text-white text-lg font-bold rounded-xl shadow-md cursor-not-allowed flex items-center justify-center gap-2 opacity-90"
+                            >
+                                <CheckCircle className="w-6 h-6" />
+                                Applied
+                            </button>
+                        ) : (
+                            <button 
+                              onClick={() => {
+                                if (job.applyMethod === 'website' && job.applyUrl) {
+                                    window.open(job.applyUrl, '_blank');
+                                } else {
+                                    setShowApplyModal(true);
+                                }
+                              }}
+                              className="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-200 hover:shadow-2xl hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-300"
+                            >
+                              {job.applyMethod === 'website' ? 'Apply on Company Website' : 'Apply Now'}
+                            </button>
+                        )}
+                        <button 
+                            onClick={handleMessageEmployer}
+                            className="w-full py-3 bg-white text-blue-600 text-lg font-bold rounded-xl border-2 border-blue-100 hover:border-blue-200 hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2"
+                        >
+                            <MessageCircle className="w-5 h-5" />
+                            Message Employer
+                        </button>
+                    </div>
                   )}
               </div>
               
@@ -361,12 +598,11 @@ const JobDetails = () => {
             <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 md:p-10">
               <h2 className="text-2xl font-bold text-slate-900 mb-6 font-display">Job Description</h2>
 
+
               <div 
                 className="job-description-text text-slate-700 mb-8 text-lg leading-relaxed font-sans w-full"
                 dangerouslySetInnerHTML={{ 
-                  __html: job.description
-                    .replace(/class=['"][^'"]*['"]/g, '')
-                    .replace(/style=['"][^'"]*['"]/g, '')
+                  __html: cleanHtmlContent(job.description)
                 }}
               />
               
@@ -383,10 +619,10 @@ const JobDetails = () => {
 
               {job.benefits && job.benefits.length > 0 && (
                   <>
-                    <h3 className="text-lg font-bold text-slate-900 mb-4 font-display">Benefits & Perks</h3>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-gray-100 mb-4 font-display">Benefits & Perks</h3>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {job.benefits.map((benefit, index) => (
-                        <li key={index} className="flex items-center text-slate-600 bg-green-50/50 p-3 rounded-xl border border-green-100">
+                        <li key={index} className="flex items-center text-slate-600 dark:text-gray-300 bg-green-50/50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-800/30">
                             <CheckCircle className="w-5 h-5 text-green-500 mr-3 shrink-0" />
                             <span className="font-medium">{benefit}</span>
                         </li>
@@ -452,11 +688,11 @@ const JobDetails = () => {
                         <h3 className="text-lg font-bold text-slate-900 mb-6 font-display">Related Jobs</h3>
                         <div className="space-y-4">
                             {relatedJobs.map(job => (
-                                <Link to={`/job/${job._id}`} key={job._id} className="block group">
-                                    <div className="p-4 border border-gray-100 rounded-xl hover:bg-blue-50 hover:border-blue-100 transition-all duration-200">
-                                        <h4 className="font-bold text-slate-900 group-hover:text-blue-600 line-clamp-1 mb-1">{job.title}</h4>
-                                        <div className="text-sm text-slate-500 font-medium mb-2">{job.company}</div>
-                                        <div className="flex items-center text-xs text-slate-400 gap-3 font-semibold">
+                                <Link to={`/job/${generateSlug(job.title, job._id)}`} key={job._id} className="block group">
+                                    <div className="p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-100 dark:hover:border-blue-500/30 transition-all duration-200">
+                                        <h4 className="font-bold text-slate-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-1 mb-1">{job.title}</h4>
+                                        <div className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-2">{job.company}</div>
+                                        <div className="flex items-center text-xs text-slate-400 dark:text-gray-500 gap-3 font-semibold">
                                             <span className="flex items-center"><MapPin className="w-3 h-3 mr-1"/> {job.location}</span>
                                             <span className="flex items-center"><Briefcase className="w-3 h-3 mr-1"/> {job.type}</span>
                                         </div>
@@ -485,7 +721,7 @@ const JobDetails = () => {
                     <div className="px-5 md:px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-900 font-display">Apply for {job.title}</h2>
-                            <p className="text-sm text-slate-500 mt-1 font-medium">Step {currentStep} of {hasScreening ? 3 : 2}: {steps.find(s=>s.num===currentStep)?.label}</p>
+                            <p className="text-sm text-slate-500 mt-1 font-medium">Step {displayStep} of {steps.length}: {steps.find(s=>s.num===displayStep)?.label}</p>
                         </div>
                         <button 
                             onClick={() => setShowApplyModal(false)}
@@ -511,16 +747,16 @@ const JobDetails = () => {
                                 <div className="flex items-center justify-between relative max-w-md mx-auto">
                                     <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-100 -z-0 rounded-full"></div>
                                     <div className="absolute left-0 top-1/2 h-1 bg-blue-600 -z-0 rounded-full transition-all duration-500 ease-out" 
-                                        style={{ width: `${((currentStep - 1) / (hasScreening ? 3 : 2)) * 100}%` }}></div>
+                                        style={{ width: `${((displayStep - 1) / (steps.length - 1)) * 100}%` }}></div>
                                     
                                     {steps.map((step) => (
                                         <div key={step.num} className="flex flex-col items-center z-10 bg-white px-2">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${
-                                                currentStep >= step.num 
+                                                displayStep >= step.num 
                                                 ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200' 
                                                 : 'bg-white border-gray-200 text-gray-300'
                                             }`}>
-                                                {currentStep > step.num ? <CheckCircle className="w-5 h-5" /> : step.num}
+                                                {displayStep > step.num ? <CheckCircle className="w-5 h-5" /> : step.num}
                                             </div>
                                         </div>
                                     ))}
@@ -650,6 +886,20 @@ const JobDetails = () => {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {!isAlreadyFollowing && (
+                                            <div 
+                                                className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group mb-3"
+                                                onClick={() => setFollowCompany(!followCompany)}
+                                            >
+                                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center mr-4 transition-all ${followCompany ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300 group-hover:border-blue-400'}`}>
+                                                    {followCompany && <CheckCircle className="w-4 h-4 text-white" />}
+                                                </div>
+                                                <label className="cursor-pointer select-none font-medium text-slate-600 text-sm">
+                                                    Follow <span className="text-slate-900 font-bold">{job.company}</span> for future job updates.
+                                                </label>
+                                            </div>
+                                        )}
 
                                         <div 
                                             className="flex items-center bg-white border-2 border-gray-100 p-4 rounded-xl cursor-pointer hover:border-blue-200 transition-all group"

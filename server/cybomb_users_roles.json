@@ -1,0 +1,90 @@
+[
+  {
+    "_id": "697c8ed73cff217a23daca7f",
+    "name": "logesh",
+    "email": "lakshmipathy.v@cybomb.com",
+    "role": "Employer",
+    "companyId": "696604f5534dc64259a4c7ad",
+    "companyRole": "Recruiter",
+    "verification": {
+      "level": 0,
+      "status": "Unverified",
+      "emailVerified": false,
+      "domainVerified": false,
+      "verificationScore": 0,
+      "documents": [],
+      "verificationOTP": "317498",
+      "verificationOTPExpire": "2026-01-30T11:23:07.090Z"
+    }
+  },
+  {
+    "_id": "6964cd972f6859830199c613",
+    "name": "Manoj MR",
+    "email": "manoj@cybomb.com",
+    "role": "Employer",
+    "companyId": "696604f5534dc64259a4c7ad",
+    "companyRole": "Admin",
+    "verification": {
+      "level": 2,
+      "status": "Verified",
+      "emailVerified": true,
+      "domainVerified": true,
+      "verificationScore": 0,
+      "documents": [
+        {
+          "type": "GST",
+          "fileUrl": "/uploads/verification/6964cd972f6859830199c613-1768810671352.pdf",
+          "status": "Approved",
+          "uploadedAt": "2026-01-19T08:17:51.362Z",
+          "_id": "696de8af0d50a505d892dd0f"
+        }
+      ]
+    }
+  },
+  {
+    "_id": "69624dfe41a1f453aa3c4e74",
+    "name": "SAN",
+    "email": "santhosh@cybomb.com",
+    "role": "Employer",
+    "companyId": "696604f5534dc64259a4c7a6",
+    "companyRole": "Admin",
+    "verification": {
+      "level": 1,
+      "status": "Verified",
+      "emailVerified": true,
+      "domainVerified": true,
+      "verificationScore": 0,
+      "documents": []
+    }
+  },
+  {
+    "_id": "697c843bafd7f753d82f2eba",
+    "name": "sudesh",
+    "email": "sudesh@cybomb.com",
+    "role": "Employer",
+    "companyId": "697c8360afd7f753d82f2dca",
+    "companyRole": "Recruiter",
+    "verification": {
+      "level": 0,
+      "status": "Unverified",
+      "emailVerified": false,
+      "domainVerified": false,
+      "verificationScore": 0,
+      "documents": []
+    }
+  },
+  {
+    "_id": "696609fcb3bcee42de56e39f",
+    "name": "Vignesh",
+    "email": "vignesh@cybomb.com",
+    "role": "Employer",
+    "verification": {
+      "level": 0,
+      "status": "Unverified",
+      "emailVerified": false,
+      "domainVerified": false,
+      "verificationScore": 0,
+      "documents": []
+    }
+  }
+]

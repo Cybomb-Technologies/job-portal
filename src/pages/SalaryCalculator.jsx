@@ -82,7 +82,7 @@ const SalaryCalculator = () => {
       {/* Hero Section */}
       <div className="bg-black text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Salary Calculator</h1>
+          <h1 className="text-4xl md:text-5xl font-bold !text-white mb-6">Salary Calculator</h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
             Know your worth in the Indian Job Market. Get accurate salary estimates based on your role, location, and experience.
           </p>

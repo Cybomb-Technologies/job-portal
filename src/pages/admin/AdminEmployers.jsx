@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
+import Swal from 'sweetalert2';
 import { FiSearch, FiMail, FiMapPin, FiCalendar, FiBriefcase, FiCheckCircle, FiXCircle, FiClock, FiUserCheck, FiUserX } from 'react-icons/fi';
 import './AdminTable.css';
 
@@ -26,13 +27,33 @@ const AdminEmployers = () => {
 
     const handleToggleStatus = async (userId, currentStatus) => {
         const action = currentStatus ? 'block' : 'unblock';
-        if (!window.confirm(`Are you sure you want to ${action} this employer?`)) return;
+        
+        const result = await Swal.fire({
+            title: `Are you sure?`,
+            text: `You want to ${action} this employer?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: `Yes, ${action} them!`
+        });
+
+        if (!result.isConfirmed) return;
 
         try {
             const { data } = await api.put(`/admin/user/${userId}/toggle-status`);
             setEmployers(employers.map(emp => emp._id === userId ? { ...emp, isActive: data.isActive } : emp));
+            Swal.fire(
+                'Updated!',
+                `Employer has been ${action}ed.`,
+                'success'
+            );
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to update employer status');
+            Swal.fire(
+                'Error',
+                err.response?.data?.message || 'Failed to update employer status',
+                'error'
+            );
         }
     };
 
@@ -128,7 +149,7 @@ const AdminEmployers = () => {
                                             title={emp.isActive !== false ? 'Block Employer' : 'Unblock Employer'}
                                             onClick={() => handleToggleStatus(emp._id, emp.isActive !== false)}
                                         >
-                                            {emp.isActive !== false ? <FiUserX /> : <FiUserCheck />}
+                                            {emp.isActive !== false ? 'Block' : 'Unblock'}
                                         </button>
                                     </div>
                                 </td>

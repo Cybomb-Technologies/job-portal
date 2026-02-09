@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const sendEmail = require('../utils/sendEmail');
 const crypto = require('crypto');
+const { logActivity } = require('./activityLogController');
 
 /**
  * @desc    Submit a new review
@@ -23,15 +24,26 @@ const createReview = async (req, res) => {
         }
 
         // Check if company exists (Handle both User ID and Company ID)
-        let targetUserId = companyId;
         let companyUser = await User.findById(companyId);
+        let companyObj = null;
 
-        if (!companyUser) {
+        if (companyUser) {
+            // If the ID passed was a User ID, try to find the associated Company document
+            if (companyUser.companyId) {
+                companyObj = await Company.findById(companyUser.companyId);
+            }
+        } else {
             // Try as Company ID
-            const companyObj = await Company.findById(companyId);
+            companyObj = await Company.findById(companyId);
             if (companyObj) {
                 // Find Admin user for this company
                 companyUser = await User.findOne({ companyId: companyId, companyRole: 'Admin' });
+                
+                // Fallback: If no explicit Admin found, take any Employer linked to this company
+                // This handles legacy users or cases where companyRole might be missing
+                if (!companyUser) {
+                    companyUser = await User.findOne({ companyId: companyId, role: 'Employer' });
+                }
             }
         }
 
@@ -54,10 +66,13 @@ const createReview = async (req, res) => {
                 return res.status(400).json({ message: 'Role, Department and Employee Email are required for employee reviews' });
             }
 
+            // Determine the website to verify against (prefer Company document, fallback to User profile)
+            const websiteToVerify = companyObj?.website || companyUser.website;
+
             // Strict domain check vs company website
-            if (companyUser.website) {
+            if (websiteToVerify) {
                 // Extract domain from website (e.g., google.com from https://www.google.com/about)
-                const companyDomain = companyUser.website
+                const companyDomain = websiteToVerify
                     .replace('https://', '')
                     .replace('http://', '')
                     .replace('www.', '')
@@ -81,7 +96,7 @@ const createReview = async (req, res) => {
 
                 if (!isDirectMatch && !isCrossTldMatch) {
                     return res.status(400).json({ 
-                        message: `Invalid email domain. Reviews for ${companyUser.companyName} must be verified using a @${companyDomain} (or .com equivalent) email address.` 
+                        message: `Invalid email domain. Reviews for ${companyUser.companyName || companyObj?.name} must be verified using a @${companyDomain} (or .com equivalent) email address.` 
                     });
                 }
             } else {
@@ -102,15 +117,28 @@ const createReview = async (req, res) => {
 
         if (reviewerType === 'Employee') {
             // Send verification email
-            const verifyUrl = `${req.protocol}://${req.get('host')}/api/reviews/verify/${review.verificationToken}`;
-            const message = `Please verify your employment at ${companyUser.companyName || companyUser.name} by clicking the link below: \n\n ${verifyUrl}`;
+            // Prefer SERVER_URL from env, fallback to request host
+            const baseUrl = process.env.SERVER_URL || `${req.protocol}://${req.get('host')}`;
+            const verifyUrl = `${baseUrl}/api/reviews/verify/${review.verificationToken}`;
+            
+            const companyName = companyObj?.name || companyUser.companyName || companyUser.name;
+            const message = `Please verify your employment at ${companyName} by clicking the link below: \n\n ${verifyUrl}`;
             
             try {
                 await sendEmail({
                     email: employeeEmail,
-                    subject: 'Employment Verification for Review',
+                    subject: `Employment Verification for ${companyName}`,
                     message,
-                    html: `<p>Please verify your employment at <strong>${companyUser.companyName || companyUser.name}</strong> to publish your review.</p><p><a href="${verifyUrl}">Click here to verify</a></p>`
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #4169E1;">Verify Your Employment</h2>
+                            <p>You submitted a review for <strong>${companyName}</strong>.</p>
+                            <p>Please click the button below to verify your email address and publish your review.</p>
+                            <a href="${verifyUrl}" style="background-color: #4169E1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Verify Employment</a>
+                            <p style="margin-top: 20px; font-size: 12px; color: #777;">If the button doesn't work, copy and paste this link into your browser:</p>
+                            <p style="font-size: 12px; color: #555;">${verifyUrl}</p>
+                        </div>
+                    `
                 });
                 return res.status(201).json({ 
                     message: 'Review submitted. Please check your workplace email to verify and publish.',
@@ -272,6 +300,8 @@ const toggleReviewVisibility = async (req, res) => {
 
         review.isHidden = !review.isHidden;
         await review.save();
+
+        await logActivity(req.user, 'REVIEW_HIDE', `Review ${review.isHidden ? 'Hidden' : 'Visible'}`, review._id, 'Review');
 
         res.json({ message: `Review is now ${review.isHidden ? 'hidden' : 'visible'}`, isHidden: review.isHidden });
     } catch (error) {

@@ -1,5 +1,9 @@
 const nodemailer = require('nodemailer');
 
+if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn('WARNING: Email configuration missing in .env (SMTP_HOST, SMTP_USER, SMTP_PASS). Email sending will fail.');
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,

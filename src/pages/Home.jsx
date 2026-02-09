@@ -20,13 +20,31 @@ const Home = () => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const { data } = await api.get('/jobs');
-        // Get top 4 jobs
-        setFeaturedJobs(data.slice(0, 4));
+        // Fetch Featured Jobs
+        try {
+            const { data } = await api.get('/jobs');
+            setFeaturedJobs(data.slice(0, 4));
+        } catch (err) {
+            console.warn('Error specific to featured jobs:', err);
+            if (err.response && err.response.status === 404) {
+                setFeaturedJobs([]);
+            } else {
+                throw err;
+            }
+        }
         
-        if (user && user.role === 'Job Seeker') {
-            const recRes = await api.get('/jobs/recommendations');
-            setRecommendedJobs(recRes.data);
+        // Fetch Recommendations
+        if (user?.role === 'Job Seeker') {
+            try {
+                const recRes = await api.get('/jobs/recommendations');
+                setRecommendedJobs(recRes.data);
+            } catch (err) {
+                console.warn('Error specific to recommendations:', err);
+                if (err.response && err.response.status === 404) {
+                    setRecommendedJobs([]);
+                }
+                // Don't crash main view if recommendations fail
+            }
         }
 
         setLoading(false);
@@ -38,7 +56,7 @@ const Home = () => {
     };
 
     fetchJobs();
-  }, [user]);
+  }, [user?.role, user?._id]);
 
   const handleSearch = () => {
       const params = new URLSearchParams();
@@ -60,7 +78,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-24 overflow-hidden">
+      <section className="relative pt-10 md:pt-20 pb-24 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100 rounded-full blur-[100px] opacity-60 translate-x-1/2 -translate-y-1/2"></div>
@@ -143,7 +161,7 @@ const Home = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-white border-y border-gray-100">
+      <section className="py-5 bg-white border-y border-gray-100">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
             {stats.map((stat, index) => (
@@ -165,7 +183,7 @@ const Home = () => {
 
        {/* Recommended Jobs Section */}
        {user && user.role === 'Job Seeker' && recommendedJobs.length > 0 && (
-        <section className="py-24 bg-white relative">
+        <section className="py-10 bg-white relative">
             <div className="container mx-auto px-6">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
                     <div>
@@ -183,7 +201,7 @@ const Home = () => {
       )}
 
       {/* Featured Jobs */}
-      <section className="py-24 bg-slate-50/50">
+      <section className="py-10 bg-slate-50/50">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
             <div>
@@ -219,7 +237,7 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-white">
+      <section className="py-10 bg-white">
         <div className="container mx-auto px-6">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2.5rem] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-blue-900/20">
                 {/* Decorative Circles */}

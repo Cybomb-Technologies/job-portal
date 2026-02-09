@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
+/* Enable class-based dark mode in Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #2563eb;
   --color-primary-dark: #1e40af;
@@ -24,6 +27,240 @@ body {
   @apply text-slate-800 bg-slate-50;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark Mode Base Styles */
+html.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Dark mode for headings */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  @apply text-white;
+}
+
+/* Dark mode for cards and containers */
+html.dark .bg-white {
+  background-color: rgb(31 41 55); /* gray-800 */
+}
+
+html.dark .bg-gray-50 {
+  background-color: rgb(17 24 39); /* gray-900 */
+}
+
+html.dark .bg-slate-50 {
+  background-color: rgb(17 24 39); /* gray-900 */
+}
+
+/* Dark mode borders */
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-slate-100,
+html.dark .border-slate-200 {
+  border-color: rgb(55 65 81); /* gray-700 */
+}
+
+/* Dark mode text colors */
+html.dark .text-gray-900,
+html.dark .text-slate-900,
+html.dark .text-black {
+  color: rgb(243 244 246); /* gray-100 */
+}
+
+html.dark .text-gray-800,
+html.dark .text-slate-800 {
+  color: rgb(229 231 235); /* gray-200 */
+}
+
+html.dark .text-gray-700,
+html.dark .text-slate-700 {
+  color: rgb(209 213 219); /* gray-300 */
+}
+
+html.dark .text-gray-600,
+html.dark .text-slate-600 {
+  color: rgb(156 163 175); /* gray-400 */
+}
+
+/* Dark mode form inputs */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  @apply bg-gray-700 border-gray-600 text-gray-100;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  @apply text-gray-400;
+}
+
+/* Dark mode shadows */
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg {
+  --tw-shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode hover states */
+html.dark .hover\:bg-gray-50:hover {
+  background-color: rgb(55 65 81); /* gray-700 */
+}
+
+html.dark .hover\:bg-gray-100:hover {
+  background-color: rgb(55 65 81); /* gray-700 */
+}
+
+/* ============================================
+   Dark Mode - Hover State Text Visibility Fixes
+   ============================================ */
+
+/* Job Cards: When card hovers and bg becomes light gradient */
+html.dark .group:hover .group-hover\:bg-gradient-to-br,
+html.dark .group-hover\:bg-gradient-to-br:hover {
+  background-image: linear-gradient(to bottom right, rgb(55 65 81), rgb(55 65 81)) !important;
+}
+
+/* Job Card: Fix hover background staying dark */
+html.dark .group:hover > div.hover\:bg-gradient-to-br,
+html.dark div[class*="group-hover:bg-gradient-to-br"] {
+  background-image: none !important;
+}
+
+/* Related Jobs: Fix job title disappearing on hover (bg-blue-50 hover) */
+html.dark .hover\:bg-blue-50:hover,
+html.dark .group:hover .hover\:bg-blue-50 {
+  background-color: rgb(55 65 81) !important; /* Keep dark background */
+}
+
+/* Related Jobs: Ensure text stays visible on hover */
+html.dark .group:hover .group-hover\:text-blue-600 {
+  color: rgb(96 165 250) !important; /* blue-400 for better contrast */
+}
+
+/* Company Profile Tabs: Fix hover text visibility */
+html.dark button.text-slate-500:hover,
+html.dark button.hover\:text-slate-800:hover {
+  color: rgb(243 244 246) !important; /* gray-100 */
+}
+
+/* Benefits section in Job Details - keep text visible on green bg */
+html.dark .bg-green-50\/50,
+html.dark li.bg-green-50\/50 {
+  background-color: rgba(34, 197, 94, 0.1) !important; /* Subtle green on dark */
+}
+
+html.dark .bg-green-50\/50 .text-slate-600,
+html.dark .bg-green-50\/50 span.font-medium {
+  color: rgb(209 213 219) !important; /* gray-300 */
+}
+
+/* Featured Jobs section background */
+html.dark .bg-slate-50\/50 {
+  background-color: rgb(17 24 39) !important; /* gray-900 */
+}
+
+/* Job Card hover state - prevent light gradient overlay */
+html.dark .group:hover .from-white,
+html.dark .group:hover .to-blue-50\/30 {
+  --tw-gradient-from: rgb(55 65 81) !important;
+  --tw-gradient-to: rgb(55 65 81) !important;
+}
+
+/* Related Jobs card: Maintain dark hover state */
+html.dark div.hover\:bg-blue-50.hover\:border-blue-100:hover {
+  background-color: rgb(55 65 81) !important;
+  border-color: rgb(59 130 246 / 0.3) !important;
+}
+
+/* Ensure skill tags remain visible on hover */
+html.dark .group:hover .group-hover\:bg-white {
+  background-color: rgb(55 65 81) !important;
+}
+
+html.dark .group:hover .group-hover\:border-blue-100 {
+  border-color: rgb(59 130 246 / 0.3) !important;
+}
+
+html.dark .group:hover .group-hover\:text-blue-600 {
+  color: rgb(96 165 250) !important;
+}
+
+/* View Details button hover state */
+html.dark .group:hover .group-hover\:bg-blue-600 {
+  background-color: rgb(37 99 235) !important;
+}
+
+html.dark .group:hover .group-hover\:text-white {
+  color: white !important;
+}
+
+/* ============================================
+   ADMIN PANEL - Force Light Mode
+   ============================================ */
+/* Admin layout marker class for dark mode overrides */
+
+html.dark .admin-layout {
+  background-color: #f8fafc !important; /* slate-50 */
+  color: #0f172a !important; /* slate-900 */
+}
+
+html.dark .admin-layout .bg-white {
+  background-color: white !important;
+}
+
+html.dark .admin-layout .bg-gray-50,
+html.dark .admin-layout .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+html.dark .admin-layout h1,
+html.dark .admin-layout h2,
+html.dark .admin-layout h3,
+html.dark .admin-layout h4,
+html.dark .admin-layout h5,
+html.dark .admin-layout h6 {
+  color: #0f172a !important;
+}
+
+html.dark .admin-layout .text-gray-900,
+html.dark .admin-layout .text-slate-900,
+html.dark .admin-layout .text-black {
+  color: #0f172a !important;
+}
+
+html.dark .admin-layout .text-gray-800,
+html.dark .admin-layout .text-slate-800 {
+  color: #1e293b !important;
+}
+
+html.dark .admin-layout .text-gray-700,
+html.dark .admin-layout .text-slate-700 {
+  color: #334155 !important;
+}
+
+html.dark .admin-layout .text-gray-600,
+html.dark .admin-layout .text-slate-600 {
+  color: #475569 !important;
+}
+
+html.dark .admin-layout .border-gray-100,
+html.dark .admin-layout .border-gray-200,
+html.dark .admin-layout .border-slate-100,
+html.dark .admin-layout .border-slate-200 {
+  border-color: #e2e8f0 !important;
+}
+
+html.dark .admin-layout input,
+html.dark .admin-layout textarea,
+html.dark .admin-layout select {
+  background-color: white !important;
+  border-color: #d1d5db !important;
+  color: #0f172a !important;
 }
 
 h1,
@@ -137,11 +374,248 @@ textarea {
   white-space: normal !important;
 }
 
-.job-description-text {
-  word-break: normal; /* Prevents breaking words in the middle */
-  overflow-wrap: break-word; /* Breaks long words if they overflow */
-  white-space: pre-wrap; /* Preserves newlines but wraps text */
-  hyphens: auto; /* Optional: Adds hyphens if browser supports it */
+.job-description-text,
+.job-description-text * {
+  word-break: normal !important; /* Prevents breaking words in the middle */
+  overflow-wrap: break-word !important; /* Only breaks words if truly too long to fit */
+  word-wrap: break-word !important; /* Legacy support */
+  white-space: normal !important; /* Collapses whitespace, ignoring source code newlines */
+  -webkit-hyphens: none !important;
+  -ms-hyphens: none !important;
+  hyphens: none !important; /* Disable auto hyphenation */
+  text-align: justify !important; /* Justify text for cleaner look */
+  letter-spacing: normal !important; /* Reset any letter spacing */
+  word-spacing: normal !important; /* Reset any word spacing */
+  text-justify: auto !important; /* Prevent inter-character spacing */
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Safe area insets for mobile devices with notches */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Chat UI specific responsive styles */
+@media (max-width: 639px) {
+  .chat-input-mobile {
+    font-size: 16px; /* Prevents iOS zoom on input focus */
+  }
+}
+
+/* Overscroll behavior for smooth scrolling */
+.overscroll-contain {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Extra small breakpoint for company name visibility */
+@media (min-width: 480px) {
+  .xs\:inline {
+    display: inline !important;
+  }
+}
+
+/* ===============================
+   Enhanced SweetAlert2 Styles
+   =============================== */
+
+/* Import Animate.css for animations */
+@import url("https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css");
+
+/* Popup Container */
+.swal-popup-enhanced {
+  border-radius: 1.5rem !important;
+  padding: 2rem !important;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border: none !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+}
+
+/* Title Styling */
+.swal-title-enhanced {
+  font-family: var(--font-display), "Outfit", sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  color: #1e293b !important;
+  padding: 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Text Content */
+.swal-html-enhanced {
+  font-family: var(--font-body), "Inter", sans-serif !important;
+  font-size: 1rem !important;
+  color: #64748b !important;
+  line-height: 1.6 !important;
+  padding: 0 !important;
+}
+
+/* Button Container */
+.swal-actions-enhanced {
+  margin-top: 1.5rem !important;
+  gap: 0.75rem !important;
+}
+
+/* Confirm Button */
+.swal-confirm-enhanced {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal-confirm-enhanced:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.4) !important;
+}
+
+.swal-confirm-enhanced:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Danger Confirm Button */
+.swal-confirm-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal-confirm-danger:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px 0 rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Cancel Button */
+.swal-cancel-enhanced {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid #e2e8f0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal-cancel-enhanced:hover {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Deny Button */
+.swal-deny-enhanced {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  padding: 0.75rem 1.75rem !important;
+  border-radius: 0.75rem !important;
+  border: none !important;
+}
+
+/* Icon Styling */
+.swal-icon-enhanced {
+  border-width: 3px !important;
+  margin: 0 auto 1rem !important;
+}
+
+/* Success Icon Animation */
+.swal2-icon.swal2-success {
+  border-color: #10b981 !important;
+}
+
+.swal2-icon.swal2-success .swal2-success-ring {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.swal2-icon.swal2-success [class^="swal2-success-line"] {
+  background-color: #10b981 !important;
+}
+
+/* Error Icon */
+.swal2-icon.swal2-error {
+  border-color: #ef4444 !important;
+}
+
+.swal2-icon.swal2-error [class^="swal2-x-mark-line"] {
+  background-color: #ef4444 !important;
+}
+
+/* Warning Icon */
+.swal2-icon.swal2-warning {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
+
+/* Info Icon */
+.swal2-icon.swal2-info {
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
+}
+
+/* Timer Progress Bar */
+.swal2-timer-progress-bar {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6) !important;
+  height: 4px !important;
+}
+
+/* Input Field Styling */
+.swal2-input,
+.swal2-textarea {
+  border-radius: 0.75rem !important;
+  border: 2px solid #e2e8f0 !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal2-input:focus,
+.swal2-textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  outline: none !important;
+}
+
+/* Validation Message */
+.swal2-validation-message {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+  margin-top: 0.75rem !important;
+}
+
+/* Backdrop */
+.swal2-backdrop-show {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Loading Spinner */
+.swal2-loading .swal2-styled.swal-confirm-enhanced {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}

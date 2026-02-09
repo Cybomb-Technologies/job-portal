@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
     Building2, MapPin, Mail, Globe, ArrowLeft, Briefcase, 
     CheckCircle, Users, Calendar, Search, Filter, 
     Star, MessageSquare, ChevronRight, Share2, Plus, Sparkles, ExternalLink,
-    PlayCircle, Video, FileText, CheckCheck
+    PlayCircle, Video, FileText, CheckCheck, Copy, Check
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { X, Send, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { generateSlug } from '../utils/slugify';
 
 const ReviewCard = ({ review, isOwner, onUpdate }) => {
     const handleToggleVisibility = async () => {
@@ -82,6 +85,7 @@ const ReviewCard = ({ review, isOwner, onUpdate }) => {
 };
 
 const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => {
+    const { user: currentUser } = useAuth();
     const [step, setStep] = useState(1); // 1: Choose type, 2: Form
     const [reviewType, setReviewType] = useState('Public');
     const [rating, setRating] = useState(5);
@@ -114,7 +118,11 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
             }
         } catch (err) {
             console.error('Review submission failed:', err);
-            alert(err.response?.data?.message || 'Failed to submit review');
+            Swal.fire({
+                icon: 'error',
+                title: 'Review Submission Failed',
+                text: err.response?.data?.message || 'Failed to submit review'
+            });
         } finally {
             setLoading(false);
         }
@@ -124,7 +132,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar">
+            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl animate-in fade-in zoom-in duration-300 custom-scrollbar flex flex-col">
                 <div className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
                     <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4 min-w-0 break-words">Write a Review for {companyName}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-colors shadow-sm">
@@ -160,7 +168,11 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
                                     <button 
                                         onClick={() => { 
                                             if (!currentUser) {
-                                                alert('You must be logged in to leave a public review. For employee reviews, please use the Employee Review option.');
+                                                Swal.fire({
+                                                    icon: 'info',
+                                                    title: 'Login Required',
+                                                    text: 'You must be logged in to leave a public review. For employee reviews, please use the Employee Review option.'
+                                                });
                                                 return;
                                             }
                                             setReviewType('Public'); 
@@ -289,8 +301,11 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
     );
 };
 
+
 const CompanyProfile = () => {
-    const { id } = useParams();
+    const { slug } = useParams(); // Changed from id to slug
+    const navigate = useNavigate();
+    const { initiateChat } = useChat();
     const [company, setCompany] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -312,38 +327,65 @@ const CompanyProfile = () => {
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [reviewSort, setReviewSort] = useState('newest');
     const { user: currentUser } = useAuth();
-    const isOwner = currentUser?._id === id;
+    
+    // Followers State
+    const [followers, setFollowers] = useState([]);
+    const [loadingFollowers, setLoadingFollowers] = useState(false);
+    
+    // Derived state for owner check - needs company ID which we might not have initially if using slug
+    // We'll update isOwner logic inside the effect or derived from company state
+    const isOwner = company && currentUser?._id === company._id; 
+    
+    const [copiedMap, setCopiedMap] = useState({});
 
-    const handleShare = async () => {
-        const shareData = {
-            title: company.companyName || company.name,
-            text: `Check out ${company.companyName || company.name} on Cybomb Job Portal`,
-            url: window.location.href,
-        };
+    // ... (Handlers)
 
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(window.location.href);
-                alert('Profile link copied to clipboard!');
-            }
-        } catch (err) {
-            console.error('Error sharing:', err);
-        }
+    const handleMessage = async () => {
+        if (!currentUser) return Swal.fire({
+            icon: 'info',
+            title: 'Login Required',
+            text: "Please login to message the company recruiter"
+        });
+
+        if (isOwner) return Swal.fire({
+            icon: 'warning',
+            title: 'Action Not Allowed',
+            text: "You cannot message your own company"
+        });
+
+        // Use contactUser if available, otherwise fallback to company owner ID (company._id)
+        // But chat usually expects a user ID. company._id IS the user ID of the owner in this schema?
+        // Based on previous code, company._id seems to be the user ID of the employer.
+        // Let's use company.contactUser?._id || company._id
+        const recipientId = company.contactUser?._id || company._id;
+        const recipientName = company.companyName || company.name;
+        const recipientProfile = company.profilePicture;
+
+        initiateChat({
+            _id: recipientId,
+            name: recipientName,
+            profilePicture: recipientProfile
+        });
     };
 
-    const getYoutubeId = (url) => {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        Swal.fire({
+            icon: 'success',
+            title: 'Link Copied',
+            text: 'Company profile link copied to clipboard',
+            timer: 1500,
+            showConfirmButton: false
+        });
     };
 
-    const fetchReviews = async () => {
+    const fetchReviews = async (companyId) => {
+        if (!companyId) return;
         try {
             setReviewsLoading(true);
             // Use owner-specific route if logged in as company owner to see names/hidden reviews
-            const endpoint = isOwner ? '/reviews/my/all' : `/reviews/company/${id}?sort=${reviewSort}`;
+            const currentIsOwner = currentUser?._id === companyId;
+            const endpoint = currentIsOwner ? '/reviews/my/all' : `/reviews/company/${companyId}?sort=${reviewSort}`;
             const { data } = await api.get(endpoint);
             setReviews(data);
         } catch (err) {
@@ -352,31 +394,74 @@ const CompanyProfile = () => {
             setReviewsLoading(false);
         }
     };
-
+    
+    // Effect to fetch custom reviews when sorting changes, dependent on company being loaded
     useEffect(() => {
-        if (id) {
-            fetchReviews();
+        if (company) {
+            fetchReviews(company._id);
         }
-    }, [id, reviewSort]);
+    }, [reviewSort, company?._id]); 
 
-    const averageRating = reviews.length > 0 
-        ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1) 
-        : 0.0;
+    // Fetch Followers when tab is active
+    useEffect(() => {
+        const fetchFollowers = async () => {
+             if (activeTab === 'followers' && company && currentUser?._id === company._id && followers.length === 0) {
+                 setLoadingFollowers(true);
+                 try {
+                     const { data } = await api.get(`/auth/company/${company._id}/followers`);
+                     setFollowers(data);
+                 } catch (err) {
+                     console.error("Failed to fetch followers", err);
+                 } finally {
+                     setLoadingFollowers(false);
+                 }
+             }
+        };
+        fetchFollowers();
+    }, [activeTab, company, currentUser]); 
 
+    // Main Data Fetch Effect
     useEffect(() => {
         const fetchCompanyData = async () => {
             try {
-                const [companyRes, jobsRes] = await Promise.all([
-                    api.get(`/auth/user/${id}`),
-                    api.get(`/jobs?postedBy=${id}`)
-                ]);
+                setLoading(true);
+                let companyData;
+                
+                // 1. Fetch Company Profile
+                if (slug) {
+                    const { data } = await api.get(`/auth/company/slug/${slug}`);
+                    companyData = data;
+                } else {
+                     // Fallback/Legacy if :id route usage still exists anywhere (unlikely but safe)
+                     // Actually App.jsx routes are changed, but internal navigation might pass ID? 
+                     // No, usage of this component is via Route.
+                     // But let's check parseSlug or similar if needed. 
+                     // For now assume strictly slug.
+                     setError('Invalid company URL');
+                     setLoading(false);
+                     return;
+                }
 
-                setCompany(companyRes.data);
-                setJobs(jobsRes.data);
+                setCompany(companyData);
+
+                // 2. Fetch Jobs (dependant on company ID)
+                const { data: jobsData } = await api.get(`/jobs?companyId=${companyData._id}`);
+                setJobs(jobsData);
+                
                 setLoading(false);
+                
+                // 3. Initial Review Fetch
+                fetchReviews(companyData._id);
 
-                // Fetch Custom Reviews
-                fetchReviews();
+                // 4. Check Follow Status
+                if (currentUser && currentUser.role === 'Job Seeker') {
+                     api.get('/auth/profile').then(res => {
+                        const isFollowed = res.data.following?.some(f => f._id === companyData._id || f === companyData._id) || 
+                                         res.data.followingCompanies?.some(fc => fc._id === companyData._id || fc === companyData._id);
+                        setIsFollowing(!!isFollowed);
+                    }).catch(err => console.error(err));
+                }
+
             } catch (err) {
                 console.error('Error fetching company details:', err);
                 setError('Failed to load company profile.');
@@ -384,21 +469,10 @@ const CompanyProfile = () => {
             }
         };
 
-        if (id) {
+        if (slug) {
             fetchCompanyData();
-            // Check follow status
-            if (currentUser && currentUser.role === 'Job Seeker') {
-                // We need to check if companyId is in user's following list
-                // Since we don't have the updated user object with 'following' populated in context immediately after follow,
-                // we might need to fetch user profile or check against a list.
-                // For now, let's fetch the user profile again to get fresh 'following' list
-                api.get('/auth/profile').then(res => {
-                    const isFollowed = res.data.following?.some(f => f._id === id || f === id);
-                    setIsFollowing(!!isFollowed);
-                }).catch(err => console.error(err));
-            }
         }
-    }, [id, currentUser]);
+    }, [slug, currentUser]); // Removed id dependency, added slug. Also removed separate fetchReviews call/effect trigger on ID.
 
     const filteredJobs = jobs.filter(job => {
         const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -415,6 +489,10 @@ const CompanyProfile = () => {
     // Unique values for filters
     const departments = [...new Set(jobs.map(j => j.functionalArea).filter(Boolean))];
     const locations = [...new Set(jobs.map(j => j.location).filter(Boolean))];
+
+    const averageRating = reviews.length > 0 
+        ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1) 
+        : 'New';
 
     if (loading) {
         return (
@@ -437,7 +515,7 @@ const CompanyProfile = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans overflow-x-hidden">
             {/* Header Section */}
             <div className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-6 pt-6">
@@ -473,7 +551,7 @@ const CompanyProfile = () => {
                     </div>
 
                     {/* Branding Bar */}
-                    <div className="absolute -bottom-64 md:-bottom-20 left-6 md:left-12 flex flex-col md:flex-row md:items-end gap-6 md:gap-8 w-[calc(100%-3rem)] md:w-[calc(100%-6rem)]">
+                    <div className="absolute -bottom-64 md:-bottom-20 left-6 right-6 md:left-12 md:right-auto md:w-[calc(100%-6rem)] flex flex-col md:flex-row md:items-end gap-6 md:gap-8">
                         <div className="w-36 h-36 md:w-48 md:h-48 bg-white rounded-[2rem] p-3 shadow-2xl shadow-slate-900/10 border-4 border-white flex items-center justify-center overflow-hidden shrink-0 relative z-10">
                             {company.profilePicture ? (
                                 <img 
@@ -541,18 +619,26 @@ const CompanyProfile = () => {
                                     <div className="flex gap-3">
                                         <button 
                                             onClick={async () => {
-                                                if (!currentUser) return alert("Please login to follow companies");
+                                                if (!currentUser) return Swal.fire({
+                                                    icon: 'info',
+                                                    title: 'Login Required',
+                                                    text: "Please login to follow companies"
+                                                });
                                                 try {
                                                     if (isFollowing) {
-                                                        await api.delete(`/auth/unfollow/${id}`);
+                                                        await api.delete(`/auth/unfollow/${company._id}`);
                                                         setIsFollowing(false);
                                                     } else {
-                                                        await api.post(`/auth/follow/${id}`);
+                                                        await api.post(`/auth/follow/${company._id}`);
                                                         setIsFollowing(true);
                                                     }
                                                 } catch (err) {
                                                     console.error("Follow error:", err);
-                                                    alert("Failed to update follow status");
+                                                    Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Error',
+                                                        text: "Failed to update follow status"
+                                                    });
                                                 }
                                             }}
                                             className={`px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm ${
@@ -569,6 +655,13 @@ const CompanyProfile = () => {
                                             )}
                                         </button>
                                         <button 
+                                            onClick={handleMessage}
+                                            className="px-6 py-3 bg-white text-blue-600 border border-blue-200 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-sm flex items-center gap-2"
+                                        >
+                                            <MessageSquare className="w-5 h-5" />
+                                            Message
+                                        </button>
+                                        <button 
                                             onClick={handleShare}
                                             className="p-3 bg-white text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 border border-gray-200 transition-all shadow-sm"
                                         >
@@ -583,20 +676,20 @@ const CompanyProfile = () => {
 
                 {/* Tabs Navigation */}
                 <div className="max-w-7xl mx-auto px-6 mt-8">
-                    <div className="flex items-center gap-10 border-b border-gray-200">
-                        {['overview', 'jobs', 'why join us'].map((tab) => (
+                    <div className="flex items-center gap-10 border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+                        {['overview', 'jobs', 'why join us', ...(isOwner ? ['followers'] : [])].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`py-4 px-2 text-sm font-bold capitalize transition-all relative ${
                                     activeTab === tab 
-                                    ? 'text-blue-600' 
-                                    : 'text-slate-500 hover:text-slate-800'
+                                    ? 'text-blue-600 dark:text-blue-400' 
+                                    : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200'
                                 }`}
                             >
                                 {tab}
                                 {activeTab === tab && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full shadow-[0_-2px_6px_rgba(37,99,235,0.4)]"></div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full shadow-[0_-2px_6px_rgba(37,99,235,0.4)]"></div>
                                 )}
                             </button>
                         ))}
@@ -774,10 +867,48 @@ const CompanyProfile = () => {
                                         <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
                                             <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
                                         </div>
-                                        <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors">
-                                            {company.companyEmail || company.email || 'Email not visible'}
-                                        </a>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Company Email</p>
+                                            <div className="flex items-center gap-2">
+                                                <a href={`mailto:${company.companyEmail || company.email}`} className="text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors truncate">
+                                                    {company.companyEmail || company.email || 'Email not visible'}
+                                                </a>
+                                                {(company.companyEmail || company.email) && (
+                                                    <button 
+                                                        onClick={() => handleCopy(company.companyEmail || company.email, 'companyEmail')}
+                                                        className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-400 hover:text-blue-600"
+                                                        title="Copy Email"
+                                                    >
+                                                        {copiedMap['companyEmail'] ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    {/* Recruiter / Contact Person Email */}
+                                    {company.contactUser && company.contactUser.email && (
+                                        <div className="flex items-center gap-3 group">
+                                             <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
+                                                <Users className="w-5 h-5 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Recruiter Contact</p>
+                                                <div className="flex items-center gap-2">
+                                                    <a href={`mailto:${company.contactUser.email}`} className="text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors truncate">
+                                                        {company.contactUser.email}
+                                                    </a>
+                                                    <button 
+                                                        onClick={() => handleCopy(company.contactUser.email, 'recruiterEmail')}
+                                                        className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-400 hover:text-indigo-600"
+                                                        title="Copy Recruiter Email"
+                                                    >
+                                                        {copiedMap['recruiterEmail'] ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -855,7 +986,7 @@ const CompanyProfile = () => {
                             ) : (
                                 filteredJobs.map((job) => (
                                     <Link 
-                                        to={`/job/${job._id}`}
+                                        to={`/job/${generateSlug(job.title, job._id)}`}
                                         key={job._id} 
                                         className="group bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-xl hover:border-blue-200 transition-all active:scale-[0.98]"
                                     >
@@ -985,7 +1116,7 @@ const CompanyProfile = () => {
             <ReviewModal 
                 isOpen={showReviewModal}
                 onClose={() => setShowReviewModal(false)}
-                companyId={id}
+                companyId={company?._id}
                 companyName={company.companyName}
                 onSuccess={fetchReviews}
             />

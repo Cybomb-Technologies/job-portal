@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api';
-import { User, Mail, CheckCircle, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, HelpCircle } from 'lucide-react';
+import { User, Mail, AlertCircle, Camera, Plus, Trash2, FileText, Download, ExternalLink, Briefcase, GraduationCap, MapPin, AlertTriangle, Image as ImageIcon, Edit, Copy, Check, X, Calendar, CheckCircle, Phone, Share2, Building } from 'lucide-react';
 import { commonJobTitles, commonSkills, commonDegrees, commonFieldsOfStudy } from '../../utils/profileData';
 import Swal from 'sweetalert2';
+import ImageUrlCropper from '../../components/ImageUrlCropper';
+import { generateSlug } from '../../utils/slugify';
 
 const months = [
     "January", "February", "March", "April", "May", "June",
@@ -20,6 +22,7 @@ const ProfileDetails = () => {
     // Basic Info
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [mobileNumber, setMobileNumber] = useState('');
     const [title, setTitle] = useState('');
     const [about, setAbout] = useState('');
     const [skills, setSkills] = useState('');
@@ -31,6 +34,7 @@ const ProfileDetails = () => {
     const [experience, setExperience] = useState([]);
     const [education, setEducation] = useState([]);
     const [certifications, setCertifications] = useState([]);
+    const [followingCompanies, setFollowingCompanies] = useState([]);
     
     // Files
     const [profilePicture, setProfilePicture] = useState(null);
@@ -39,9 +43,10 @@ const ProfileDetails = () => {
     const [resumes, setResumes] = useState([]);
     const [existingResume, setExistingResume] = useState(null);
 
-    // Tickets
-    const [tickets, setTickets] = useState([]);
-    const [loadingTickets, setLoadingTickets] = useState(false);
+    // Cropper State
+    const [showCropper, setShowCropper] = useState(false);
+    const [cropperImage, setCropperImage] = useState(null);
+    const [cropType, setCropType] = useState(null); // 'profile' or 'banner'
     
     const [loading, setLoading] = useState(false);
     // Removed message/error states as we use Swal now
@@ -58,6 +63,8 @@ const ProfileDetails = () => {
     const [bannerPicture, setBannerPicture] = useState(null);
     const [bannerPreview, setBannerPreview] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [copiedMobile, setCopiedMobile] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
     // --- Validation Logic ---
     const handleBlur = (field) => {
@@ -87,8 +94,8 @@ const ProfileDetails = () => {
         total += 20;
         if (experience.length > 0) {
             score += 20;
-             const isValidExp = experience.every(exp => exp.title && exp.company);
-             if(!isValidExp) currentErrors.experience = "Complete all fields in experience entries";
+            const isValidExp = experience.every(exp => exp.title && exp.company);
+            if(!isValidExp) currentErrors.experience = "Complete all fields in experience entries";
         } else {
             missing.push("Work Experience");
         }
@@ -127,6 +134,36 @@ const ProfileDetails = () => {
         
         setFormErrors(currentErrors);
 
+        // Auto-calculate Total Experience
+        if (experience && experience.length > 0) {
+            let totalMonths = 0;
+            experience.forEach(exp => {
+                if (!exp.startYear || !exp.startMonth) return;
+                
+                const startMonthIndex = months.indexOf(exp.startMonth);
+                const startDate = new Date(exp.startYear, startMonthIndex);
+                
+                let endDate;
+                if (exp.endYear === 'Present' || !exp.endYear) {
+                    endDate = new Date();
+                } else {
+                    const endMonthIndex = months.indexOf(exp.endMonth) !== -1 ? months.indexOf(exp.endMonth) : 11;
+                    endDate = new Date(exp.endYear, endMonthIndex);
+                }
+                
+                if (startDate > endDate) return; // invalid range
+                
+                // Difference in months + 1 (inclusive)
+                let monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth()) + 1;
+                totalMonths += Math.max(0, monthsDiff);
+            });
+            
+            // Convert to years with 1 decimal place
+            setTotalExperience(parseFloat((totalMonths / 12).toFixed(1)));
+        } else {
+            setTotalExperience(0);
+        }
+
     }, [name, email, title, about, currentLocation, profilePicture, experience, education, skills, existingResume, resume]);
 
     const tabs = [
@@ -134,7 +171,6 @@ const ProfileDetails = () => {
         { id: 'experience', label: 'Experience', icon: Briefcase, isComplete: experience.length > 0 },
         { id: 'education', label: 'Education', icon: GraduationCap, isComplete: education.length > 0 },
         { id: 'skills', label: 'Skills & Resume', icon: FileText, isComplete: !!skills && (!!existingResume || !!resume) },
-        { id: 'tickets', label: 'My Tickets', icon: HelpCircle, isComplete: true }, // Always show as completing implies existing functionality
     ];
 
     const fetchProfileData = async () => {
@@ -145,6 +181,7 @@ const ProfileDetails = () => {
 
             setName(data.name || '');
             setEmail(data.email || '');
+            setMobileNumber(data.mobileNumber || '');
             setTitle(data.title || '');
             setAbout(data.about || '');
             setSkills(data.skills ? data.skills.join(', ') : '');
@@ -159,6 +196,8 @@ const ProfileDetails = () => {
             else setEducation([]);
 
             setCertifications(Array.isArray(data.certifications) ? data.certifications : []);
+            
+            setFollowingCompanies(data.followingCompanies || []);
             
             const getFullUrl = (path) => {
                 if (!path) return null;
@@ -197,37 +236,52 @@ const ProfileDetails = () => {
         fetchProfileData();
     }, []);
 
-    // Fetch tickets when tab is active
-    useEffect(() => {
-        if (activeTab === 'tickets') {
-            const fetchTickets = async () => {
-                setLoadingTickets(true);
-                try {
-                    const { data } = await api.get('/issues/my-issues');
-                    setTickets(data);
-                } catch (err) {
-                    console.error("Failed to fetch tickets", err);
-                } finally {
-                    setLoadingTickets(false);
-                }
-            };
-            fetchTickets();
-        }
-    }, [activeTab]);
 
-    const handleFileChange = (e) => {
+
+    const handleFileSelect = (e, type) => {
         const file = e.target.files[0];
         if (file) {
-            setProfilePicture(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                setCropperImage(reader.result);
+                setCropType(type);
+                setShowCropper(true);
+                e.target.value = ''; 
+            });
+            reader.readAsDataURL(file);
         }
     };
 
-    const handleBannerChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
+    const handleCropComplete = (croppedBlob) => {
+        const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(croppedBlob);
+
+        if (cropType === 'profile') {
+            setProfilePicture(file);
+            setPreviewUrl(previewUrl);
+        } else {
             setBannerPicture(file);
-            setBannerPreview(URL.createObjectURL(file));
+            setBannerPreview(previewUrl);
+        }
+
+        setShowCropper(false);
+        setCropperImage(null);
+        setCropType(null);
+    };
+
+    const handleDeleteImage = async (type) => {
+        if (type === 'profile') {
+            if (profilePicture && typeof profilePicture !== 'string') {
+                 setProfilePicture(null);
+            }
+            setPreviewUrl(null); 
+            // We assume user wants to delete image on server too when they click delete OR when they save.
+            // But immediate preview removal is needed.
+        } else {
+            if (bannerPicture && typeof bannerPicture !== 'string') {
+                setBannerPicture(null);
+            }
+            setBannerPreview(null);
         }
     };
 
@@ -237,6 +291,35 @@ const ProfileDetails = () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    const handleCopyMobile = () => {
+        if (mobileNumber) {
+            navigator.clipboard.writeText(mobileNumber);
+            setCopiedMobile(true);
+            setTimeout(() => setCopiedMobile(false), 2000);
+        }
+    };
+
+    const handleShareProfile = () => {
+        const slug = name
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-') + '-' + user._id.slice(-4);
+        
+        const profileUrl = `${window.location.origin}/profile/${slug}`;
+        navigator.clipboard.writeText(profileUrl);
+        setCopiedLink(true);
+        Swal.fire({
+            icon: 'success',
+            title: 'Link Copied!',
+            text: 'Your public profile link has been copied to clipboard.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+        setTimeout(() => setCopiedLink(false), 2000);
     };
     
     const handleResumeChange = async (e) => {
@@ -282,8 +365,14 @@ const ProfileDetails = () => {
     };
 
     // --- Experience Handlers ---
+    const [activeExpLocationIndex, setActiveExpLocationIndex] = useState(null);
+    const [expLocationSuggestions, setExpLocationSuggestions] = useState([]);
+    const [isLoadingExpLocations, setIsLoadingExpLocations] = useState(false);
+    
+    const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Freelance', 'Remote'];
+    
     const addExperience = () => {
-        setExperience([...experience, { title: '', company: '', startYear: '', endYear: '', description: '' }]);
+        setExperience([...experience, { title: '', company: '', location: '', jobType: '', startYear: '', endYear: '', description: '' }]);
     };
 
     const updateExperience = (index, field, value) => {
@@ -385,6 +474,22 @@ const ProfileDetails = () => {
         return () => clearTimeout(timer);
     }, [activeLocationField, currentLocation, preferredLocationInput]);
 
+    // Experience Location Search
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+             if (activeExpLocationIndex !== null && experience[activeExpLocationIndex]?.location?.length > 2) {
+                 setIsLoadingExpLocations(true);
+                 try {
+                     const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(experience[activeExpLocationIndex].location)}&count=5&language=en&format=json`);
+                     const data = await response.json();
+                     setExpLocationSuggestions(data.results || []);
+                 } catch (err) { console.error(err); } 
+                 finally { setIsLoadingExpLocations(false); }
+             } else { setExpLocationSuggestions([]); }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [activeExpLocationIndex, experience]);
+
     // Job Title Suggestion Logic
     useEffect(() => {
         const filterTitles = (query) => {
@@ -442,6 +547,20 @@ const ProfileDetails = () => {
     
     const handleCompanyChange = (index, value) => { updateExperience(index, 'company', value); setActiveExperienceIndex(index); };
     const selectCompany = (index, name) => { updateExperience(index, 'company', name); setCompanySuggestions([]); setActiveExperienceIndex(null); };
+
+    const handleExpLocationChange = (index, value) => { updateExperience(index, 'location', value); setActiveExpLocationIndex(index); };
+    const selectExpLocation = (index, name) => { 
+        updateExperience(index, 'location', name); 
+        setExpLocationSuggestions([]); 
+        setActiveExpLocationIndex(null); 
+    };
+    const handleExpLocationKeyDown = (e, index) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            setActiveExpLocationIndex(null);
+            setExpLocationSuggestions([]);
+        }
+    };
 
     const selectLocation = (name) => {
         if (activeLocationField === 'current') setCurrentLocation(name);
@@ -567,6 +686,7 @@ const ProfileDetails = () => {
 
         const formData = new FormData();
         formData.append('name', name);
+        formData.append('mobileNumber', mobileNumber);
         formData.append('title', title);
         formData.append('about', about);
         formData.append('skills', skills);
@@ -578,10 +698,14 @@ const ProfileDetails = () => {
 
         if (profilePicture && typeof profilePicture === 'object') {
             formData.append('profilePicture', profilePicture);
+        } else if (previewUrl === null) {
+            formData.append('deleteProfilePicture', 'true');
         }
 
         if (bannerPicture && typeof bannerPicture === 'object') {
             formData.append('bannerPicture', bannerPicture);
+        } else if (bannerPreview === null) {
+            formData.append('deleteBanner', 'true');
         }
 
 
@@ -643,6 +767,12 @@ const ProfileDetails = () => {
                                 <ImageIcon className="w-16 h-16" />
                             </div>
                         )}
+                        <button 
+                             onClick={handleShareProfile}
+                             className="absolute top-6 right-40 bg-white/90 hover:bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-2 z-10"
+                        >
+                            {copiedLink ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />} Share Profile
+                        </button>
                         <button 
                              onClick={() => setIsEditing(true)}
                              className="absolute top-6 right-6 bg-white/90 hover:bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-2 z-10"
@@ -706,6 +836,19 @@ const ProfileDetails = () => {
                                         </button>
                                     </div>
                                 )}
+                                {mobileNumber && (
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-gray-400" />
+                                        <span>{mobileNumber}</span>
+                                        <button 
+                                            onClick={handleCopyMobile}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-[#4169E1]"
+                                            title="Copy Mobile Number"
+                                        >
+                                            {copiedMobile ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        </button>
+                                    </div>
+                                )}
                                 {totalExperience > 0 && (
                                     <div className="flex items-center gap-2">
                                         <Briefcase className="w-4 h-4 text-gray-400" />
@@ -755,6 +898,19 @@ const ProfileDetails = () => {
                                         <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-[#4169E1]"></div>
                                         <h3 className="font-bold text-gray-900 text-lg">{exp.title}</h3>
                                         <p className="text-[#4169E1] font-bold mb-1">{exp.company}</p>
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-2 font-medium">
+                                            {exp.location && (
+                                                <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg text-xs">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {exp.location}
+                                                </span>
+                                            )}
+                                            {exp.jobType && (
+                                                <span className="bg-blue-50 text-[#4169E1] px-2 py-1 rounded-lg text-xs font-semibold">
+                                                    {exp.jobType}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-2 text-sm text-gray-500 mb-3 font-medium">
                                             <Calendar className="w-4 h-4" />
                                             <span>{exp.startMonth} {exp.startYear} - {exp.endMonth ? `${exp.endMonth} ${exp.endYear}` : 'Present'}</span>
@@ -853,27 +1009,39 @@ const ProfileDetails = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden min-h-[600px]">
                 
                 {/* Horizontal Tab Navigation */}
-                <div className="border-b border-gray-100 overflow-x-auto scrollbar-hide">
-                    <div className="flex px-4 md:px-8 space-x-8 min-w-max">
-                        {tabs.map((tab) => {
-                             const Icon = tab.icon;
-                             return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
-                                        activeTab === tab.id 
-                                        ? 'border-[#4169E1] text-[#4169E1]' 
-                                        : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
-                                    }`}
-                                >
-                                    <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
-                                    <span>{tab.label}</span>
-                                    {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
-                                </button>
-                             );
-                        })}
+                {/* Horizontal Tab Navigation */}
+                <div className="flex items-center justify-between border-b border-gray-100 pr-4 md:pr-8">
+                    <div className="overflow-x-auto scrollbar-hide">
+                        <div className="flex px-4 md:px-8 space-x-8 min-w-max">
+                            {tabs.map((tab) => {
+                                 const Icon = tab.icon;
+                                 return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center space-x-2 py-5 px-1 border-b-2 transition-all font-medium text-sm whitespace-nowrap ${
+                                            activeTab === tab.id 
+                                            ? 'border-[#4169E1] text-[#4169E1]' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <Icon className={`w-4 h-4 ${activeTab === tab.id ? 'stroke-[2.5px]' : ''}`} />
+                                        <span>{tab.label}</span>
+                                        {tab.isComplete && <CheckCircle className="w-3.5 h-3.5 text-green-500 ml-1" />}
+                                    </button>
+                                 );
+                            })}
+                        </div>
                     </div>
+                     <button 
+                         type="button"
+                         onClick={() => setIsEditing(false)}
+                         className="flex-shrink-0 text-gray-500 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold ml-2"
+                         title="Cancel Editing"
+                     >
+                         <X className="w-5 h-5" />
+                         <span className="hidden sm:inline">Cancel</span>
+                     </button>
                 </div>
 
                 {/* Form Content */}
@@ -883,6 +1051,16 @@ const ProfileDetails = () => {
 
 
                     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-10 animate-fadeIn">
+                        
+                        {/* Cropper Modal */}
+                        {showCropper && (
+                            <ImageUrlCropper
+                                imageSrc={cropperImage}
+                                aspect={cropType === 'profile' ? 1 : 16/9} // Profile square, Banner wide
+                                onCropComplete={handleCropComplete}
+                                onCancel={() => { setShowCropper(false); setCropperImage(null); }}
+                            />
+                        )}
                         
                         {/* Basic Info Tab */}
                         {activeTab === 'basic' && (
@@ -897,7 +1075,7 @@ const ProfileDetails = () => {
                                             <span className="text-xs font-semibold">Upload Banner Image</span>
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                          <label htmlFor="banner-upload" className="cursor-pointer bg-white text-gray-700 px-4 py-2 rounded-lg font-bold shadow-md hover:text-[#4169E1] transition-colors flex items-center gap-2">
                                             <Camera className="w-4 h-4" /> Change Banner
                                          </label>
@@ -906,18 +1084,18 @@ const ProfileDetails = () => {
                                             type="file" 
                                             className="hidden" 
                                             accept="image/*"
-                                            onChange={handleBannerChange}
+                                            onChange={(e) => handleFileSelect(e, 'banner')}
                                         />
+                                        {bannerPreview && (
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleDeleteImage('banner')}
+                                                className="bg-white text-red-500 px-3 py-2 rounded-lg font-bold shadow-md hover:bg-red-50 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
-                                    {/* Close/Cancel Edit Mode Button Floating */}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setIsEditing(false)}
-                                        className="absolute top-4 right-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-full shadow-md z-10"
-                                        title="Cancel Edit"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row gap-8 items-start px-4 relative z-10">
@@ -934,19 +1112,30 @@ const ProfileDetails = () => {
                                                      <p className="text-white text-xs font-medium">Change Photo</p>
                                                 </div>
                                             </div>
-                                            <label 
-                                                htmlFor="profile-upload" 
-                                                className="absolute -bottom-3 -right-3 bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-[#4169E1] border border-gray-100 transition-colors"
-                                            >
-                                                <Camera className="w-4 h-4" />
-                                                <input 
-                                                    id="profile-upload"
-                                                    type="file" 
-                                                    className="hidden" 
-                                                    accept="image/*"
-                                                    onChange={handleFileChange}
-                                                />
-                                            </label>
+                                            <div className="absolute -bottom-3 -right-3 flex gap-1">
+                                                <label 
+                                                    htmlFor="profile-upload" 
+                                                    className="bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-[#4169E1] border border-gray-100 transition-colors"
+                                                >
+                                                    <Camera className="w-4 h-4" />
+                                                    <input 
+                                                        id="profile-upload"
+                                                        type="file" 
+                                                        className="hidden" 
+                                                        accept="image/*"
+                                                        onChange={(e) => handleFileSelect(e, 'profile')}
+                                                    />
+                                                </label>
+                                                {previewUrl && (
+                                                    <button
+                                                        type="button" 
+                                                        onClick={() => handleDeleteImage('profile')}
+                                                        className="bg-white text-gray-700 p-2 rounded-xl cursor-pointer shadow-md hover:text-red-500 border border-gray-100 transition-colors"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -977,6 +1166,20 @@ const ProfileDetails = () => {
                                                     />
                                                 </div>
                                             </div>
+                                            
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700">Mobile Number</label>
+                                                <div className="relative">
+                                                    <Phone className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 transform -translate-y-1/2" />
+                                                    <input 
+                                                        type="tel" 
+                                                        value={mobileNumber}
+                                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                                        placeholder="Enter your mobile number"
+                                                        className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all border-gray-200 focus:border-[#4169E1]"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-2 relative">
@@ -1002,13 +1205,12 @@ const ProfileDetails = () => {
                                      <label className="block text-sm font-bold text-gray-700">Total Experience (Years)</label>
                                      <input 
                                          type="number" 
-                                         min="0"
-                                         step="0.1"
-                                         placeholder="e.g. 3.5"
                                          value={totalExperience}
-                                         onChange={(e) => setTotalExperience(parseFloat(e.target.value) || 0)}
-                                         className={`w-full px-4 py-3.5 border rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none transition-all border-gray-200 focus:border-[#4169E1]`}
+                                         readOnly
+                                         className={`w-full px-4 py-3.5 border rounded-xl bg-gray-50 focus:outline-none transition-all border-gray-200 text-gray-500 font-medium`}
+                                         title="Calculated automatically from Work Experience"
                                      />
+                                     <p className="text-xs text-blue-500 mt-1">Calculated automatically from your work experience.</p>
                                 </div>
 
                                 <div className="space-y-2">
@@ -1148,6 +1350,60 @@ const ProfileDetails = () => {
                                                             </li>
                                                         ))}
                                                     </ul>
+                                                )}
+                                             </div>
+                                        </div>
+
+                                        {/* Location and Job Type Row */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Location</label>
+                                                 <input 
+                                                    type="text" 
+                                                    placeholder="e.g. Bangalore, India" 
+                                                    value={exp.location || ''} 
+                                                    onChange={(e) => handleExpLocationChange(index, e.target.value)}
+                                                    onFocus={() => setActiveExpLocationIndex(index)}
+                                                    onBlur={() => setTimeout(() => setActiveExpLocationIndex(null), 200)}
+                                                    onKeyDown={(e) => handleExpLocationKeyDown(e, index)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all"
+                                                />
+                                                {activeExpLocationIndex === index && expLocationSuggestions.length > 0 && (
+                                                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                                        {isLoadingExpLocations ? <li className="px-4 py-3 text-sm text-gray-500">Loading...</li> : expLocationSuggestions.map((loc, i) => (
+                                                            <li key={i} onClick={(e) => { e.stopPropagation(); selectExpLocation(index, `${loc.name}, ${loc.admin1 || ''}, ${loc.country || ''}`.replace(/, ,/g, ',').replace(/, $/, '')); }} className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors block">
+                                                                <div className="font-medium text-gray-900 text-sm">{loc.name}</div>
+                                                                <div className="text-xs text-gray-500">{[loc.admin1, loc.country].filter(Boolean).join(', ')}</div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                             </div>
+                                            
+                                             <div className="space-y-2 relative">
+                                                <label className="text-sm font-bold text-gray-700">Job Type</label>
+                                                <select 
+                                                    value={exp.jobType || ''} 
+                                                    onChange={(e) => updateExperience(index, 'jobType', e.target.value)}
+                                                    className="w-full px-4 py-3.5 border border-gray-200 rounded-xl focus:outline-none focus:border-[#4169E1] bg-white"
+                                                >
+                                                    <option value="">Select Job Type</option>
+                                                    {jobTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                                </select>
+                                                {/* Custom Job Type Input */}
+                                                {exp.jobType === '' && (
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Or enter custom job type..." 
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-[#4169E1] outline-none transition-all mt-2 text-sm"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                                                e.preventDefault();
+                                                                updateExperience(index, 'jobType', e.target.value.trim());
+                                                                e.target.value = '';
+                                                            }
+                                                        }}
+                                                    />
                                                 )}
                                              </div>
                                         </div>
@@ -1429,75 +1685,7 @@ const ProfileDetails = () => {
                             </div>
                         )}
 
-                        {/* My Tickets Tab */}
-                        {activeTab === 'tickets' && (
-                             <div className="space-y-6 animate-fadeIn">
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-xl font-bold text-gray-900">Support Tickets</h3>
-                                    <span className="text-sm font-medium text-gray-500">{tickets.length} Tickets</span>
-                                </div>
 
-                                {loadingTickets ? (
-                                    <div className="text-center py-10">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4169E1] mx-auto"></div>
-                                        <p className="mt-2 text-gray-500 font-medium">Loading tickets...</p>
-                                    </div>
-                                ) : tickets.length === 0 ? (
-                                    <div className="text-center py-16 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
-                                        <HelpCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 font-medium">No support tickets found.</p>
-                                        <p className="text-sm text-gray-400 mt-1">Issues you report will appear here.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {tickets.map((ticket) => (
-                                            <div key={ticket._id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                                                    <div>
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide border ${
-                                                                ticket.status === 'Resolved' 
-                                                                ? 'bg-green-50 text-green-700 border-green-100' 
-                                                                : ticket.status === 'Open' 
-                                                                ? 'bg-blue-50 text-blue-700 border-blue-100'
-                                                                : 'bg-gray-100 text-gray-700 border-gray-200'
-                                                            }`}>
-                                                                {ticket.status}
-                                                            </span>
-                                                            <span className="text-xs text-gray-400 font-medium">#{ticket._id.slice(-6).toUpperCase()}</span>
-                                                            <span className="text-xs text-gray-400">• {new Date(ticket.createdAt).toLocaleDateString()}</span>
-                                                        </div>
-                                                        <h4 className="text-lg font-bold text-gray-900 mb-1">{ticket.name}</h4> {/* Assuming name is title/subject */}
-                                                        <p className="text-sm text-gray-500 mb-4 font-medium flex items-center gap-2">
-                                                            Type: <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700">{ticket.type}</span>
-                                                        </p>
-                                                        
-                                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                            <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">{ticket.description}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {ticket.status === 'Resolved' && ( // Add logic to show reply if available in backend
-                                                    <div className="mt-4 pl-4 border-l-4 border-green-500 bg-green-50/50 p-4 rounded-r-lg">
-                                                        <h5 className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
-                                                            <CheckCircle className="w-4 h-4" /> Admin Reply
-                                                        </h5>
-                                                        <p className="text-gray-700 text-sm">
-                                                            {/* If we had a reply field in the model, we would show it here. 
-                                                                Since we only have status updates, currently we just show resolved.
-                                                                Use updateIssueStatus in issueController to save reply if needed.
-                                                            */}
-                                                            The issue has been marked as resolved by the administrator.
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                             </div>
-                        )}
 
                         <div className="flex gap-4 pt-8 border-t border-gray-100">
                              <button
