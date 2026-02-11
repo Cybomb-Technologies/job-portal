@@ -259,6 +259,7 @@ userSchema.methods.getResetPasswordToken = function () {
 // Indexes
 userSchema.index({ role: 1 });
 userSchema.index({ companyName: 'text' });
+userSchema.index({ companyId: 1 });
 
 const User = mongoose.model('User', userSchema);
 

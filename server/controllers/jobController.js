@@ -215,7 +215,7 @@ const getJobs = async (req, res) => {
       }
     }
 
-    const jobs = await Job.find(query).sort(sort).populate('postedBy', 'name email profilePicture employerVerification').populate('companyId', 'name employerVerification profilePicture');
+    const jobs = await Job.find(query).sort(sort).populate('postedBy', 'name email profilePicture employerVerification').populate('companyId', 'name employerVerification profilePicture').lean();
     res.json(jobs);
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -241,7 +241,8 @@ const getJobById = async (req, res) => {
           path: 'members.user',
           select: 'name email profilePicture'
         }
-      });
+      })
+      .lean();
 
     if (job) {
       const applicantCount = await Application.countDocuments({ job: job._id });
@@ -257,7 +258,7 @@ const getJobById = async (req, res) => {
         }
       }
 
-      res.json({ ...job._doc, applicantCount, hasApplied });
+      res.json({ ...job, applicantCount, hasApplied });
     } else {
       res.status(404).json({ message: 'Job not found' });
     }

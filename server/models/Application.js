@@ -55,6 +55,10 @@ const applicationSchema = mongoose.Schema(
 // Prevent duplicate applications from same user to same job
 applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
 
+// Indexes for Employer Dashboard
+applicationSchema.index({ companyId: 1 });
+applicationSchema.index({ status: 1 });
+
 // Generate Custom Application ID
 applicationSchema.pre('save', async function(next) {
     if (!this.applicationId) {
