@@ -15,6 +15,15 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  relatedJob: {
+    jobId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Job'
+    },
+    title: String,
+    slug: String,
+    company: String
+  },
   read: {
     type: Boolean,
     default: false

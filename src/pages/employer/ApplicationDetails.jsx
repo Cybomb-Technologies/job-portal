@@ -112,11 +112,7 @@ const ApplicationDetails = () => {
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container mx-auto px-4 max-w-6xl">
                 {/* Back Link */}
-                <div className="mb-6 flex justify-between items-center">
-                    <Link to={`/employer/applications/${application.job._id}`} className="inline-flex items-center text-gray-500 hover:text-[#4169E1] transition-colors">
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Applications
-                    </Link>
-                </div>
+
 
                 {/* Top Info Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">

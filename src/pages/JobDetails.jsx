@@ -159,8 +159,16 @@ const JobDetails = () => {
           return;
       }
 
-      if (job && job.postedBy) {
-          initiateChat(job.postedBy);
+      // Fallback to company admin/member if postedBy is missing
+      const employer = job.postedBy || job.companyId?.members?.[0]?.user;
+
+      if (employer) {
+          initiateChat(employer, {
+              jobId: job._id,
+              title: job.title,
+              slug: generateSlug(job.title, job._id),
+              company: job.company
+          });
           navigate('/messages');
       } else {
           showError('Unavailable', 'Employer information is not available for this job.');
@@ -451,7 +459,7 @@ const JobDetails = () => {
                   <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-2 font-display tracking-tight">{job.title}</h1>
                   <div className="flex items-center text-lg text-slate-600 font-medium mb-4 group/company">
                     {(job.postedBy?._id || job.companyId) ? (
-                        <Link to={`/company/${generateSlug(job.company, job.postedBy?._id || job.companyId)}`} className="hover:text-blue-600 transition-all">
+                        <Link to={`/company/${generateSlug(job.company, job.companyId?._id || job.companyId || job.postedBy?._id)}`} className="hover:text-blue-600 transition-all">
                         {job.company}
                         </Link>
                     ) : (

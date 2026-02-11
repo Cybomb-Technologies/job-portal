@@ -149,7 +149,21 @@ const ChatUI = () => {
         if (!newMessage.trim() || !currentChat) return;
 
         try {
-            await sendMessage(currentChat.user._id, newMessage);
+            // Check for job context
+            const relatedJob = currentChat.jobContext;
+            await sendMessage(currentChat.user._id, newMessage, relatedJob);
+            
+            // Clear context after sending so it doesn't attach to every message
+            if (relatedJob) {
+                // We need to update the currentChat object in context or locally to remove jobContext
+                // Since currentChat comes from context, modifying it here locally won't persist to context directly 
+                // but sendMessage optimistically updates messages. 
+                // We should ideally clear it in context or just rely on the fact that we used it.
+                // A simple hack is to delete it from the object reference if it's mutable, 
+                // or we need a way to clear it via context.
+                delete currentChat.jobContext; 
+            }
+
             setNewMessage('');
             setShouldScrollToBottom(true);
             // Reset textarea height
@@ -266,25 +280,16 @@ const ChatUI = () => {
                     </div>
                     
                     {/* Search or Back Button */}
-                    {viewMode === 'team' && selectedMember ? (
-                        <button 
-                            onClick={handleBackToTeamList}
-                            className="flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors mb-2"
-                        >
-                            ← Back to Team
-                        </button>
-                    ) : (
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <input 
-                                type="text" 
-                                placeholder={viewMode === 'team' ? "Search team members..." : "Search chats..."}
-                                className="w-full pl-10 pr-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    )}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input 
+                            type="text" 
+                            placeholder={viewMode === 'team' ? "Search team members..." : "Search chats..."}
+                            className="w-full pl-10 pr-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -524,25 +529,42 @@ const ChatUI = () => {
                                 messages.map((msg, idx) => {
                                     const isMe = msg.sender === user?._id;
                                     return (
-                                        <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                            <div 
-                                                className={`max-w-[85%] sm:max-w-[75%] px-3 sm:px-4 py-2 rounded-2xl text-sm sm:text-base ${
-                                                    isMe 
-                                                    ? 'bg-blue-600 text-white rounded-br-none' 
-                                                    : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'
-                                                }`}
-                                            >
-                                                <p>{msg.content}</p>
-                                                <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-200' : 'text-gray-400'} flex items-center justify-end gap-1`}>
-                                                    {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                                    {isMe && (
-                                                        msg.read ? (
-                                                            <CheckCheck className="w-3 h-3 text-white" />
-                                                        ) : (
-                                                            <Check className="w-3 h-3 text-blue-200 opacity-70" />
-                                                        )
-                                                    )}
-                                                </p>
+                                        <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                            {/* Job Tag */}
+                                            {msg.relatedJob && (
+                                                <div 
+                                                    onClick={() => navigate(`/job/${msg.relatedJob.slug}`)}
+                                                    className={`mb-1 max-w-[85%] sm:max-w-[75%] px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all flex items-center gap-2 ${
+                                                        isMe 
+                                                            ? 'bg-blue-600/10 text-blue-600 hover:bg-blue-600/20 mr-1' 
+                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 ml-1'
+                                                    }`}
+                                                >
+                                                    <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                                                    <span className="truncate">Regarding: <span className="font-bold underline">{msg.relatedJob.title}</span></span>
+                                                </div>
+                                            )}
+                                            
+                                            <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}>
+                                                <div 
+                                                    className={`max-w-[85%] sm:max-w-[75%] px-3 sm:px-4 py-2 rounded-2xl text-sm sm:text-base ${
+                                                        isMe 
+                                                        ? 'bg-blue-600 text-white rounded-br-none' 
+                                                        : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'
+                                                    }`}
+                                                >
+                                                    <p>{msg.content}</p>
+                                                    <p className={`text-[10px] mt-1 ${isMe ? 'text-blue-200' : 'text-gray-400'} flex items-center justify-end gap-1`}>
+                                                        {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        {isMe && (
+                                                            msg.read ? (
+                                                                <CheckCheck className="w-3 h-3 text-white" />
+                                                            ) : (
+                                                                <Check className="w-3 h-3 text-blue-200 opacity-70" />
+                                                            )
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     );

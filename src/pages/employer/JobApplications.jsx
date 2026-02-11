@@ -85,9 +85,7 @@ const JobApplications = () => {
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <Link to="/employer/dashboard" className="text-gray-500 hover:text-[#4169E1] flex items-center mb-2 transition-colors">
-                    <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
-                </Link>
+
                 <h1 className="text-3xl font-bold text-black">Applications for <span className="text-[#4169E1]">{jobTitle}</span></h1>
                 <p className="text-gray-600 mt-1">{filteredApplications.length} candidates found {filterStatus !== 'all' && `(filtered by ${filterStatus})`}</p>
             </div>

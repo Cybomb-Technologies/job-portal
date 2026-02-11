@@ -540,13 +540,7 @@ const PostJob = () => {
     return (
         <div className="min-h-screen bg-gray-50 py-12 font-sans">
             <div className="container mx-auto px-4 max-w-4xl">
-                 <button 
-                    onClick={() => navigate('/employer/dashboard')}
-                    className="flex items-center text-gray-500 hover:text-black mb-8 transition-colors group"
-                >
-                    <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    Back to Dashboard
-                </button>
+
 
                 <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
                     <div className="p-5 md:p-10">
