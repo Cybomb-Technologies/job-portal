@@ -5,7 +5,7 @@ const Notification = require('../models/Notification');
 // Send a message
 const sendMessage = async (req, res) => {
     try {
-        const { receiverId, content } = req.body;
+        const { receiverId, content, relatedJob } = req.body;
         const senderId = req.user._id;
 
         if (!receiverId || !content) {
@@ -15,7 +15,8 @@ const sendMessage = async (req, res) => {
         const newMessage = new Message({
             sender: senderId,
             receiver: receiverId,
-            content
+            content,
+            relatedJob
         });
 
         await newMessage.save();

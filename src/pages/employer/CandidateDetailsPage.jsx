@@ -94,9 +94,7 @@ const CandidateDetailsPage = ({ isPublic = false }) => {
     return (
         <div className="min-h-screen bg-gray-50 py-6 sm:py-12">
             <div className="container mx-auto px-3 sm:px-4 max-w-4xl">
-                <Link to={user ? "/employer/candidates" : "/"} className="flex items-center text-gray-500 hover:text-[#4169E1] mb-4 sm:mb-6 transition-colors text-sm sm:text-base">
-                    <ArrowLeft className="w-4 h-4 mr-2" /> {user ? 'Back to Search' : 'Back to Home'}
-                </Link>
+
 
                 {/* Header Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">

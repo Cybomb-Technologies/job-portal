@@ -23,12 +23,13 @@ const JobCard = ({ job }) => {
                         </h3>
                         <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-slate-600 font-semibold text-sm">{job.company}</p>
-                            {job.postedBy?.employerVerification?.level >= 1 && (
+                            {/* Prioritize Company Verification */}
+                            {(job.companyId?.employerVerification?.level >= 1 || job.postedBy?.employerVerification?.level >= 1) && (
                                 <span title="Verified Company" className="inline-flex items-center text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-blue-100 uppercase tracking-wider">
                                     Verified <ShieldCheck size={10} className="ml-1" />
                                 </span>
                             )}
-                            {job.postedBy?.employerVerification?.level >= 2 && (
+                            {(job.companyId?.employerVerification?.level >= 2 || job.postedBy?.employerVerification?.level >= 2) && (
                                 <span title="Registered Business" className="inline-flex items-center text-emerald-600 bg-emerald-50/50 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-emerald-100 uppercase tracking-wider">
                                     Reg. Business <CheckCircle size={10} className="ml-1" />
                                 </span>

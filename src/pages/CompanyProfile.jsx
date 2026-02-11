@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { useChat } from '../context/ChatContext';
+
 import { X, Send, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { generateSlug } from '../utils/slugify';
@@ -305,7 +305,7 @@ const ReviewModal = ({ isOpen, onClose, companyId, companyName, onSuccess }) => 
 const CompanyProfile = () => {
     const { slug } = useParams(); // Changed from id to slug
     const navigate = useNavigate();
-    const { initiateChat } = useChat();
+
     const [company, setCompany] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -340,33 +340,7 @@ const CompanyProfile = () => {
 
     // ... (Handlers)
 
-    const handleMessage = async () => {
-        if (!currentUser) return Swal.fire({
-            icon: 'info',
-            title: 'Login Required',
-            text: "Please login to message the company recruiter"
-        });
 
-        if (isOwner) return Swal.fire({
-            icon: 'warning',
-            title: 'Action Not Allowed',
-            text: "You cannot message your own company"
-        });
-
-        // Use contactUser if available, otherwise fallback to company owner ID (company._id)
-        // But chat usually expects a user ID. company._id IS the user ID of the owner in this schema?
-        // Based on previous code, company._id seems to be the user ID of the employer.
-        // Let's use company.contactUser?._id || company._id
-        const recipientId = company.contactUser?._id || company._id;
-        const recipientName = company.companyName || company.name;
-        const recipientProfile = company.profilePicture;
-
-        initiateChat({
-            _id: recipientId,
-            name: recipientName,
-            profilePicture: recipientProfile
-        });
-    };
 
     const handleShare = () => {
         navigator.clipboard.writeText(window.location.href);
@@ -506,10 +480,7 @@ const CompanyProfile = () => {
         return (
             <div className="flex justify-center items-center h-screen bg-white flex-col">
                 <div className="text-red-500 mb-4">{error || 'Company not found'}</div>
-                <Link to="/companies" className="text-[#4169E1] hover:underline flex items-center">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Companies
-                </Link>
+
             </div>
         );
     }
@@ -519,10 +490,7 @@ const CompanyProfile = () => {
             {/* Header Section */}
             <div className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-6 pt-6">
-                    <Link to="/companies" className="text-slate-500 hover:text-blue-600 flex items-center mb-6 w-fit transition-colors text-sm font-bold group">
-                        <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                        Back to Companies
-                    </Link>
+
                 </div>
 
                 {/* Banner & Logo */}
@@ -654,13 +622,7 @@ const CompanyProfile = () => {
                                                 </>
                                             )}
                                         </button>
-                                        <button 
-                                            onClick={handleMessage}
-                                            className="px-6 py-3 bg-white text-blue-600 border border-blue-200 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-sm flex items-center gap-2"
-                                        >
-                                            <MessageSquare className="w-5 h-5" />
-                                            Message
-                                        </button>
+
                                         <button 
                                             onClick={handleShare}
                                             className="p-3 bg-white text-slate-600 rounded-xl hover:bg-slate-50 hover:text-blue-600 border border-gray-200 transition-all shadow-sm"

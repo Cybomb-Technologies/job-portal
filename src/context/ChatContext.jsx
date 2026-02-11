@@ -183,9 +183,13 @@ export const ChatProvider = ({ children }) => {
       }
   };
 
-  const sendMessage = async (receiverId, content) => {
+  const sendMessage = async (receiverId, content, relatedJob = null) => {
     try {
-      const res = await api.post('/messages/send', { receiverId, content });
+      const payload = { receiverId, content };
+      if (relatedJob) {
+          payload.relatedJob = relatedJob;
+      }
+      const res = await api.post('/messages/send', payload);
       
       // Optimistically add message if it's the current chat
       if (currentChat && currentChat.user._id === receiverId) {
@@ -201,14 +205,19 @@ export const ChatProvider = ({ children }) => {
   };
   
   // Expose initiateChat to start a conversation with a specific user (even if no history)
-  const initiateChat = (targetUser) => {
+  const initiateChat = (targetUser, jobContext = null) => {
       // Check if conversation already exists
       const existing = conversations.find(c => c.user._id === targetUser._id);
       if (existing) {
           selectChat(existing);
+          // If job context is provided, we might want to attach it to the current chat state temporarily
+          // so the UI knows to send it with the next message.
+          if (jobContext) {
+              setCurrentChat(prev => ({ ...prev, jobContext }));
+          }
       } else {
           // Create temporary conversation object
-          const newConv = { user: targetUser, lastMessage: null, unreadCount: 0 };
+          const newConv = { user: targetUser, lastMessage: null, unreadCount: 0, jobContext };
           setCurrentChat(newConv);
           setMessages([]); // Empty start
       }
