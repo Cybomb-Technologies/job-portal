@@ -877,6 +877,45 @@ const ProfileDetails = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Resumes Section */}
+                            {resumes && resumes.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2">Resumes</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {resumes.map((res) => {
+                                            const isActive = existingResume === res.file;
+                                            return (
+                                                <div key={res._id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isActive ? 'bg-green-50/50 border-green-200 shadow-sm' : 'bg-gray-50 border-gray-100 hover:border-blue-200'}`}>
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <div className={`flex-shrink-0 p-2.5 rounded-lg ${isActive ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500 shadow-sm'}`}>
+                                                            <FileText className="w-5 h-5" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-gray-900 text-sm truncate" title={res.name}>{res.name}</h4>
+                                                                {isActive && <span className="flex-shrink-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Active</span>}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 mt-0.5 font-medium">
+                                                                {new Date(res.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <a 
+                                                        href={res.file} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="flex-shrink-0 ml-2 p-2 text-gray-400 hover:text-[#4169E1] hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="View Resume"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                    </a>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
